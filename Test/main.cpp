@@ -1,18 +1,11 @@
-#include <memory>
 #include <thread>
 #include <cstdio>
-#include <vector>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include <Core/ECS/ECS.h>
 #include <Platform/Window.h>
 #include <Graphics/Renderer.h>
-#include <Core/Components.h>
-#include <Graphics/Components.h>
-#include <Graphics/Systems/SpriteSystem.h>
-#include <Graphics/Camera/Camera2D.h>
-#include <Graphics/Texture/TextureLoader.h>
 
 // Global engine state
 
@@ -33,9 +26,6 @@ int main() {
     // Main Loop
     double lastTime = glfwGetTime();
     const double targetFrameTime = 1.0 / 60.0;
-
-    printf("[INFO]: Starting engine stress test:\n");
-    printf("------------------------------------\n");
 
     while (g_running) {
         double currentTime = glfwGetTime();
@@ -72,7 +62,6 @@ int main() {
 
     // Cleanup
     g_window.Exit();
-    printf("[INFO]: Engine shutdown.\n");
 
     return 0;
 }
