@@ -1,4 +1,5 @@
 #include <Graphics/Texture/TextureLoader.h>
+#include <glad/glad.h>
 
 void TextureLoader::Cleanup() {
     // Clear all textures
@@ -13,6 +14,9 @@ Texture* TextureLoader::LoadTexture(const std::string& path) {
     // Load a new texture otherwise
     Texture texture;
     if (!texture.LoadFromFile(path)) return nullptr;
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_textures[path] = std::move(texture);
     return &m_textures[path];

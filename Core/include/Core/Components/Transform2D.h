@@ -8,10 +8,9 @@
 struct Transform2D
 {
     Vector2 position; 
-    float rotation; 
-    float scaleX;
-    float scaleY;
+    float rotation;
+    Vector2 scale;
 
-    Transform2D(const Vector2& position = Vector2(0, 0), float rotation = 0.0f, float scaleX = 1.0f, float scaleY = 1.0f)
-        : position(position), rotation(rotation), scaleX(scaleX), scaleY(scaleY) { }
+    Transform2D(const Vector2& position=Vector2::ZERO, float rotation=0.0f, const Vector2& scale=Vector2::ONE)
+        : position(position), rotation(rotation), scale(scale) { }
 };

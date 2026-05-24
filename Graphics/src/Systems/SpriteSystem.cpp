@@ -45,8 +45,8 @@ void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS
         Sprite2D* sprite = ecs->GetComponent<Sprite2D>(e);
 
         // Frustrum culling check
-        float scaledWidth = sprite->GetFrameWidth() * transform->scaleX;
-        float scaledHeight = sprite->GetFrameHeight() * transform->scaleY;
+        float scaledWidth = sprite->GetFrameWidth() * transform->scale.x;
+        float scaledHeight = sprite->GetFrameHeight() * transform->scale.y;
 
         if (transform->position.x + scaledWidth < cullLeft ||
             transform->position.x > cullRight ||
@@ -80,8 +80,8 @@ void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS
         // Set destination rect
         sprite->dst.x = transform->position.x - cameraOffset.x;
         sprite->dst.y = transform->position.y - cameraOffset.y;
-        sprite->dst.w = (float)(frameW * transform->scaleX);
-        sprite->dst.h = (float)(frameH * transform->scaleY);
+        sprite->dst.w = (float)(frameW * transform->scale.x);
+        sprite->dst.h = (float)(frameH * transform->scale.y);
 
         // Calculate Normalized UV coordinates (0.0 to 1.0)
         float u = sprite->src.x / texWidth;
@@ -174,7 +174,7 @@ float SpriteSystem::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* sprit
 
     // Calculate the scaled height of the sprite frame
     int textureHeight = sprite->GetTextureHeight();
-    float scaledFrameHeight = (textureHeight / sprite->vframes) * transform->scaleY;
+    float scaledFrameHeight = (textureHeight / sprite->vframes) * transform->scale.y;
 
     // Calculate global coordinates of the y-sort point
     float y = position.y + scaledFrameHeight / 2 + ySortOrigin;

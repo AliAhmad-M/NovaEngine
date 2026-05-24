@@ -8,11 +8,12 @@ struct Vector2 {
     float x;
     float y;
 
-    static const Vector2 ZERO;  // (0,  0)
-    static const Vector2 UP;    // (0, -1)
-    static const Vector2 LEFT;  // (-1, 0)
-    static const Vector2 DOWN;  // (0,  1)
-    static const Vector2 RIGHT; // (1,  0)
+    static const Vector2 ZERO;  // ( 0,  0 )
+    static const Vector2 ONE;   // ( 1,  1 )
+    static const Vector2 UP;    // ( 0, -1 )
+    static const Vector2 LEFT;  // (-1,  0 )
+    static const Vector2 DOWN;  // ( 0,  1 )
+    static const Vector2 RIGHT; // ( 1,  0 )
 
     /**
      * Constructor

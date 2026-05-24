@@ -12,9 +12,10 @@ struct Vertex {
 
 class Renderer {
 private:
-    GLuint m_vao, m_vbo, m_ibo;
-    GLuint m_shader;
-    GLuint m_whiteTexture;
+    GLuint m_vao = 0, m_vbo = 0, m_ibo = 0;
+    
+    GLuint m_shader         = 0;
+    GLuint m_whiteTexture   = 0;
     GLuint m_currentTexture = 0;
 
     std::vector<Vertex> m_vertexBatch;
@@ -130,7 +131,7 @@ public:
         glBufferSubData(GL_ARRAY_BUFFER, 0, m_vertexBatch.size() * sizeof(Vertex), m_vertexBatch.data());
 
         glBindVertexArray(m_vao);
-        glDrawElements(GL_TRIANGLES, (m_vertexBatch.size() / 4) * 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, (GLsizei)((m_vertexBatch.size() / 4) * 6), GL_UNSIGNED_INT, 0);
 
         m_vertexBatch.clear();
     }

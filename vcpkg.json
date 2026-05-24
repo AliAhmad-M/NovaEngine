@@ -1,0 +1,25 @@
+{
+  "name": "star-platinum-engine",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "glad",
+      "features": [
+        "loader"
+      ]
+    },
+    "glfw3",
+    "glm",
+    "stb",
+    {
+      "name": "freetype",
+      "features": [
+        "brotli",
+        "bzip2",
+        "png",
+        "zlib"
+      ]
+    },
+    "openal-soft"
+  ]
+}

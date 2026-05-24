@@ -4,8 +4,8 @@ void SystemManager::OnEntityDestroyed(EntityID entity) {
 	for (auto const& pair : m_systems) {
 		// Remove deleted entity from all systems
 		auto const& system = pair.second;
-		if (system->entityRecord[entity]) {
-			system->entityRecord[entity] = false;
+		if (system->entities.count(entity)) {
+			system->entities.erase(entity);
 			system->OnEntityRemoved(entity);
 		}
 	}
@@ -15,7 +15,7 @@ void SystemManager::OnAllEntitesDestroyed() {
 	for (auto const& pair : m_systems) {
 		auto const& system = pair.second;
 
-		std::fill(system->entityRecord.begin(), system->entityRecord.end(), false);
+		system->entities.clear();
 		system->OnAllEntitiesRemoved();
 	}
 }
@@ -27,23 +27,22 @@ void SystemManager::OnEntitySignatureChanged(EntityID entity, Signature entitySi
 
 		// Get system signature
 		auto const& systemSignature = m_signatures[type];
+		
+		bool matches = (entitySignature & systemSignature) == systemSignature;
+		bool isTracked = system->entities.count(entity) > 0;
 
-		// Check if enity signature matches system signature
-		if ((entitySignature & systemSignature) == systemSignature) {
-			// Add entity to the system
-			if (!system->entityRecord[entity]) {
-				system->entityRecord[entity] = true;
-				system->OnEntityAdded(entity);
-			}
+		// If entity signature matched and entity is not already added
+		if (matches && !isTracked) {
+			// Add the entity to system
+			system->entities.insert(entity);
+			system->OnEntityAdded(entity);
 		}
 
-		// Otherwise
-		else {
-			// Remove entity from the system
-			if (system->entityRecord[entity]) {
-				system->entityRecord[entity] = false;
-				system->OnEntityRemoved(entity);
-			}
+		// If entity signature not matched and entity is already added
+		else if (!matches && isTracked) {
+			// Remove entity from system
+			system->entities.erase(entity);
+			system->OnEntityRemoved(entity);
 		}
 	}
 }

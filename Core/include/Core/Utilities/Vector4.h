@@ -10,12 +10,12 @@ struct Vector4 {
     float z;
     float w;
 
-    static const Vector4 ZERO;
-    static const Vector4 ONE;
-    static const Vector4 UNIT_X;
-    static const Vector4 UNIT_Y;
-    static const Vector4 UNIT_Z;
-    static const Vector4 UNIT_W;
+    static const Vector4 ZERO;   // ( 0, 0, 0, 0 )
+    static const Vector4 ONE;    // ( 1, 1, 1, 1 )
+    static const Vector4 UNIT_X; // ( 1, 0, 0, 0 )
+    static const Vector4 UNIT_Y; // ( 0, 1, 0, 0 )
+    static const Vector4 UNIT_Z; // ( 0, 0, 1, 0 )
+    static const Vector4 UNIT_W; // ( 0, 0, 0, 1 )
 
     /**
      * Constructor

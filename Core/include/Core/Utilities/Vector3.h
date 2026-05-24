@@ -10,13 +10,14 @@ struct Vector3 {
     float y;
     float z;
 
-    static const Vector3 ZERO;
-    static const Vector3 UP;
-    static const Vector3 DOWN;
-    static const Vector3 LEFT;
-    static const Vector3 RIGHT;
-    static const Vector3 FORWARD;
-    static const Vector3 BACK;
+    static const Vector3 ZERO;    // ( 0,  0,  0 )
+    static const Vector3 ONE;     // ( 1,  1,  1 )
+    static const Vector3 UP;      // ( 0,  1,  0 )
+    static const Vector3 DOWN;    // ( 0, -1,  0 )
+    static const Vector3 LEFT;    // (-1,  0,  0 )
+    static const Vector3 RIGHT;   // ( 1,  0,  0 )
+    static const Vector3 FORWARD; // ( 0,  0,  1 )
+    static const Vector3 BACK;    // ( 0,  0, -1 )
 
     /**
      * Constructor
