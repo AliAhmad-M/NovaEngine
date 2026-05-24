@@ -1,18 +1,18 @@
 #include <thread>
 #include <cstdio>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <Core/ECS/ECS.h>
 #include <Core/Components.h>
+#include <Platform/Window.h>
+#include <Platform/InputMap.h>
 #include <Graphics/Components.h>
 #include <Graphics/Systems/SpriteSystem.h>
 #include <Graphics/Camera/Camera2D.h>
-#include <Platform/Window.h>
 #include <Graphics/Renderer.h>
 #include <Graphics/Texture/TextureLoader.h>
 
 Window        g_window;
 Renderer      g_renderer;
+InputMap      g_inputMap;
 TextureLoader g_textureLoader;
 bool          g_running = true;
 double        g_deltaTime = 0;
@@ -34,6 +34,11 @@ int main() {
     ecs.RegisterSystem<SpriteSystem>();
     ecs.AddComponentToSystem<Transform2D, SpriteSystem>();
     ecs.AddComponentToSystem<Sprite2D, SpriteSystem>();
+
+    g_inputMap.Bind("move_l", GLFW_KEY_LEFT);
+    g_inputMap.Bind("move_d", GLFW_KEY_DOWN);
+    g_inputMap.Bind("move_r", GLFW_KEY_RIGHT);
+    g_inputMap.Bind("move_u", GLFW_KEY_UP);
 
     Camera2D camera;
 
@@ -73,6 +78,7 @@ int main() {
 
         g_window.PollEvents();
         if (g_window.ShouldClose()) g_running = false;
+        g_inputMap.Update(g_window.GetNativeWindow());
 
         // Input
         GLFWwindow* nativeWindow = g_window.GetNativeWindow();
@@ -81,19 +87,16 @@ int main() {
 
         float dx = 0.0f, dy = 0.0f;
 
-        if (glfwGetKey(nativeWindow, GLFW_KEY_LEFT) == GLFW_PRESS) dx -= 1.0f;
-        if (glfwGetKey(nativeWindow, GLFW_KEY_RIGHT) == GLFW_PRESS) dx += 1.0f;
-        if (glfwGetKey(nativeWindow, GLFW_KEY_UP) == GLFW_PRESS) dy -= 1.0f;
-        if (glfwGetKey(nativeWindow, GLFW_KEY_DOWN) == GLFW_PRESS) dy += 1.0f;
+        if (g_inputMap.IsButtonDown("move_l")) dx -= 1.0f;
+        if (g_inputMap.IsButtonDown("move_r")) dx += 1.0f;
+        if (g_inputMap.IsButtonDown("move_u")) dy -= 1.0f;
+        if (g_inputMap.IsButtonDown("move_d")) dy += 1.0f;
 
         // Normalise diagonal
-        if (dx != 0.0f && dy != 0.0f) {
-            dx *= 0.7071f;
-            dy *= 0.7071f;
-        }
+        Vector2 moveDirection = Vector2::Normalize(Vector2(dx, dy));
 
-        transform->position.x += dx * SLIME_SPEED * (float)g_deltaTime;
-        transform->position.y += dy * SLIME_SPEED * (float)g_deltaTime;
+        transform->position.x += moveDirection.x * SLIME_SPEED * (float)g_deltaTime;
+        transform->position.y += moveDirection.y * SLIME_SPEED * (float)g_deltaTime;
 
         // Animation — horizontal takes priority
         if (dx < 0.0f) { sp->SetAnimation("walk_left");  lastIdleAnim = "idle_left"; }
