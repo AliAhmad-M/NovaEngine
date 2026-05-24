@@ -78,7 +78,7 @@ public:
     void RemoveData(EntityID e) {
         uint32_t index = getDenseIndex(e);
         if (index == NULL_INDEX) {
-            fprintf(stderr, "[ERROR]: Entity %u does not have component of type: %s\n", e, typeid(T).name());
+            fprintf(stderr, "[WARN]: Entity %u does not have component of type: %s\n", e, typeid(T).name());
             return;
         }
 

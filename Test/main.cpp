@@ -17,7 +17,7 @@ TextureLoader g_textureLoader;
 bool          g_running = true;
 double        g_deltaTime = 0;
 
-const float SLIME_SPEED = 80.0f;
+const float SLIME_SPEED = 100.0f;
 
 int main() {
     if (!g_window.Init(1280, 720, "Slime Test"))

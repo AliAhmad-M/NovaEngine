@@ -15,6 +15,8 @@ public:
      * @brief Call once after creation
      */
     void Init() {
+        printf("[INFO]: Initializing ECS...\n");
+
         m_entityManager = std::make_unique<EntityManager>();
         m_systemManager = std::make_unique<SystemManager>();
         m_entityManager->Init();
@@ -70,6 +72,14 @@ public:
     template <typename T>
     void RegisterComponent() {
         const std::type_index typeIndex(typeid(T));
+        const char* componentType = typeIndex.name();
+        printf("[INFO]: Registering component: %s...\n", typeIndex.name());
+
+        // Check if component already registered
+        if (m_componentRegistry.count(typeIndex)) {
+            printf("[WARN]: Component '%s' already registered, skipping\n", typeIndex.name());
+            return;
+        }
 
         auto sparseSet = std::make_unique<SparseSet<T>>();
         sparseSet->Init();
@@ -78,7 +88,7 @@ public:
         m_componentRegistry[typeIndex] = m_nextComponentId;
         m_nextComponentId++;
 
-        //printf("[INFO]: Registered component: %s\n", typeIndex.name());
+        printf("[INFO]: Registered component: %s successfully\n", typeIndex.name());
     }
 
     /**
@@ -90,7 +100,7 @@ public:
     template <typename T>
     void AddComponent(EntityID entity, T component) {
         if (!m_entityManager->IsActive(entity)) {
-            fprintf(stderr, "[ERROR]: Cannot add component on non existing entity\n");
+            fprintf(stderr, "[WARN]: Cannot add component on non existing entity\n");
             return;
         }
 
@@ -106,7 +116,7 @@ public:
     template <typename T>
     void RemoveComponent(EntityID entity) {
         if (!m_entityManager->IsActive(entity)) {
-            fprintf(stderr, "[ERROR]: Cannot remove component on non existing entity\n");
+            fprintf(stderr, "[WARN]: Cannot remove component on non existing entity\n");
             return;
         }
 

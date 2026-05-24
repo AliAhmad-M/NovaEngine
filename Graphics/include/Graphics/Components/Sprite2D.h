@@ -69,7 +69,7 @@ struct Sprite2D {
     void AddAnimation(const char* animation, const std::vector<int>& frames, int speed)
     {
         if (frames.empty()) {
-            fprintf(stderr, "[ERROR]: Animation '%s' cannot have empty frame list\n", animation);
+            fprintf(stderr, "[WARN]: Animation '%s' cannot have empty frame list\n", animation);
             return;
         }
 
@@ -87,7 +87,7 @@ struct Sprite2D {
     void SetAnimation(const char* animation)
     {
         if (animations.find(animation) == animations.end()) {
-            fprintf(stderr, "[ERROR]: Animation '%s' does not exist\n", animation);
+            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", animation);
             return;
         }
         m_animation = animation;
@@ -100,7 +100,7 @@ struct Sprite2D {
     void DelAnimation(const char* animation) {
         if (animations.find(animation) == animations.end())
         {
-            fprintf(stderr, "[ERROR]: Animation '%s' does not exist\n", animation);
+            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", animation);
             return;
         }
         animations.erase(animation);

@@ -17,15 +17,22 @@ public:
      */
     template <typename T>
     std::shared_ptr<T> RegisterSystem() {
-        const std::type_index typeIndex = typeid(T);
-        if (!isRegistered(typeIndex)) {
-            auto system = std::make_shared<T>();
-            m_systems[typeIndex] = system;
-            //printf("[INFO]: Registered system: %s\n", typeIndex.name());
-            return system;
+        const std::type_index typeIndex(typeid(T));
+        const char* systemType = typeIndex.name();
+        
+        printf("[INFO]: Registering system: %s...\n", systemType);
+
+        // Check if system is already registered
+        if (isRegistered(typeIndex)) {
+            fprintf(stderr, "[WARN]: System '%s' is already registered, skipping\n", systemType);
+            return nullptr;
+
         }
-        fprintf(stderr, "[ERROR]: System is already registered");
-        return nullptr;
+
+        auto system = std::make_shared<T>();
+        m_systems[typeIndex] = system;
+        printf("[INFO]: Registered system: %s successfully\n", systemType);
+        return system;
     }
 
     /**
@@ -70,7 +77,7 @@ public:
             m_signatures[typeIndex] = signature;
         }
         else {
-            fprintf(stderr, "[ERROR]: Cannot set signature on unregistered system\n");
+            fprintf(stderr, "[WARN]: Cannot set signature on unregistered system\n");
         }
     }
 

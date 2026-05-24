@@ -67,7 +67,7 @@ void EntityManager::DeleteEntity(EntityID entity)
         m_signatures[entity].reset();
     }
     else {
-        fprintf(stderr, "[ERROR]: Cannot delete non existent entity\n");
+        fprintf(stderr, "[WARN]: Cannot delete non existent entity\n");
     }
 }
 
@@ -94,7 +94,7 @@ void EntityManager::SetSignature(EntityID entity, Signature signature) {
         m_signatures[entity] = signature;
     }
     else {
-        fprintf(stderr, "[ERROR]: Cannot set signature on non existent entity\n");
+        fprintf(stderr, "[WARN]: Cannot set signature on non existent entity\n");
     }
 }
 

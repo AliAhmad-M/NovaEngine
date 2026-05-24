@@ -13,7 +13,7 @@ bool Texture::LoadFromFile(const std::string& path) {
     int channels;
     m_pixels = stbi_load(path.c_str(), &m_width, &m_height, &channels, 4);
     if (!m_pixels) {
-        fprintf(stderr, "[ERROR]: Failed to load texture: %s\n", path.c_str());
+        fprintf(stderr, "[WARN]: Failed to load texture: %s\n", path.c_str());
         return false;
     }
 
