@@ -236,43 +236,85 @@ public:
     void DrawCircle(Vector2 center, float radius, const Color& color,
         bool outline = false, int segments = 32, float thickness = 2.0f)
     {
-        float angleStep = (2.0f * 3.14159f) / (float)segments;
+        float angleStep = (2.0f * 3.14159265f) / (float)segments;
 
         if (!outline)
         {
-            // Filled: fan of thin triangles from center to circumference as quads
+            // Fill
             for (int i = 0; i < segments; i++)
             {
                 float angle = i * angleStep;
                 float nextAngle = (i + 1) * angleStep;
 
-                float ax = center.x + cosf(angle) * radius;
-                float ay = center.y + sinf(angle) * radius;
-                float bx = center.x + cosf(nextAngle) * radius;
-                float by = center.y + sinf(nextAngle) * radius;
+                // Get points on the circumference
+                float ax = cosf(angle) * radius;
+                float ay = sinf(angle) * radius;
+                float bx = cosf(nextAngle) * radius;
+                float by = sinf(nextAngle) * radius;
 
-                // Thin quad from center to edge segment
-                float mx = (ax + bx) * 0.5f - center.x;
-                float my = (ay + by) * 0.5f - center.y;
-                float segLen = sqrtf(mx * mx + my * my);
-                float angle2 = atan2f(my, mx) * (180.0f / 3.14159f);
+                // Find the midpoint of this outer slice segment
+                float mx = (ax + bx) * 0.5f;
+                float my = (ay + by) * 0.5f;
+
+                // Calculate distance from center to slice midpoint
+                float distToMid = sqrtf(mx * mx + my * my);
+
+                // Calculate width of the outer crust segment
+                float dx = bx - ax;
+                float dy = by - ay;
+                float sliceWidth = sqrtf(dx * dx + dy * dy);
+
+                // Angle matching the direction pointing outwards from center
+                float renderAngle = atan2f(my, mx) * (180.0f / 3.14159265f);
+
+                // Position the quad so it anchors exactly at the center point and stretches out
+                Vector2 quadPos = {
+                    center.x + (mx * 0.5f) - (sliceWidth * 0.5f),
+                    center.y + (my * 0.5f) - (distToMid * 0.5f)
+                };
 
                 pushQuad(m_whiteTexture,
-                    { center.x + mx - segLen * 0.5f, center.y + my - radius * 0.5f },
-                    { segLen, radius },
-                    angle2, 0, 0, 1, 1, color
+                    quadPos,
+                    { sliceWidth, distToMid },
+                    renderAngle, 0, 0, 1, 1, color
                 );
             }
         }
         else
         {
-            // Outline: small quads placed along the circumference
+            // Outline
             for (int i = 0; i < segments; i++)
             {
                 float angle = i * angleStep;
-                float x = center.x + cosf(angle) * radius - thickness * 0.5f;
-                float y = center.y + sinf(angle) * radius - thickness * 0.5f;
-                pushQuad(m_whiteTexture, { x, y }, { thickness, thickness }, 0.0f, 0, 0, 1, 1, color);
+                float nextAngle = (i + 1) * angleStep;
+
+                Vector2 p1 = { center.x + cosf(angle) * radius,     center.y + sinf(angle) * radius };
+                Vector2 p2 = { center.x + cosf(nextAngle) * radius, center.y + sinf(nextAngle) * radius };
+
+                // Calculate length of the line segment chord
+                float edgeX = p2.x - p1.x;
+                float edgeY = p2.y - p1.y;
+                float length = sqrtf(edgeX * edgeX + edgeY * edgeY);
+
+                if (length == 0.0f) continue;
+
+                // Find rotation angle to orient the strip towards the next point
+                float renderAngle = atan2f(edgeY, edgeX) * (180.0f / 3.14159265f);
+
+                // Find the exact center position of the line segment strip
+                Vector2 midPoint = { (p1.x + p2.x) * 0.5f, (p1.y + p2.y) * 0.5f };
+
+                // Position the quad so it centers directly over the midpoint of our line slice
+                Vector2 quadPos = {
+                    midPoint.x - length * 0.5f,
+                    midPoint.y - thickness * 0.5f
+                };
+
+                pushQuad(m_whiteTexture,
+                    quadPos,
+                    { length, thickness },
+                    renderAngle, 0, 0, 1, 1, color
+                );
             }
         }
     }

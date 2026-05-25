@@ -1,5 +1,8 @@
 #include <Physics/Systems/CollisionSystem2D.h>
 
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Constraints/ContactConstraintManager.h>
+
 void CollisionSystem2D::sortEdges()
 {
     // Insertion sort on the edges
@@ -131,6 +134,57 @@ void CollisionSystem2D::Update(float dt)
                         colliderA->normal = -normal;
                         colliderB->normal = normal;
 
+                        auto* rbA = m_ecs->HasComponent<Physics2D>(entityA) ? m_ecs->GetComponent<Physics2D>(entityA) : nullptr;
+                        auto* rbB = m_ecs->HasComponent<Physics2D>(entityB) ? m_ecs->GetComponent<Physics2D>(entityB) : nullptr;
+
+                        // 1. Convert your 2D vectors into Jolt-compatible vector formats (JPH::Vec3 or JPH::RVec3)
+                        // Jolt is a 3D engine, so we map 2D (X, Y) to 3D (X, Y, 0)
+                        JPH::Vec3 jphNormal(normal.x, normal.y, 0.0f);
+                        JPH::Vec3 jphVelA(rbA ? rbA->velocity.x : 0.0f, rbA ? rbA->velocity.y : 0.0f, 0.0f);
+                        JPH::Vec3 jphVelB(rbB ? rbB->velocity.x : 0.0f, rbB ? rbB->velocity.y : 0.0f, 0.0f);
+
+                        // 2. Compute Relative Velocity along the normal vector
+                        JPH::Vec3 relVel = jphVelB - jphVelA;
+                        float vn = relVel.Dot(jphNormal);
+
+                        // If objects are already separating, do not push or bounce them
+                        if (vn < 0.0f)
+                        {
+                            // 3. Extract mass properties using Jolt's standard physics equations
+                            float invMassA = rbA ? rbA->GetInverseMass() : 0.0f;
+                            float invMassB = rbB ? rbB->GetInverseMass() : 0.0f;
+                            float totalInvMass = invMassA + invMassB;
+
+                            if (totalInvMass > 0.0f)
+                            {
+                                // 4. Mix restitution (bounciness) parameters
+                                float mixedRestitution = 0.2f;
+                                if (rbA && rbB) mixedRestitution = std::min(rbA->restitution, rbB->restitution);
+                                else if (rbA)   mixedRestitution = rbA->restitution;
+                                else if (rbB)   mixedRestitution = rbB->restitution;
+
+                                // 5. Calculate the Impulse Scalar using Jolt's core contact constraint math
+                                // Impulse j = -(1 + e) * vn / (1/mA + 1/mB)
+                                float impulseScalar = -(1.0f + mixedRestitution) * vn;
+                                impulseScalar /= totalInvMass;
+
+                                JPH::Vec3 jphImpulse = impulseScalar * jphNormal;
+
+                                // 6. Apply impulses right back onto your custom velocity storage arrays
+                                if (rbA && !rbA->isStationary)
+                                {
+                                    rbA->velocity.x -= jphImpulse.GetX() * invMassA;
+                                    rbA->velocity.y -= jphImpulse.GetY() * invMassA;
+                                }
+                                if (rbB && !rbB->isStationary)
+                                {
+                                    rbB->velocity.x += jphImpulse.GetX() * invMassB;
+                                    rbB->velocity.y += jphImpulse.GetY() * invMassB;
+                                }
+                            }
+                        }
+
+                        // Seperate the colliding bodies
                         seperateBodies(transformA, transformB, normal, depth, colliderA->isStatic, colliderB->isStatic);
                     }
 

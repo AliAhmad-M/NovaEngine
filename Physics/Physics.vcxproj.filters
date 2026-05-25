@@ -27,11 +27,11 @@
     <ClInclude Include="include\Physics\Systems\CollisionSystem2D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Physics\Systems\PhysicsSystem2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="include\Physics\Systems\PhysicsSystem2D.h">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\CollisionSystem2D.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
