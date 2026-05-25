@@ -165,11 +165,13 @@ public:
     /**
      * @brief Registers a system
      * @tparam T System type
+     * @tparam Args Additional constructor argument types
+     * @param args Additional constructor arguments (e.g. ECS*, Camera*, Renderer*)
      * @return Shared pointer to registered system
      */
-    template <typename T>
-    std::shared_ptr<T> RegisterSystem() {
-        return m_systemManager->RegisterSystem<T>();
+    template <typename T, typename... Args>
+    std::shared_ptr<T> RegisterSystem(Args&&... args) {
+        return m_systemManager->RegisterSystem<T>(std::forward<Args>(args)...);
     }
 
     /**

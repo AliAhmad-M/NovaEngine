@@ -55,8 +55,10 @@ struct Sprite2D {
         animations["none"] = Sprite2DAnimationData();
 
         if (texture) {
-            src.w = (float)texture->GetFrameWidth(hframes);
-            src.h = (float)texture->GetFrameHeight(vframes);
+            src.SetDimensions(
+                (float)texture->GetFrameWidth(hframes),
+                (float)texture->GetFrameHeight(vframes)
+            );
         }
     }
 

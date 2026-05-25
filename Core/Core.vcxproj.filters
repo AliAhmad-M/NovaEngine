@@ -95,5 +95,11 @@
     <ClInclude Include="include\Core\Utilities\Rectangle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Core\Utilities\AABB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Core\Utilities\Shape2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

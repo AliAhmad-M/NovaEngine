@@ -6,29 +6,29 @@
 
 #define CAMERA_MARGIN 32
 
-void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS* ecs) {
-    if (camera == nullptr) {
+void SpriteSystem::Update(float dt) {
+    if (m_camera == nullptr) {
         fprintf(stderr, "[ERROR]: Camera is NULL!\n");
         exit(1);
     }
-    if (window == nullptr) {
+    if (m_window == nullptr) {
         fprintf(stderr, "[ERROR]: Window is NULL!\n");
         exit(1);
     }
-    if (renderer == nullptr) {
+    if (m_renderer == nullptr) {
         fprintf(stderr, "[ERROR]: Renderer is NULL!\n");
         exit(1);
     }
-    if (ecs == nullptr) {
+    if (m_ecs == nullptr) {
         fprintf(stderr, "[ERROR]: ECS is NULL!\n");
         exit(1);
     }
 
-    Camera2D* camera2D = static_cast<Camera2D*>(camera);
+    Camera2D* camera2D = static_cast<Camera2D*>(m_camera);
 
     // Get window size
     int windowWidth, windowHeight;
-    window->GetSize(&windowWidth, &windowHeight);
+    m_window->GetSize(&windowWidth, &windowHeight);
 
     // Get camera offset
     Vector2 cameraOffset = camera2D->GetOffset();
@@ -41,8 +41,8 @@ void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS
 
     for (size_t i = 0; i < m_entities.size(); i++) {
         EntityID e = m_entities[i];
-        Transform2D* transform = ecs->GetComponent<Transform2D>(e);
-        Sprite2D* sprite = ecs->GetComponent<Sprite2D>(e);
+        Transform2D* transform = m_ecs->GetComponent<Transform2D>(e);
+        Sprite2D* sprite = m_ecs->GetComponent<Sprite2D>(e);
 
         // Frustrum culling check
         float scaledWidth = sprite->GetFrameWidth() * transform->scale.x;
@@ -69,23 +69,21 @@ void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS
             int frame = animData.frames[frameIndex];
 
             sprite->frame = frame;
-            sprite->src.x = (float)((frame % sprite->hframes) * frameW);
-            sprite->src.y = (float)((frame / sprite->hframes) * frameH);
+            sprite->src.SetCoords(
+                (float)((frame % sprite->hframes) * frameW), 
+                (float)((frame / sprite->hframes) * frameH));
         }
 
         // Set source rect
-        sprite->src.w = (float)frameW;
-        sprite->src.h = (float)frameH;
+        sprite->src.SetDimensions((float)frameW, (float)frameH);
 
         // Set destination rect
-        sprite->dst.x = transform->position.x - cameraOffset.x;
-        sprite->dst.y = transform->position.y - cameraOffset.y;
-        sprite->dst.w = (float)(frameW * transform->scale.x);
-        sprite->dst.h = (float)(frameH * transform->scale.y);
+        sprite->dst.SetCoords(transform->position.x - cameraOffset.x, transform->position.y - cameraOffset.y);
+        sprite->dst.SetDimensions((float)(frameW * transform->scale.x), (float)(frameH * transform->scale.y));
 
         // Calculate Normalized UV coordinates (0.0 to 1.0)
-        float u = sprite->src.x / texWidth;
-        float v = sprite->src.y / texHeight;
+        float u = sprite->src.GetX() / texWidth;
+        float v = sprite->src.GetY() / texHeight;
         float uw = (float)frameW / texWidth;
         float vh = (float)frameH / texHeight;
 
@@ -94,7 +92,7 @@ void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS
         if (sprite->flipv) { v += vh; vh = -vh; }
 
         // Draw the sprites
-        renderer->DrawQuad(
+        m_renderer->DrawQuad(
             sprite->texture->GetHandle(),
             { transform->position.x - cameraOffset.x, transform->position.y - cameraOffset.y },
             { scaledWidth, scaledHeight },
@@ -103,7 +101,7 @@ void SpriteSystem::Draw(ICamera* camera, Window* window, Renderer* renderer, ECS
         );
     }
 
-    if (enableYSort || zSortingNeeded) sortRenderingOrder(ecs);
+    if (enableYSort || zSortingNeeded) sortRenderingOrder(m_ecs);
 }
 
 void SpriteSystem::OnEntityAdded(EntityID e) {

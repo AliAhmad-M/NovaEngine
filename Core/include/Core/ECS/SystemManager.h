@@ -13,10 +13,12 @@ public:
     /**
      * @brief Registers a new system
      * @tparam T System type (must derive from ISystem)
+     * @tparam Args Additional constructor argument types
+     * @param args Additional constructor arguments (e.g. ECS*, Camera*, Renderer*)
      * @return Shared pointer to the newly created system
      */
-    template <typename T>
-    std::shared_ptr<T> RegisterSystem() {
+    template <typename T, typename... Args>
+    std::shared_ptr<T> RegisterSystem(Args&&... args) {
         const std::type_index typeIndex(typeid(T));
         const char* systemType = typeIndex.name();
         
@@ -29,7 +31,7 @@ public:
 
         }
 
-        auto system = std::make_shared<T>();
+        auto system = std::make_shared<T>(std::forward<Args>(args)...);
         m_systems[typeIndex] = system;
         printf("[INFO]: Registered system: %s successfully\n", systemType);
         return system;
