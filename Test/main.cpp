@@ -1,15 +1,17 @@
 #include <thread>
 #include <cstdio>
+#include <vector>
 #include <Core/ECS/ECS.h>
 #include <Core/Components.h>
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
 #include <Graphics/Components.h>
-#include <Graphics/Systems/SpriteSystem.h>
 #include <Graphics/Camera/Camera2D.h>
 #include <Graphics/Renderer.h>
 #include <Graphics/Texture/TextureLoader.h>
-#include <Physics/Systems/CollisionSystem.h>
+#include <Graphics/Systems.h>
+#include <Physics/Systems.h>
+#include <Physics/Components/Physics2D.h>
 
 Window        g_window;
 Renderer      g_renderer;
@@ -18,10 +20,15 @@ TextureLoader g_textureLoader;
 bool          g_running = true;
 double        g_deltaTime = 0;
 
-const float SLIME_SPEED = 100.0f;
+const float SLIME_FORCE = 256.0f;
+const float SLIME_MAX_VEL = 64.0f;
+const float SLIME_DAMPING = 0.82f;
+
+// Obstacles
+const float SLIME_RADIUS = 32.0f;
 
 int main() {
-    if (!g_window.Init(1280, 720, "Slime Test"))
+    if (!g_window.Init(1280, 720, "Engine Test"))
         return -1;
 
     g_renderer.Init();
@@ -31,21 +38,26 @@ int main() {
 
     ecs.Init();
 
-    // --- Register Components ---
+    // Register Components
     ecs.RegisterComponent<Transform2D>();
     ecs.RegisterComponent<Sprite2D>();
     ecs.RegisterComponent<Collider2D>();
+    ecs.RegisterComponent<Physics2D>();
 
-    // --- Register Systems ---
+    // Register Systems
     ecs.RegisterSystem<SpriteSystem>(&ecs, &camera, &g_window, &g_renderer);
     ecs.AddComponentToSystem<Transform2D, SpriteSystem>();
     ecs.AddComponentToSystem<Sprite2D, SpriteSystem>();
 
-    ecs.RegisterSystem<CollisionSystem>(&ecs);
-    ecs.AddComponentToSystem<Transform2D, CollisionSystem>();
-    ecs.AddComponentToSystem<Collider2D, CollisionSystem>();
+    ecs.RegisterSystem<CollisionSystem2D>(&ecs);
+    ecs.AddComponentToSystem<Transform2D, CollisionSystem2D>();
+    ecs.AddComponentToSystem<Collider2D, CollisionSystem2D>();
 
-    // --- Input Bindings ---
+    ecs.RegisterSystem<PhysicsSystem2D>(&ecs);
+    ecs.AddComponentToSystem<Transform2D, PhysicsSystem2D>();
+    ecs.AddComponentToSystem<Physics2D, PhysicsSystem2D>();
+
+    // Input
     g_inputMap.Bind("move_l", GLFW_KEY_LEFT);
     g_inputMap.Bind("move_d", GLFW_KEY_DOWN);
     g_inputMap.Bind("move_r", GLFW_KEY_RIGHT);
@@ -53,11 +65,11 @@ int main() {
 
     Texture* slimeTex = g_textureLoader.LoadTexture("assets/slime.png");
 
-    // --- Player: circle collider (controlled) ---
-    // Scale 4x4, sprite is 16x16 px -> rendered at 64x64, radius 8 * 4 = 32px
+    // Player
     EntityID slime = ecs.CreateEntity();
     ecs.AddComponent<Transform2D>(slime, Transform2D({ 600.0f, 320.0f }, 0.0f, { 4.0f, 4.0f }));
     ecs.AddComponent<Collider2D>(slime, Collider2D({ 8.0f, 8.0f }, 8.0f));
+    ecs.AddComponent<Physics2D>(slime, Physics2D(1.0f, false));
 
     Sprite2D sprite(slimeTex, 4, 4, 0);
     sprite.AddAnimation("idle_down", { 0 }, 1);
@@ -71,12 +83,7 @@ int main() {
     sprite.SetAnimation("idle_down");
     ecs.AddComponent<Sprite2D>(slime, sprite);
 
-    // Slime rendered size: 64x64, radius ~32px
-    // Obstacles kept roughly the same size (scale 1, local size 64x64 or radius 32)
-    // Screen: 1280x720 — all positions chosen so colliders stay within bounds
-
-    // --- Box Obstacles ---
-    // Box: local 64x64, scale 1 -> world 64x64, centered at position + half extents
+    // Box Obstacles
     EntityID box1 = ecs.CreateEntity();
     ecs.AddComponent<Transform2D>(box1, Transform2D({ 200.0f, 150.0f }, 0.0f, { 1.0f, 1.0f }));
     ecs.AddComponent<Collider2D>(box1, Collider2D({ 32.0f, 32.0f }, 64.0f, 64.0f, true, true));
@@ -89,8 +96,7 @@ int main() {
     ecs.AddComponent<Transform2D>(box3, Transform2D({ 500.0f, 550.0f }, 0.0f, { 1.0f, 1.0f }));
     ecs.AddComponent<Collider2D>(box3, Collider2D({ 32.0f, 32.0f }, 64.0f, 64.0f, true, true));
 
-    // --- Circle Obstacles ---
-    // Circle: local offset 32,32, radius 32 -> world radius 32px
+    // Circle Obstacles
     EntityID circle1 = ecs.CreateEntity();
     ecs.AddComponent<Transform2D>(circle1, Transform2D({ 850.0f, 150.0f }, 0.0f, { 1.0f, 1.0f }));
     ecs.AddComponent<Collider2D>(circle1, Collider2D({ 32.0f, 32.0f }, 32.0f, true));
@@ -117,8 +123,6 @@ int main() {
     const double targetFrameTime = 1.0 / 60.0;
     double lastTime = glfwGetTime();
 
-    float printTimer = 0.0f;
-
     while (g_running) {
         double currentTime = glfwGetTime();
         g_deltaTime = currentTime - lastTime;
@@ -128,9 +132,10 @@ int main() {
         if (g_window.ShouldClose()) g_running = false;
         g_inputMap.Update(g_window.GetNativeWindow());
 
-        // --- Input ---
-        Transform2D* transform = ecs.GetComponent<Transform2D>(slime);
-        Sprite2D* sp = ecs.GetComponent<Sprite2D>(slime);
+        // Input
+        auto* transform = ecs.GetComponent<Transform2D>(slime);
+        auto* rb = ecs.GetComponent<Physics2D>(slime);
+        auto* sp = ecs.GetComponent<Sprite2D>(slime);
 
         float dx = 0.0f, dy = 0.0f;
 
@@ -139,32 +144,36 @@ int main() {
         if (g_inputMap.IsButtonDown("move_u")) dy -= 1.0f;
         if (g_inputMap.IsButtonDown("move_d")) dy += 1.0f;
 
-        Vector2 moveDirection = Vector2::Normalize(Vector2(dx, dy));
+        bool hasInput = dx != 0.0f || dy != 0.0f;
 
-        transform->position.x += moveDirection.x * SLIME_SPEED * (float)g_deltaTime;
-        transform->position.y += moveDirection.y * SLIME_SPEED * (float)g_deltaTime;
+        if (hasInput)
+        {
+            Vector2 moveDir = Vector2::Normalize(Vector2(dx, dy));
+            rb->ApplyForce(moveDir * SLIME_FORCE);
+        }
+        else
+        {
+            // Damp velocity when no input so slime doesn't slide forever
+            rb->velocity = rb->velocity * SLIME_DAMPING;
+        }
 
-        // --- Animation (horizontal takes priority) ---
+        // Clamp velocity to max
+        float speed = Vector2::Magnitude(rb->velocity);
+        if (speed > SLIME_MAX_VEL)
+            rb->velocity = Vector2::Normalize(rb->velocity) * SLIME_MAX_VEL;
+
+        // Animation
         if (dx < 0.0f) { sp->SetAnimation("walk_left");  lastIdleAnim = "idle_left"; }
         else if (dx > 0.0f) { sp->SetAnimation("walk_right"); lastIdleAnim = "idle_right"; }
         else if (dy < 0.0f) { sp->SetAnimation("walk_up");    lastIdleAnim = "idle_up"; }
         else if (dy > 0.0f) { sp->SetAnimation("walk_down");  lastIdleAnim = "idle_down"; }
         else { sp->SetAnimation(lastIdleAnim); }
 
-        // --- Physics ---
-        ecs.GetSystem<CollisionSystem>()->Update((float)g_deltaTime);
+        // Physics
+        ecs.GetSystem<PhysicsSystem2D>()->Update((float)g_deltaTime);
+        ecs.GetSystem<CollisionSystem2D>()->Update((float)g_deltaTime);
 
-        // --- Logging ---
-        auto* slimeTransform = ecs.GetComponent<Transform2D>(slime);
-        auto* slimeCollider = ecs.GetComponent<Collider2D>(slime);
-
-        printTimer += (float)g_deltaTime;
-        if (printTimer >= 0.5f)
-        {
-            printTimer = 0.0f;
-        }
-
-        // --- Render ---
+        // Render
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -177,10 +186,9 @@ int main() {
 
         g_renderer.Begin(projection);
 
-        // --- Sprites ---
         ecs.GetSystem<SpriteSystem>()->Update();
 
-        // --- Debug: Draw Obstacle Colliders ---
+        // Draw obstacle colliders
         for (auto& obs : obstacles)
         {
             auto* obsTransform = ecs.GetComponent<Transform2D>(obs.id);
@@ -208,9 +216,12 @@ int main() {
             g_renderer.DrawCircle(obsTransform->position, 3.0f, Color::CYAN, false);
         }
 
-        // --- Debug: Draw Slime ---
+        // Draw slime collider
+        auto* slimeTransform = ecs.GetComponent<Transform2D>(slime);
+        auto* slimeCollider = ecs.GetComponent<Collider2D>(slime);
+
         Vector2 slimeCenterPoint = slimeCollider->GetGlobalCenter(slimeTransform);
-        float slimeRadius = slimeCollider->GetRadius(slimeTransform->scale.x, slimeTransform->scale.y);
+        float   slimeRadius = slimeCollider->GetRadius(slimeTransform->scale.x, slimeTransform->scale.y);
 
         g_renderer.DrawCircle(slimeCenterPoint, slimeRadius, Color::GREEN, true);
         g_renderer.DrawCircle(slimeCenterPoint, 3.0f, Color::RED, false);
@@ -219,7 +230,6 @@ int main() {
         g_renderer.Flush();
         g_window.SwapBuffers();
 
-        // --- Frame cap ---
         while (glfwGetTime() < lastTime + targetFrameTime)
             std::this_thread::yield();
     }

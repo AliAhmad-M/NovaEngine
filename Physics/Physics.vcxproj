@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -134,10 +134,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\Physics\Components\Collider2D.h" />
-    <ClInclude Include="include\Physics\Systems\CollisionSystem.h" />
+    <ClInclude Include="include\Physics\Components\Physics2D.h" />
+    <ClInclude Include="include\Physics\Systems.h" />
+    <ClInclude Include="include\Physics\Systems\CollisionSystem2D.h" />
+    <ClInclude Include="include\Physics\Systems\PhysicsSystem2D.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CollisionSystem.cpp" />
+    <ClCompile Include="src\CollisionSystem2D.cpp" />
+    <ClCompile Include="src\PhysicsSystem2D.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

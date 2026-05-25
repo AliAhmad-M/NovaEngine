@@ -7,9 +7,9 @@
 #include <Core/Components/Transform2D.h>
 #include <Physics/Components/Collider2D.h>
 
-struct CollisionSystem : public ISystem 
+struct CollisionSystem2D : public ISystem 
 {
-    CollisionSystem(ECS* ecs) : m_ecs(ecs) {}
+    CollisionSystem2D(ECS* ecs) : m_ecs(ecs) {}
 
 	void Update(float dt) override;
 
@@ -18,7 +18,10 @@ struct CollisionSystem : public ISystem
 	void OnAllEntitiesRemoved() override;
 
 private:
-	struct Edge 
+    ECS* m_ecs;
+
+    // Represents AABB vertical edge
+    struct Edge 
 	{
 		EntityID entity;
 		float x;
@@ -27,9 +30,6 @@ private:
 		Edge(EntityID entity, float x, bool isLeft) 
 			: entity(entity), x(x), isLeft(isLeft) {}
 	};
-
-    // Reference to the ECS
-    ECS* m_ecs;
 
     // X axis edges for AABBs
     std::vector<Edge> m_edges;

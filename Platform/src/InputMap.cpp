@@ -12,14 +12,19 @@ void InputMap::Bind(const std::string& action, int glfwKey) {
 void InputMap::Update(GLFWwindow* window) {
     m_window = window;
 
-    // Update key state
+    // Update key and mouse button states
     for (auto& [action, key] : m_bindings) {
         KeyState& state = m_states[action];
         state.previous = state.current;
-        state.current = glfwGetKey(window, key) == GLFW_PRESS;
+
+        // Mouse buttons are 0-7, keys start at 32
+        if (key <= GLFW_MOUSE_BUTTON_LAST)
+            state.current = glfwGetMouseButton(window, key) == GLFW_PRESS;
+        else
+            state.current = glfwGetKey(window, key) == GLFW_PRESS;
     }
 
-    // Update mouse
+    // Update mouse position
     double mx, my;
     glfwGetCursorPos(window, &mx, &my);
     m_localMouseX = (int)mx;

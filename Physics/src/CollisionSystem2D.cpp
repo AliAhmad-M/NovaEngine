@@ -1,6 +1,6 @@
-#include <Physics/Systems/CollisionSystem.h>
+#include <Physics/Systems/CollisionSystem2D.h>
 
-void CollisionSystem::sortEdges()
+void CollisionSystem2D::sortEdges()
 {
     // Insertion sort on the edges
     for (size_t i = 1; i < m_edges.size(); i++)
@@ -20,7 +20,7 @@ void CollisionSystem::sortEdges()
     }
 }
 
-void CollisionSystem::Update(float dt) 
+void CollisionSystem2D::Update(float dt) 
 {
     // Sort edges from left to right
     sortEdges();
@@ -156,7 +156,7 @@ void CollisionSystem::Update(float dt)
     }
 }
 
-bool CollisionSystem::checkCircleCircleCollision(
+bool CollisionSystem2D::checkCircleCircleCollision(
     Vector2& centerA, Vector2& centerB, float radiusA, float radiusB, Vector2* normal, float* depth
 )
 {
@@ -173,7 +173,7 @@ bool CollisionSystem::checkCircleCircleCollision(
     return distance < totalRadii;
 }
 
-bool CollisionSystem::checkBoxBoxCollision(
+bool CollisionSystem2D::checkBoxBoxCollision(
     Vector2& centerA, Vector2& centerB,
     std::array<Vector2, 4>& verticesA, std::array<Vector2, 4>& verticesB, Vector2* normal, float* depth
 )
@@ -244,7 +244,7 @@ bool CollisionSystem::checkBoxBoxCollision(
     return true;
 }
 
-bool CollisionSystem::checkCircleBoxCollision(
+bool CollisionSystem2D::checkCircleBoxCollision(
     Vector2& centerC, Vector2& centerP,
     float radius, std::array<Vector2, 4>& vertices, Vector2* normal, float* depth
 )
@@ -311,7 +311,7 @@ bool CollisionSystem::checkCircleBoxCollision(
 }
 
 // Returns the index of the vertex closest to circle center
-size_t CollisionSystem::findClosestVertex(const Vector2& center, const std::array<Vector2, 4>& vertices)
+size_t CollisionSystem2D::findClosestVertex(const Vector2& center, const std::array<Vector2, 4>& vertices)
 {
     size_t index = std::numeric_limits<size_t>::max();
     float min = (float)INFINITY;
@@ -333,7 +333,7 @@ size_t CollisionSystem::findClosestVertex(const Vector2& center, const std::arra
 }
 
 // Project vertices onto possible seperating axis to get min and max values
-void CollisionSystem::projectVertices(const std::array<Vector2, 4>& vertices, const Vector2& axis, float* min, float* max)
+void CollisionSystem2D::projectVertices(const std::array<Vector2, 4>& vertices, const Vector2& axis, float* min, float* max)
 {
     *min = (float)INFINITY;
     *max = -(float)INFINITY;
@@ -348,7 +348,7 @@ void CollisionSystem::projectVertices(const std::array<Vector2, 4>& vertices, co
     }
 }
 
-void CollisionSystem::projectCircle(const Vector2& center, float radius, const Vector2& axis, float* min, float* max)
+void CollisionSystem2D::projectCircle(const Vector2& center, float radius, const Vector2& axis, float* min, float* max)
 {
     /*
     Draw a diameter line perpendicular
@@ -370,7 +370,7 @@ void CollisionSystem::projectCircle(const Vector2& center, float radius, const V
         std::swap(*min, *max);
 }
 
-void CollisionSystem::seperateBodies(Transform2D* transformA, Transform2D* transformB, const Vector2& normal, float depth, bool isStaticA, bool isStaticB)
+void CollisionSystem2D::seperateBodies(Transform2D* transformA, Transform2D* transformB, const Vector2& normal, float depth, bool isStaticA, bool isStaticB)
 {
     // Case 1: Both objects are static - no resolution needed
     if (isStaticA && isStaticB)
@@ -402,7 +402,7 @@ void CollisionSystem::seperateBodies(Transform2D* transformA, Transform2D* trans
     }
 }
 
-void CollisionSystem::OnEntityAdded(EntityID e)
+void CollisionSystem2D::OnEntityAdded(EntityID e)
 {
     Transform2D* transform = m_ecs->GetComponent<Transform2D>(e);
     Collider2D* collider = m_ecs->GetComponent<Collider2D>(e);
@@ -421,14 +421,14 @@ void CollisionSystem::OnEntityAdded(EntityID e)
     m_edges.push_back(edge2);
 }
 
-void CollisionSystem::OnEntityRemoved(EntityID e)
+void CollisionSystem2D::OnEntityRemoved(EntityID e)
 {
     // Find and delete edges for entity
     m_edges.erase(std::remove_if(m_edges.begin(), m_edges.end(),
         [e](const Edge& edge) { return edge.entity == e; }), m_edges.end());
 }
 
-void CollisionSystem::OnAllEntitiesRemoved()
+void CollisionSystem2D::OnAllEntitiesRemoved()
 {
     m_edges.clear();
     m_touching.clear();
