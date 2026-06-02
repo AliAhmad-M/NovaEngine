@@ -142,6 +142,7 @@
     <ClInclude Include="include\Graphics\Camera\ICamera.h" />
     <ClInclude Include="include\Graphics\Components.h" />
     <ClInclude Include="include\Graphics\Components\Sprite2D.h" />
+    <ClInclude Include="include\Graphics\Font.h" />
     <ClInclude Include="include\Graphics\Renderer.h" />
     <ClInclude Include="include\Graphics\Systems.h" />
     <ClInclude Include="include\Graphics\Systems\SpriteSystem.h" />
@@ -151,6 +152,8 @@
   <ItemGroup>
     <ClCompile Include="src\Camera\Camera2D.cpp" />
     <ClCompile Include="src\Camera\Camera3D.cpp" />
+    <ClCompile Include="src\Font.cpp" />
+    <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\Systems\SpriteSystem.cpp" />
     <ClCompile Include="src\Texture\Texture.cpp" />
     <ClCompile Include="src\Texture\TextureLoader.cpp" />

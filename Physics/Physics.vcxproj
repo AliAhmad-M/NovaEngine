@@ -137,6 +137,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\Physics\Components.h" />
     <ClInclude Include="include\Physics\Components\Collider2D.h" />
     <ClInclude Include="include\Physics\Components\Physics2D.h" />
     <ClInclude Include="include\Physics\Systems.h" />

@@ -113,7 +113,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Test\project\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,7 +133,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Test\project\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,9 +144,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="project\src\Scenes\DynamicsTest.cpp" />
+    <ClCompile Include="project\src\Scenes\GraphicsTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\character_preview.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="project\include\Test\Scenes\GraphicsTest.h" />
+    <ClInclude Include="project\include\Test\Scenes\DynamicsTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
