@@ -113,13 +113,13 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Core\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Platform\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Graphics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Physics\bin\$(Platform)\$(Configuration)\Output;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Core.lib;Graphics.lib;Platform.lib;Physics.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Core\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Platform\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Graphics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Physics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Runtime\bin\$(Platform)\$(Configuration)\Output;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Core.lib;Graphics.lib;Platform.lib;Physics.lib;Runtime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -133,13 +133,13 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Core\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Platform\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Graphics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Physics\bin\$(Platform)\$(Configuration)\Output;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Core.lib;Graphics.lib;Platform.lib;Physics.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Core\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Platform\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Graphics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Physics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Runtime\bin\$(Platform)\$(Configuration)\Output;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Core.lib;Graphics.lib;Platform.lib;Physics.lib;Runtime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

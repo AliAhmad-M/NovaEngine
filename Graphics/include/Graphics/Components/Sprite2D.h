@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <cstdio>
 
 /**
  * @brief Animation data containing frame sequence and playback speed.
@@ -13,7 +14,7 @@ struct Sprite2DAnimationData {
     std::vector<int> frames{};
     int speed; // In frames per second
 
-    Sprite2DAnimationData(const std::vector<int>& frames = {}, int speed = 1) : frames(frames), speed(speed) { }
+    Sprite2DAnimationData(const std::vector<int>& frames = {}, int speed = 1) : frames(frames), speed(speed) {}
 };
 
 /**
@@ -33,12 +34,10 @@ struct Sprite2D {
     std::unordered_map<std::string, Sprite2DAnimationData> animations{};
 
     // Visual properties
-
     bool fliph = false;
     bool flipv = false;
 
     // Y-sorting properties
-
     float ySortOrigin = 0.0f;
     bool applyYSort = false;
 
@@ -64,61 +63,65 @@ struct Sprite2D {
 
     /**
      * @brief Add or override an animation.
-     * @param animation Animation name.
+     * @param name Animation name.
      * @param frames List of frame indices to play.
      * @param speed Playback speed in frames per second.
      */
-    void AddAnimation(const char* animation, const std::vector<int>& frames, int speed)
+    void AddAnimation(const std::string& name, const std::vector<int>& frames, int speed)
     {
         if (frames.empty()) {
-            fprintf(stderr, "[WARN]: Animation '%s' cannot have empty frame list\n", animation);
+            // Fixed: Added .c_str()
+            fprintf(stderr, "[WARN]: Animation '%s' cannot have empty frame list\n", name.c_str());
             return;
         }
 
-        if (animations.find(animation) != animations.end()) {
-            printf("[INFO]: Animation '%s' already added, overriding\n", animation);
+        if (animations.find(name) != animations.end()) {
+            // Fixed: Added .c_str()
+            printf("[INFO]: Animation '%s' already added, overriding\n", name.c_str());
         }
 
-        animations[animation] = Sprite2DAnimationData(frames, speed);
+        animations[name] = Sprite2DAnimationData(frames, speed);
     }
 
     /**
      * @brief Set the current playing animation.
-     * @param animation Animation name to play.
+     * @param name Animation name to play.
      */
-    void SetAnimation(const char* animation)
+    void SetAnimation(const std::string& name)
     {
-        if (animations.find(animation) == animations.end()) {
-            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", animation);
+        if (animations.find(name) == animations.end()) {
+            // Fixed: Added .c_str()
+            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", name.c_str());
             return;
         }
-        m_animation = animation;
+        m_animation = name;
     }
 
     /**
      * @brief Delete an animation.
-     * @param animation Animation name to remove.
+     * @param name Animation name to remove.
      */
-    void DelAnimation(const char* animation) {
-        if (animations.find(animation) == animations.end())
+    void DelAnimation(const std::string& name) {
+        if (animations.find(name) == animations.end())
         {
-            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", animation);
+            // Fixed: Added .c_str()
+            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", name.c_str());
             return;
         }
-        animations.erase(animation);
+        animations.erase(name);
     }
 
     /**
      * @brief Get the current animation name.
      * @return Current animation name.
      */
-    const char* GetAnimation() const { return m_animation; }
+    const std::string& GetAnimation() const { return m_animation; }
 
     /**
      * @brief Set the Z-index for rendering order.
-     * @param zIndex Depth layer (-128 to 127).
+     * @param zIndex Depth layer
      */
-    void SetZIndex(int8_t zIndex) {
+    void SetZIndex(int zIndex) {
         m_zIndex = zIndex;
         m_zIndexChanged = true;
     }
@@ -164,7 +167,7 @@ struct Sprite2D {
     int GetFrameHeight() const { return texture ? texture->GetFrameHeight(vframes) : 0; }
 
 private:
-    const char* m_animation = "none";
+    std::string m_animation = "none";
     int m_zIndex = 0;
     bool m_zIndexChanged = false;
 };
