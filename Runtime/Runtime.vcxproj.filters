@@ -21,9 +21,15 @@
     <ClInclude Include="include\Runtime\Scene\IScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Runtime\Tilemap\Tilemap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\SceneManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Tilemap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

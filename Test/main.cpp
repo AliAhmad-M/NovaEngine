@@ -90,7 +90,7 @@ int main()
         if (g_window.ShouldClose()) g_running = false;
 
         g_inputMap.Update(g_window.GetNativeWindow());
-
+        
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

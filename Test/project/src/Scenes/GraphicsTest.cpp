@@ -6,6 +6,8 @@
 #include <Graphics/Renderer.h>
 #include <Graphics/Font.h>
 #include <Graphics/Texture/TextureLoader.h>
+#include <Physics/Components.h>
+#include <Physics/Systems.h>
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
 
@@ -26,7 +28,7 @@ void GraphicsTest::Ready()
     g_ecs.AddComponent<Transform2D>(m_ninjaEntity, Transform2D(Vector2(640.0f, 360.0f), 0.0f, Vector2(4.0f, 4.0f)));
 
     // 4x7 spritesheet, one column per direction
-    Sprite2D sprite(m_ninjaTexture, 4, 7);
+    Sprite2D sprite(m_ninjaTexture, 4, 7, 2);
     sprite.AddAnimation("idle_down", { 0 }, 0);
     sprite.AddAnimation("idle_up", { 1 }, 0);
     sprite.AddAnimation("idle_left", { 2 }, 0);
@@ -39,11 +41,35 @@ void GraphicsTest::Ready()
     sprite.SetAnimation("idle_down");
     g_ecs.AddComponent<Sprite2D>(m_ninjaEntity, sprite);
 
+    // Add collider component
+    Vector2 centerOffset = Vector2(8.0f, 14.0f);
+    float colliderWidth = 10.0f;
+    float colliderHeight = 6.0f;
+    g_ecs.AddComponent<Collider2D>(m_ninjaEntity, Collider2D(centerOffset, colliderWidth, colliderHeight));
+
     // Bind inputs
     g_inputMap.Bind("move_up", GLFW_KEY_UP);
     g_inputMap.Bind("move_down", GLFW_KEY_DOWN);
     g_inputMap.Bind("move_left", GLFW_KEY_LEFT);
     g_inputMap.Bind("move_right", GLFW_KEY_RIGHT);
+
+    // Initialize tilemap
+    int tileSize = 16;
+    float tileScaling = 4.0f;
+
+    Tilemap tilemap = Tilemap(&g_ecs, tileSize, tileSize, Vector2(tileScaling, tileScaling));
+
+    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/spring.png"), 1);
+    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/dirt.png"), 29);
+    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/tree.png"), 44);
+    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/water - spring.png"), 76);
+    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/texture.png"), 91);
+    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/summer.png"), 123);
+
+    tilemap.LoadTilemap("project/assets/tilemap.json");
+    tilemap.GenerateMap(&g_renderer);
+
+    tilemap.AddCollision(1, { 59, 60, 61, 62, 63, 64, 65, 66 });
 }
 
 void GraphicsTest::Update(float dt)
@@ -63,10 +89,10 @@ void GraphicsTest::Update(float dt)
     float moveSpeed = 150.0f;
     bool  isMoving = false;
 
-    // Track last facing direction for idle fallback
+    // Track last facing direction
     std::string targetAnimation = m_lastDirection;
 
-    // Movement + walk animations...
+    // Movement + walk animations
     if (g_inputMap.IsButtonDown("move_up")) {
         transform->position.y -= moveSpeed * dt;
         targetAnimation = "walk_up";
@@ -104,12 +130,16 @@ void GraphicsTest::Update(float dt)
         0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
 
     g_renderer.Begin(projection);
-    g_ecs.GetSystem<SpriteSystem>()->Update();
 
+    // Update systems
+    g_ecs.GetSystem<SpriteSystem>()->Update(dt);
+    g_ecs.GetSystem<CollisionSystem2D>()->Update(dt);
+
+    // Draw UI
     g_renderer.DrawText(g_engineFont, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
 
     char statsBuffer[64];
-    sprintf(statsBuffer, "Entities: 1 | FPS: %.1f", m_currentFPS);
+    sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", g_ecs.GetEntityCount(), m_currentFPS);
     g_renderer.DrawText(g_engineFont, statsBuffer, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
 
     g_renderer.Flush();
@@ -117,6 +147,6 @@ void GraphicsTest::Update(float dt)
 
 void GraphicsTest::Leave()
 {
-    // Clear entity
-    g_ecs.DeleteEntity(m_ninjaEntity);
+    // Clear entities
+    g_ecs.DeleteAllEntities();
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <glad/glad.h>
 
 /**
  * @brief 2D texture loaded from an image file.
@@ -16,6 +17,11 @@ public:
      * @return True on success, false on failure.
      */
     bool LoadFromFile(const std::string& path);
+
+    bool CreateRenderTexture(int width, int height);
+    void BindFBO();
+    void UnbindFBO();
+    void ClearFBO();
 
     /** @brief Release texture data and handle. */
     void Destroy();
@@ -52,4 +58,9 @@ private:
     int m_width = 0;
     int m_height = 0;
     unsigned char* m_pixels = nullptr;
+    
+    GLuint m_fbo = 0;
+    bool m_ownedFBO = false;
+
+    int m_savedViewport[4] = {};
 };

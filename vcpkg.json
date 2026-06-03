@@ -21,6 +21,7 @@
       ]
     },
     "openal-soft",
-    "joltphysics"
+    "joltphysics",
+    "nlohmann-json"
   ]
 }
