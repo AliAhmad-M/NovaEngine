@@ -43,6 +43,8 @@ static void FieldString(const char* label, char* buf, size_t bufSize)
 
 static bool BeginComponent(const char* name, bool* pOpen = nullptr)
 {
+    ImGui::PushID(name);
+
     ImGuiTreeNodeFlags flags =
         ImGuiTreeNodeFlags_DefaultOpen |
         ImGuiTreeNodeFlags_Framed |
@@ -58,8 +60,12 @@ static bool BeginComponent(const char* name, bool* pOpen = nullptr)
         float btnW = ImGui::GetFrameHeight();
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - btnW + ImGui::GetCursorPosX()
             - ImGui::GetStyle().ItemSpacing.x);
-        ImGui::PushID(name);
         if (ImGui::Button("x", ImVec2(btnW, btnW))) *pOpen = false;
+    }
+
+    // Clean up ID stack
+    if (!open)
+    {
         ImGui::PopID();
     }
 
@@ -94,7 +100,7 @@ InspectorPanel::InspectorPanel(EditorContext* ctx) : m_ctx(ctx) {}
 
 void InspectorPanel::Draw()
 {
-    ImGui::Begin("Inspector");
+    ImGui::Begin("Inspector", nullptr, m_windowFlags);
 
     if (m_ctx->selectedEntity == -1)
     {
