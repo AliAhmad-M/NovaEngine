@@ -10,7 +10,8 @@
 /**
  * @brief Animation data containing frame sequence and playback speed.
  */
-struct Sprite2DAnimationData {
+struct Sprite2DAnimationData 
+{
     std::vector<int> frames{};
     int speed; // In frames per second
 
@@ -20,7 +21,8 @@ struct Sprite2DAnimationData {
 /**
  * @brief Sprite component for rendering 2D textures with animation support.
  */
-struct Sprite2D {
+struct Sprite2D 
+{
     Texture* texture = nullptr;
 
     Rectangle src;  // Sprite src rect
@@ -49,11 +51,13 @@ struct Sprite2D {
      * @param zIndex Rendering layer depth.
      */
     Sprite2D(Texture* texture = nullptr, int hframes = 1, int vframes = 1, int zIndex = 0)
-        : texture(texture), frame(0), hframes(hframes), vframes(vframes), m_zIndex(zIndex) {
+        : texture(texture), frame(0), hframes(hframes), vframes(vframes), m_zIndex(zIndex) 
+    {
         // Initialize the default "none" animation
         animations["none"] = Sprite2DAnimationData();
 
-        if (texture) {
+        if (texture) 
+        {
             src.SetDimensions(
                 (float)texture->GetFrameWidth(hframes),
                 (float)texture->GetFrameHeight(vframes)
@@ -69,14 +73,14 @@ struct Sprite2D {
      */
     void AddAnimation(const std::string& name, const std::vector<int>& frames, int speed)
     {
-        if (frames.empty()) {
-            // Fixed: Added .c_str()
+        if (frames.empty()) 
+        {
             fprintf(stderr, "[WARN]: Animation '%s' cannot have empty frame list\n", name.c_str());
             return;
         }
 
-        if (animations.find(name) != animations.end()) {
-            // Fixed: Added .c_str()
+        if (animations.find(name) != animations.end()) 
+        {
             printf("[INFO]: Animation '%s' already added, overriding\n", name.c_str());
         }
 
@@ -89,8 +93,8 @@ struct Sprite2D {
      */
     void SetAnimation(const std::string& name)
     {
-        if (animations.find(name) == animations.end()) {
-            // Fixed: Added .c_str()
+        if (animations.find(name) == animations.end()) 
+        {
             fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", name.c_str());
             return;
         }
@@ -104,7 +108,6 @@ struct Sprite2D {
     void DelAnimation(const std::string& name) {
         if (animations.find(name) == animations.end())
         {
-            // Fixed: Added .c_str()
             fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", name.c_str());
             return;
         }
@@ -121,7 +124,8 @@ struct Sprite2D {
      * @brief Set the Z-index for rendering order.
      * @param zIndex Depth layer
      */
-    void SetZIndex(int zIndex) {
+    void SetZIndex(int zIndex) 
+    {
         m_zIndex = zIndex;
         m_zIndexChanged = true;
     }
@@ -136,7 +140,8 @@ struct Sprite2D {
      * @brief Check if Z-index was changed since last check.
      * @return True if changed, false otherwise. Resets flag after call.
      */
-    bool IsZIndexChanged() {
+    bool IsZIndexChanged() 
+    {
         bool changed = m_zIndexChanged;
         m_zIndexChanged = false;
         return changed;

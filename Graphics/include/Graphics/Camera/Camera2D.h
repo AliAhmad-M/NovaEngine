@@ -7,7 +7,8 @@
 /**
  * @brief Manages a 2D viewport with positional clamping.
  */
-class Camera2D : public ICamera {
+class Camera2D : public ICamera 
+{
 public:
     /**
      * @brief Initializes camera with window, optional bounds and offset.
@@ -18,8 +19,7 @@ public:
     Camera2D( 
         const std::array<float, 4>& boundaries = { -INFINITY, INFINITY, -INFINITY, INFINITY },
         const Vector2& offset = { 0.0f, 0.0f }
-    ) : m_boundaries(boundaries), m_offset(offset) {
-    }
+    ) : m_boundaries(boundaries), m_offset(offset) {}
 
     /**
      * @brief Sets the camera offset.

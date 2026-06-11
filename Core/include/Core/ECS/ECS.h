@@ -8,13 +8,15 @@
  * @brief Central ECS coordinator
  * @brief Manages entities, components, and systems
  */
-class ECS {
+class ECS 
+{
 public:
     /**
      * @brief Initializes ECS managers
      * @brief Call once after creation
      */
-    void Init() {
+    void Init() 
+    {
         printf("[INFO]: Initializing ECS...\n");
 
         m_entityManager = std::make_unique<EntityManager>();
@@ -28,7 +30,8 @@ public:
      * @brief Creates a new entity
      * @return New entity ID
      */
-    EntityID CreateEntity() {
+    EntityID CreateEntity() 
+    {
         return m_entityManager->CreateEntity();
     }
 
@@ -61,7 +64,8 @@ public:
      * @brief Gets current active entity count
      * @return Number of active entities
      */
-    size_t GetEntityCount() {
+    size_t GetEntityCount() 
+    {
         return m_entityManager->GetEntityCount();
     }
 
@@ -70,13 +74,15 @@ public:
      * @tparam T Component type
      */
     template <typename T>
-    void RegisterComponent() {
+    void RegisterComponent() 
+    {
         const std::type_index typeIndex(typeid(T));
         const char* componentType = typeIndex.name();
         printf("[INFO]: Registering component: %s...\n", typeIndex.name());
 
         // Check if component already registered
-        if (m_componentRegistry.count(typeIndex)) {
+        if (m_componentRegistry.count(typeIndex)) 
+        {
             printf("[WARN]: Component '%s' already registered, skipping\n", typeIndex.name());
             return;
         }
@@ -98,8 +104,10 @@ public:
      * @param component Component data
      */
     template <typename T>
-    void AddComponent(EntityID entity, T component) {
-        if (!m_entityManager->IsActive(entity)) {
+    void AddComponent(EntityID entity, T component) 
+    {
+        if (!m_entityManager->IsActive(entity)) 
+        {
             fprintf(stderr, "[WARN]: Cannot add component on non existing entity\n");
             return;
         }
@@ -114,8 +122,10 @@ public:
      * @param entity Target entity
      */
     template <typename T>
-    void RemoveComponent(EntityID entity) {
-        if (!m_entityManager->IsActive(entity)) {
+    void RemoveComponent(EntityID entity) 
+    {
+        if (!m_entityManager->IsActive(entity)) 
+        {
             fprintf(stderr, "[WARN]: Cannot remove component on non existing entity\n");
             return;
         }
@@ -131,7 +141,8 @@ public:
      * @return True if component exists
      */
     template <typename T>
-    bool HasComponent(EntityID entity) {
+    bool HasComponent(EntityID entity) 
+    {
         return getComponentSparseSet<T>()->HasData(entity);
     }
 
@@ -142,7 +153,8 @@ public:
      * @return Pointer to component, nullptr if not found
      */
     template <typename T>
-    T* GetComponent(EntityID entity) {
+    T* GetComponent(EntityID entity) 
+    {
         return getComponentSparseSet<T>()->GetData(entity);
     }
 
@@ -152,7 +164,8 @@ public:
      * @return Component ID
      */
     template <typename T>
-    ComponentID GetComponentID() {
+    ComponentID GetComponentID() 
+    {
         std::type_index typeIndex = typeid(T);
         auto it = m_componentRegistry.find(typeIndex);
         if (it != m_componentRegistry.end()) {
@@ -170,7 +183,8 @@ public:
      * @return Shared pointer to registered system
      */
     template <typename T, typename... Args>
-    std::shared_ptr<T> RegisterSystem(Args&&... args) {
+    std::shared_ptr<T> RegisterSystem(Args&&... args) 
+    {
         return m_systemManager->RegisterSystem<T>(std::forward<Args>(args)...);
     }
 
@@ -180,7 +194,8 @@ public:
      * @return Shared pointer to system
      */
     template <typename T>
-    std::shared_ptr<T> GetSystem() {
+    std::shared_ptr<T> GetSystem() 
+    {
         return std::static_pointer_cast<T>(m_systemManager->GetSystem<T>());
     }
 
@@ -190,7 +205,8 @@ public:
      * @tparam U System type
      */
     template <typename T, typename U>
-    void AddComponentToSystem() {
+    void AddComponentToSystem() 
+    {
         Signature signature = m_systemManager->GetSignature<U>();
         signature.set(GetComponentID<T>(), true);
         m_systemManager->SetSignature<U>(signature);
@@ -203,7 +219,8 @@ private:
      * @return Pointer to sparse set
      */
     template <typename T>
-    SparseSet<T>* getComponentSparseSet() {
+    SparseSet<T>* getComponentSparseSet() 
+    {
         const std::type_index typeIndex(typeid(T));
         auto it = m_sparseSets.find(typeIndex);
         if (it != m_sparseSets.end()) {
@@ -221,7 +238,8 @@ private:
      * @param value True if adding, false if removing
      */
     template <typename T>
-    void updateEntitySignature(EntityID entity, bool value) {
+    void updateEntitySignature(EntityID entity, bool value) 
+    {
         Signature signature = m_entityManager->GetSignature(entity);
         signature.set(GetComponentID<T>(), value);
         m_entityManager->SetSignature(entity, signature);

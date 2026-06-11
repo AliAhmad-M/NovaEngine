@@ -5,7 +5,8 @@
  * Interface for type-erased component storage
  * Allows polymorphic handling of different component types
  */
-class ISparseSet {
+class ISparseSet 
+{
 public:
     virtual ~ISparseSet() = default;
     virtual void OnEntityDestroyed(EntityID e) = 0;
@@ -19,7 +20,8 @@ public:
  * @tparam T Component type
  */
 template <typename T>
-class SparseSet : public ISparseSet {
+class SparseSet : public ISparseSet 
+{
 public:
     /**
      * Reserves memory for components
@@ -35,9 +37,11 @@ public:
      * @param e Target entity
      * @param component Component data to store
      */
-    void AddData(EntityID e, T component) {
+    void AddData(EntityID e, T component) 
+    {
         // Overwrite existing data
-        if (HasData(e)) {
+        if (HasData(e)) 
+        {
             *GetData(e) = std::move(component);
             return;
         }
@@ -53,7 +57,8 @@ public:
      * @param e Target entity
      * @return True if component exists
      */
-    bool HasData(EntityID e) {
+    bool HasData(EntityID e) 
+    {
         return getDenseIndex(e) != NULL_INDEX;
     }
 
@@ -62,9 +67,11 @@ public:
      * @param e Target entity
      * @return Pointer to component, nullptr if not found
      */
-    T* GetData(EntityID e) {
+    T* GetData(EntityID e) 
+    {
         uint32_t index = getDenseIndex(e);
-        if (index == NULL_INDEX) {
+        if (index == NULL_INDEX) 
+        {
             return nullptr;
         }
         return &m_dense[index];
@@ -75,9 +82,11 @@ public:
      * Uses swap-and-pop for O(1) removal
      * @param e Target entity
      */
-    void RemoveData(EntityID e) {
+    void RemoveData(EntityID e) 
+    {
         uint32_t index = getDenseIndex(e);
-        if (index == NULL_INDEX) {
+        if (index == NULL_INDEX) 
+        {
             fprintf(stderr, "[WARN]: Entity %u does not have component of type: %s\n", e, typeid(T).name());
             return;
         }
@@ -102,7 +111,8 @@ public:
      * Removes all components
      * Called when all entities are destroyed
      */
-    void OnAllEntitiesDestroyed() override {
+    void OnAllEntitiesDestroyed() override 
+    {
         m_dense.clear();
         m_denseToEntity.clear();
         m_sparsePages.clear();
@@ -113,8 +123,10 @@ public:
      * Called when an entity is destroyed
      * @param e Destroyed entity
      */
-    void OnEntityDestroyed(EntityID e) override {
-        if (HasData(e)) {
+    void OnEntityDestroyed(EntityID e) override 
+    {
+        if (HasData(e)) 
+        {
             RemoveData(e);
         }
     }
@@ -125,12 +137,14 @@ private:
      * @param e Target entity
      * @param index Index in dense arrays (or NULL_INDEX)
      */
-    void setDenseIndex(EntityID e, uint32_t index) {
+    void setDenseIndex(EntityID e, uint32_t index) 
+    {
         uint32_t page = e / MAX_PAGE_SIZE;
         uint32_t pageIndex = e % MAX_PAGE_SIZE;
 
         // Create a new page if needed
-        if (page >= m_sparsePages.size()) {
+        if (page >= m_sparsePages.size()) 
+        {
             m_sparsePages.resize(page + 1);
             m_sparsePages[page].resize(MAX_PAGE_SIZE, NULL_INDEX);
         }
@@ -143,11 +157,13 @@ private:
      * @param e Target entity
      * @return Index in dense arrays, or NULL_INDEX if not found
      */
-    uint32_t getDenseIndex(EntityID e) {
+    uint32_t getDenseIndex(EntityID e) 
+    {
         uint32_t page = e / MAX_PAGE_SIZE;
         uint32_t pageIndex = e % MAX_PAGE_SIZE;
 
-        if (page < m_sparsePages.size()) {
+        if (page < m_sparsePages.size()) 
+        {
             return m_sparsePages[page][pageIndex];
         }
         return NULL_INDEX;
