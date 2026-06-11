@@ -47,7 +47,7 @@ static bool BeginComponent(const char* name, bool* pOpen = nullptr)
         ImGuiTreeNodeFlags_DefaultOpen |
         ImGuiTreeNodeFlags_Framed |
         ImGuiTreeNodeFlags_SpanAvailWidth |
-        ImGuiTreeNodeFlags_AllowItemOverlap |
+        ImGuiTreeNodeFlags_AllowOverlap |
         ImGuiTreeNodeFlags_FramePadding;
 
     bool open = ImGui::TreeNodeEx(name, flags);
@@ -66,7 +66,11 @@ static bool BeginComponent(const char* name, bool* pOpen = nullptr)
     return open;
 }
 
-static void EndComponent() { ImGui::TreePop(); }
+static void EndComponent() 
+{ 
+    ImGui::TreePop(); 
+    ImGui::PopID();
+}
 
 // Two-column property table helpers
 static void BeginPropertyTable()
