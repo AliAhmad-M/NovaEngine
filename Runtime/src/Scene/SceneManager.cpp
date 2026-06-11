@@ -40,5 +40,5 @@ void SceneManager::ChangeScene(const std::string& name)
 	}
 	m_currentScene = nextScene;
 	m_currentScene->Ready();
-	printf("[INFO]: Successfully changed scene to: %s\n", name);
+	printf("[INFO]: Successfully changed scene to: %s\n", name.c_str());
 }

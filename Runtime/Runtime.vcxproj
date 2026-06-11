@@ -142,8 +142,8 @@
     <ClInclude Include="include\Runtime\Tilemap\Tilemap.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\SceneManager.cpp" />
-    <ClCompile Include="src\Tilemap.cpp" />
+    <ClCompile Include="src\Scene\SceneManager.cpp" />
+    <ClCompile Include="src\Tilemap\Tilemap.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
