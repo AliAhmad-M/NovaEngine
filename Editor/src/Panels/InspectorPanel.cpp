@@ -100,7 +100,7 @@ InspectorPanel::InspectorPanel(EditorContext* ctx) : m_ctx(ctx) {}
 
 void InspectorPanel::Draw()
 {
-    ImGui::Begin("Inspector", nullptr, m_windowFlags);
+    ImGui::Begin("Inspector");
 
     if (m_ctx->selectedEntity == -1)
     {

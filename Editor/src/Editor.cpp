@@ -70,16 +70,13 @@ void Editor::Run()
         glfwPollEvents();
 
         beginFrame();
+        buildLayout();
         drawMenuBar();
 
-        // Calculate layout parameters
-        buildLayout();
-
-        // Let the panels draw
         m_hierarchyPanel->Draw();
-        m_scenePanel->Draw();
-        m_assetBrowserPanel->Draw();
         m_inspectorPanel->Draw();
+        m_assetBrowserPanel->Draw();
+        m_scenePanel->Draw();
 
         endFrame();
     }
