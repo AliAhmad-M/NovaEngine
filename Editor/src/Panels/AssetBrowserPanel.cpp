@@ -131,7 +131,11 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
 {
     if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root)) return;
 
-    std::string label = root.filename().string();
+    auto tmp = root;
+    if (!tmp.has_filename() || tmp.filename().empty())
+        tmp = tmp.parent_path();
+    std::string label = tmp.filename().string();
+    if (label.empty()) label = tmp.string();
     bool isCurrentDir = (root == m_currentPath);
 
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
