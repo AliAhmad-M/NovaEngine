@@ -1,8 +1,15 @@
 #include <Graphics/Camera/Camera2D.h>
+#include <cstdio>
 
 // Set offset within boundaries
 void Camera2D::SetOffset(Window* window, const Vector2& newOffset)
 {
+    if (!window)
+    {
+        fprintf(stderr, "[WARN]: Cannot update camera2D offset, window is null\n");
+        return;
+    }
+
     // Get viewport size
 
     int windowWidth;

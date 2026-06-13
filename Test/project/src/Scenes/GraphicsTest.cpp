@@ -22,16 +22,21 @@ static Window* s_window;
 static InputMap* s_inputMap;
 static Renderer* s_renderer;
 static Font* s_font;
+static Camera2D* s_camera2D;
 
 void GraphicsTest::Ready()
 {
+    // Load engine context
     s_contentLoader = m_context->Get<ContentLoader>();
-
     s_ecs = m_context->Get<ECS>();
     s_window = m_context->Get<Window>();
     s_inputMap = m_context->Get<InputMap>();
     s_renderer = m_context->Get<Renderer>();
     s_font = s_contentLoader->LoadFont("project/assets/boldpixels.ttf", 24.0f);
+    s_camera2D = m_context->Get<Camera2D>();
+
+    // Update camera bounds
+    s_camera2D->SetBoundaries(s_window, 0, 1280, 0, 960);
 
     // Load texture
     m_ninjaTexture = s_contentLoader->LoadTexture("project/assets/ninja.png");
@@ -102,6 +107,13 @@ void GraphicsTest::Update(float dt)
     float moveSpeed = 150.0f;
     bool  isMoving = false;
 
+    int windowWidth, windowHeight;
+    s_window->GetSize(&windowWidth, &windowHeight);
+
+    // Update camera offset
+    s_camera2D->SetOffset(s_window, 
+        transform->position - Vector2((float)windowWidth * 0.5f, (float)windowHeight * 0.5f));
+
     // Track last facing direction
     std::string targetAnimation = m_lastDirection;
 
@@ -137,8 +149,6 @@ void GraphicsTest::Update(float dt)
 
     sprite->SetAnimation(targetAnimation);
 
-    int windowWidth, windowHeight;
-    s_window->GetSize(&windowWidth, &windowHeight);
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
         0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
 
