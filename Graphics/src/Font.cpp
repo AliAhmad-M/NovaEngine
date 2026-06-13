@@ -3,19 +3,25 @@
 #include FT_FREETYPE_H
 #include <algorithm>
 #include <vector>
-#include <iostream>
+#include <cstdio>
 
 bool Font::LoadFromFile(const std::string& path, float fontSize) {
     FT_Library ft;
-    if (FT_Init_FreeType(&ft)) return false;
+    if (FT_Init_FreeType(&ft)) 
+    {
+        fprintf(stderr, "[WARN]: Cannot load font: %s, failed to initialze text library\n", path.c_str());
+        return false;
+    
+    } 
 
     FT_Face face;
     if (FT_New_Face(ft, path.c_str(), 0, &face)) {
         FT_Done_FreeType(ft);
+        fprintf(stderr, "[WARN]: Failed to load font: %s", path.c_str());
         return false;
     }
 
-    FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(fontSize));
+    FT_Set_Pixel_Sizes(face, 0, (FT_UInt)(fontSize));
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     unsigned int totalWidth = 0;
@@ -51,9 +57,9 @@ bool Font::LoadFromFile(const std::string& path, float fontSize) {
         GlyphInfo glyph;
         glyph.uvMin = Vector2((float)xOffset / (float)totalWidth, 0.0f);
         glyph.uvMax = Vector2((float)(xOffset + bitmap.width) / (float)totalWidth, (float)bitmap.rows / (float)maxHeight);
-        glyph.size  = Vector2(bitmap.width, bitmap.rows);
-        glyph.bearing = Vector2(face->glyph->bitmap_left, face->glyph->bitmap_top);
-        glyph.advance = static_cast<float>(face->glyph->advance.x >> 6);
+        glyph.size  = Vector2((float)bitmap.width, (float)bitmap.rows);
+        glyph.bearing = Vector2((float)face->glyph->bitmap_left, (float)face->glyph->bitmap_top);
+        glyph.advance = (float)(face->glyph->advance.x >> 6);
 
         m_glyphs[c] = glyph;
         xOffset += bitmap.width;
@@ -75,4 +81,18 @@ bool Font::LoadFromFile(const std::string& path, float fontSize) {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
     return true;
+}
+
+const GlyphInfo* Font::GetGlyph(char c) const
+{
+    auto it = m_glyphs.find(c);
+    return it != m_glyphs.end() ? &it->second : nullptr;
+}
+
+void Font::Destroy() {
+    if (m_atlasTexture != 0) {
+        glDeleteTextures(1, &m_atlasTexture);
+        m_atlasTexture = 0;
+    }
+    m_glyphs.clear();
 }

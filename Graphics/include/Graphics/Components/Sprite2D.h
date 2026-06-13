@@ -1,5 +1,5 @@
 #pragma once
-#include <Graphics/Texture/Texture.h>
+#include <Graphics/Texture.h>
 #include <Core/Utilities/Rectangle.h>
 #include <unordered_map>
 #include <vector>

@@ -1,12 +1,17 @@
 #pragma once
-#include <Runtime/Scene/IScene.h>
+
+#include <Core/EngineContext.h>
 #include <Core/ECS/ECS.h>
 #include <Core/Utilities/Vector2.h>
+#include <Runtime/Scene/SceneManager.h>
+
 #include <vector>
 
-class DynamicsTest : public IScene
+class DynamicsTest : public Scene
 {
 public:
+    DynamicsTest(EngineContext* context) : Scene(context) {}
+
     void Ready() override;
     void Update(float dt) override;
     void Leave() override;

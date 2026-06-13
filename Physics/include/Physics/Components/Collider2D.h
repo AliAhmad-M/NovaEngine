@@ -3,6 +3,7 @@
 #include <array>
 #include <algorithm>
 #include <limits>
+#include <bitset>
 
 #include <Core/Components/Transform2D.h>
 #include <Core/Utilities/Matrix3x2.h>
@@ -41,6 +42,9 @@ struct Collider2D
         // Initialize the collider AABB and dimensions
         m_aabb = Rectangle(-r, -r, r * 2.0f, r * 2.0f);
         m_circle.r = r;
+
+        m_layer = 1;
+        m_mask = 1;
     }
 
     /**
@@ -66,6 +70,9 @@ struct Collider2D
         m_box.vertices[3] = Vector2(-w / 2, h / 2); // Top left
 
         m_box.transformedVertices = m_box.vertices;
+
+        m_layer = 1;
+        m_mask = 1;
     }
 
     /**
@@ -204,6 +211,47 @@ struct Collider2D
     }
 
     /**
+     * @brief Determines whether this collider can interact with another
+     * @return True if this collider's mask scans other collider's layer
+     */
+    bool CanCollideWith(const Collider2D& other) const
+    {
+        return (this->m_mask & other.m_layer).any();
+    }
+
+    /**
+     * @brief Assign value to a specific index of the collision layer
+     */
+    void SetCollisionLayer(uint8_t layerIndex, bool value)
+    {
+        if (layerIndex < 8) m_layer.set(layerIndex, value);
+    }
+
+    /**
+     * @brief Assign value to a specific index of the collision mask
+     */
+    void SetCollisionMask(uint8_t layerIndex, bool value)
+    {
+        if (layerIndex < 8) m_mask.set(layerIndex, value);
+    }
+
+    /**
+     * @brief Get value of a specific index of the collision layer
+     */
+    bool GetCollisionLayer(uint8_t layerIndex) const
+    {
+        return layerIndex < 8 ? m_layer.test(layerIndex) : false;
+    }
+
+    /**
+     * @brief Get value of a specific index of the collision mask
+     */
+    bool GetCollisionMask(uint8_t layerIndex) const
+    {
+        return layerIndex < 8 ? m_mask.test(layerIndex) : false;
+    }
+
+    /**
      * @brief Checks if contact normal indicates surface grounding below.
      */
     bool IsOnFloor() const
@@ -253,4 +301,10 @@ private:
         std::array<Vector2, 4> vertices;
         std::array<Vector2, 4> transformedVertices;
     } m_box;
+
+    // Collision layer
+    std::bitset<8> m_layer;
+
+    // Collision mask
+    std::bitset<8> m_mask;
 };

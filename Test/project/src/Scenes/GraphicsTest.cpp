@@ -1,31 +1,44 @@
 #define _CRT_SECURE_NO_WARNINGS
+
 #include <Test/Scenes/GraphicsTest.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Graphics/Systems.h>
 #include <Graphics/Renderer.h>
 #include <Graphics/Font.h>
-#include <Graphics/Texture/TextureLoader.h>
+#include <Runtime/ContentLoader.h>
 #include <Physics/Components.h>
 #include <Physics/Systems.h>
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
+#include <Runtime/EngineRuntime.h>
 
-extern Window        g_window;
-extern Renderer      g_renderer;
-extern InputMap      g_inputMap;
-extern TextureLoader g_textureLoader;
-extern Font          g_engineFont;
-extern ECS           g_ecs;
+#include <glad/glad.h> 
+
+static ContentLoader* s_contentLoader;
+
+static ECS* s_ecs;
+static Window* s_window;
+static InputMap* s_inputMap;
+static Renderer* s_renderer;
+static Font* s_font;
 
 void GraphicsTest::Ready()
 {
+    s_contentLoader = m_context->Get<ContentLoader>();
+
+    s_ecs = m_context->Get<ECS>();
+    s_window = m_context->Get<Window>();
+    s_inputMap = m_context->Get<InputMap>();
+    s_renderer = m_context->Get<Renderer>();
+    s_font = s_contentLoader->LoadFont("project/assets/boldpixels.ttf", 24.0f);
+
     // Load texture
-    m_ninjaTexture = g_textureLoader.LoadTexture("project/assets/ninja.png");
+    m_ninjaTexture = s_contentLoader->LoadTexture("project/assets/ninja.png");
 
     // Create entity
-    m_ninjaEntity = g_ecs.CreateEntity();
-    g_ecs.AddComponent<Transform2D>(m_ninjaEntity, Transform2D(Vector2(640.0f, 360.0f), 0.0f, Vector2(4.0f, 4.0f)));
+    m_ninjaEntity = s_ecs->CreateEntity();
+    s_ecs->AddComponent<Transform2D>(m_ninjaEntity, Transform2D(Vector2(640.0f, 360.0f), 0.0f, Vector2(4.0f, 4.0f)));
 
     // 4x7 spritesheet, one column per direction
     Sprite2D sprite(m_ninjaTexture, 4, 7, 2);
@@ -39,35 +52,35 @@ void GraphicsTest::Ready()
     sprite.AddAnimation("walk_right", { 3,  7, 11, 15 }, 8);
 
     sprite.SetAnimation("idle_down");
-    g_ecs.AddComponent<Sprite2D>(m_ninjaEntity, sprite);
+    s_ecs->AddComponent<Sprite2D>(m_ninjaEntity, sprite);
 
     // Add collider component
     Vector2 centerOffset = Vector2(8.0f, 14.0f);
     float colliderWidth = 10.0f;
     float colliderHeight = 6.0f;
-    g_ecs.AddComponent<Collider2D>(m_ninjaEntity, Collider2D(centerOffset, colliderWidth, colliderHeight));
+    s_ecs->AddComponent<Collider2D>(m_ninjaEntity, Collider2D(centerOffset, colliderWidth, colliderHeight));
 
     // Bind inputs
-    g_inputMap.Bind("move_up", GLFW_KEY_UP);
-    g_inputMap.Bind("move_down", GLFW_KEY_DOWN);
-    g_inputMap.Bind("move_left", GLFW_KEY_LEFT);
-    g_inputMap.Bind("move_right", GLFW_KEY_RIGHT);
+    s_inputMap->Bind("move_up", GLFW_KEY_UP);
+    s_inputMap->Bind("move_down", GLFW_KEY_DOWN);
+    s_inputMap->Bind("move_left", GLFW_KEY_LEFT);
+    s_inputMap->Bind("move_right", GLFW_KEY_RIGHT);
 
     // Initialize tilemap
     int tileSize = 16;
     float tileScaling = 4.0f;
 
-    Tilemap tilemap = Tilemap(&g_ecs, tileSize, tileSize, Vector2(tileScaling, tileScaling));
+    Tilemap tilemap = Tilemap(s_ecs, tileSize, tileSize, Vector2(tileScaling, tileScaling));
 
-    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/spring.png"), 1);
-    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/dirt.png"), 29);
-    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/tree.png"), 44);
-    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/water - spring.png"), 76);
-    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/texture.png"), 91);
-    tilemap.AddTileset(g_textureLoader.LoadTexture("project/assets/summer.png"), 123);
+    tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/spring.png"), 1);
+    tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/dirt.png"), 29);
+    tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/tree.png"), 44);
+    tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/water - spring.png"), 76);
+    tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/texture.png"), 91);
+    tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/summer.png"), 123);
 
     tilemap.LoadTilemap("project/assets/tilemap.json");
-    tilemap.GenerateMap(&g_renderer);
+    tilemap.GenerateMap(s_renderer);
 
     tilemap.AddCollision(1, { 59, 60, 61, 62, 63, 64, 65, 66 });
 }
@@ -83,8 +96,8 @@ void GraphicsTest::Update(float dt)
         m_frameCount = 0;
     }
 
-    auto* transform = g_ecs.GetComponent<Transform2D>(m_ninjaEntity);
-    auto* sprite = g_ecs.GetComponent<Sprite2D>(m_ninjaEntity);
+    auto* transform = s_ecs->GetComponent<Transform2D>(m_ninjaEntity);
+    auto* sprite = s_ecs->GetComponent<Sprite2D>(m_ninjaEntity);
 
     float moveSpeed = 150.0f;
     bool  isMoving = false;
@@ -93,26 +106,26 @@ void GraphicsTest::Update(float dt)
     std::string targetAnimation = m_lastDirection;
 
     // Movement + walk animations
-    if (g_inputMap.IsButtonDown("move_up")) {
+    if (s_inputMap->IsButtonDown("move_up")) {
         transform->position.y -= moveSpeed * dt;
         targetAnimation = "walk_up";
         m_lastDirection = "idle_up";
         isMoving = true;
     }
-    else if (g_inputMap.IsButtonDown("move_down")) {
+    else if (s_inputMap->IsButtonDown("move_down")) {
         transform->position.y += moveSpeed * dt;
         targetAnimation = "walk_down";
         m_lastDirection = "idle_down";
         isMoving = true;
     }
 
-    if (g_inputMap.IsButtonDown("move_left")) {
+    if (s_inputMap->IsButtonDown("move_left")) {
         transform->position.x -= moveSpeed * dt;
         targetAnimation = "walk_left";
         m_lastDirection = "idle_left";
         isMoving = true;
     }
-    else if (g_inputMap.IsButtonDown("move_right")) {
+    else if (s_inputMap->IsButtonDown("move_right")) {
         transform->position.x += moveSpeed * dt;
         targetAnimation = "walk_right";
         m_lastDirection = "idle_right";
@@ -125,28 +138,27 @@ void GraphicsTest::Update(float dt)
     sprite->SetAnimation(targetAnimation);
 
     int windowWidth, windowHeight;
-    g_window.GetSize(&windowWidth, &windowHeight);
+    s_window->GetSize(&windowWidth, &windowHeight);
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
         0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
 
-    g_renderer.Begin(projection);
+    // Collisions
+    s_ecs->GetSystem<CollisionSystem2D>()->Update(dt);
+    
+    // Rendering
+    s_renderer->Begin(projection);
+        //Draw sprites
+        s_ecs->GetSystem<SpriteSystem2D>()->Update(dt);
 
-    // Update systems
-    g_ecs.GetSystem<SpriteSystem>()->Update(dt);
-    g_ecs.GetSystem<CollisionSystem2D>()->Update(dt);
-
-    // Draw UI
-    g_renderer.DrawText(g_engineFont, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
-
-    char statsBuffer[64];
-    sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", g_ecs.GetEntityCount(), m_currentFPS);
-    g_renderer.DrawText(g_engineFont, statsBuffer, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
-
-    g_renderer.Flush();
+        // Draw text
+        s_renderer->DrawText(*s_font, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);        
+        char statsBuffer[64]; sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", s_ecs->GetEntityCount(), m_currentFPS);
+        s_renderer->DrawText(*s_font, statsBuffer, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
+    s_renderer->Flush();
 }
 
 void GraphicsTest::Leave()
 {
     // Clear entities
-    g_ecs.DeleteAllEntities();
+    s_ecs->DeleteAllEntities();
 }

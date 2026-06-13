@@ -1,16 +1,17 @@
 #pragma once
 
-#include <set>
-
+#include <Core/EngineContext.h>
 #include <Core/ECS/ECS.h>
 #include <Core/ECS/ISystem.h>
 #include <Core/Components/Transform2D.h>
 #include <Physics/Components/Collider2D.h>
 #include <Physics/Components/Physics2D.h>
 
+#include <set>
+
 struct CollisionSystem2D : public ISystem 
 {
-    CollisionSystem2D(ECS* ecs) : m_ecs(ecs) {}
+    CollisionSystem2D(EngineContext* ctx) : m_ctx(ctx) {}
 
 	void Update(float dt) override;
 
@@ -19,7 +20,7 @@ struct CollisionSystem2D : public ISystem
 	void OnAllEntitiesRemoved() override;
 
 private:
-    ECS* m_ecs;
+    EngineContext* m_ctx;
 
     // Represents AABB vertical edge
     struct Edge 

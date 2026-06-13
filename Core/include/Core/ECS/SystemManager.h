@@ -1,4 +1,5 @@
 #pragma once
+#include <Core/EngineContext.h>
 #include "ISystem.h"
 #include <memory>
 #include <unordered_map>
@@ -17,8 +18,8 @@ public:
      * @param args Additional constructor arguments (e.g. ECS*, Camera*, Renderer*)
      * @return Shared pointer to the newly created system
      */
-    template <typename T, typename... Args>
-    std::shared_ptr<T> RegisterSystem(Args&&... args) {
+    template <typename T>
+    std::shared_ptr<T> RegisterSystem(EngineContext* ctx) {
         const std::type_index typeIndex(typeid(T));
         const char* systemType = typeIndex.name();
         
@@ -31,7 +32,7 @@ public:
 
         }
 
-        auto system = std::make_shared<T>(std::forward<Args>(args)...);
+        auto system = std::make_shared<T>(ctx);
         m_systems[typeIndex] = system;
         printf("[INFO]: Registered system: %s successfully\n", systemType);
         return system;

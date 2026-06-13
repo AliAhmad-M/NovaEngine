@@ -7,30 +7,32 @@
 
 void PhysicsSystem2D::Update(float dt)
 {
+    ECS* ecs = m_ctx->Get<ECS>();
+
     if (dt <= 0.0f) return;
 
     for (const EntityID e : m_entities)
     {
-        auto* transform = m_ecs->GetComponent<Transform2D>(e);
-        auto* rigidbody = m_ecs->GetComponent<Physics2D>(e);
+        auto* transform = ecs->GetComponent<Transform2D>(e);
+        auto* rigidbody = ecs->GetComponent<Physics2D>(e);
 
-        if (rigidbody->isStationary) continue;
+        if (rigidbody->isStatic) continue;
 
         // Calculate semi-implicit acceleration from accumulated frames forces
         Vector2 totalAcceleration = rigidbody->acceleration + (rigidbody->force * rigidbody->GetInverseMass());
 
         // Integrate velocity
-        rigidbody->velocity += totalAcceleration * METER * dt;
+        rigidbody->linearVelocity += totalAcceleration * METER * dt;
 
         // Apply exponential linear damping
         if (rigidbody->linearDamping > 0.0f)
         {
             // v = v * e^(-damping * dt)
-            rigidbody->velocity = rigidbody->velocity * std::exp(-rigidbody->linearDamping * dt);
+            rigidbody->linearVelocity = rigidbody->linearVelocity * std::exp(-rigidbody->linearDamping * dt);
         }
 
         // Integrate position
-        transform->position += rigidbody->velocity * dt;
+        transform->position += rigidbody->linearVelocity * dt;
 
         // Clear accumulated parameters for next frame
         rigidbody->force = Vector2::ZERO;

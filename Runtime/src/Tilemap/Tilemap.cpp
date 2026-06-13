@@ -2,7 +2,7 @@
 #include <Core/Utilities/Matrix4x4.h>
 #include <Core/Components.h>
 #include <Physics/Components.h>
-#include <Graphics/Texture/TextureLoader.h>
+#include <Runtime/ContentLoader.h>
 #include <Graphics/Components.h>
 #include <cmath>
 

@@ -7,7 +7,7 @@
 #include <iostream>
 #include <Core/ECS/ECS.h>
 #include <Core/Utilities/Vector2.h>
-#include <Graphics/Texture/Texture.h>
+#include <Graphics/Texture.h>
 #include <Graphics/Renderer.h>
 
 struct Tile 

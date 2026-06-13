@@ -25,6 +25,8 @@ void CollisionSystem2D::sortEdges()
 
 void CollisionSystem2D::Update(float dt) 
 {
+    ECS* ecs = m_ctx->Get<ECS>();
+
     // Sort edges from left to right
     sortEdges();
 
@@ -33,8 +35,8 @@ void CollisionSystem2D::Update(float dt)
         // Get the entity and components
         EntityID entityA = edge.entity;
 
-        auto* transformA = m_ecs->GetComponent<Transform2D>(entityA);
-        auto* colliderA = m_ecs->GetComponent<Collider2D>(entityA);
+        auto* transformA = ecs->GetComponent<Transform2D>(entityA);
+        auto* colliderA = ecs->GetComponent<Collider2D>(entityA);
 
         Rectangle* boxA = colliderA->GetAABB(transformA);
         float boxAMinX, boxAMinY;
@@ -51,8 +53,17 @@ void CollisionSystem2D::Update(float dt)
             for (EntityID entityB : m_touching)
             {
                 // Get components for other entity
-                auto* transformB = m_ecs->GetComponent<Transform2D>(entityB);
-                auto* colliderB = m_ecs->GetComponent<Collider2D>(entityB);
+                auto* transformB = ecs->GetComponent<Transform2D>(entityB);
+                auto* colliderB = ecs->GetComponent<Collider2D>(entityB);
+
+                // Check if entities can collide with each other
+                bool aWantsB = colliderA->CanCollideWith(*colliderB);
+                bool bWantsA = colliderB->CanCollideWith(*colliderA);
+
+                if (!aWantsB && !bWantsA)
+                {
+                    return;
+                }
 
                 Rectangle* boxB = colliderB->GetAABB(transformB);
 
@@ -134,14 +145,14 @@ void CollisionSystem2D::Update(float dt)
                         colliderA->normal = -normal;
                         colliderB->normal = normal;
 
-                        auto* rbA = m_ecs->HasComponent<Physics2D>(entityA) ? m_ecs->GetComponent<Physics2D>(entityA) : nullptr;
-                        auto* rbB = m_ecs->HasComponent<Physics2D>(entityB) ? m_ecs->GetComponent<Physics2D>(entityB) : nullptr;
+                        auto* rbA = ecs->HasComponent<Physics2D>(entityA) ? ecs->GetComponent<Physics2D>(entityA) : nullptr;
+                        auto* rbB = ecs->HasComponent<Physics2D>(entityB) ? ecs->GetComponent<Physics2D>(entityB) : nullptr;
 
                         // 1. Convert your 2D vectors into Jolt-compatible vector formats (JPH::Vec3 or JPH::RVec3)
                         // Jolt is a 3D engine, so we map 2D (X, Y) to 3D (X, Y, 0)
                         JPH::Vec3 jphNormal(normal.x, normal.y, 0.0f);
-                        JPH::Vec3 jphVelA(rbA ? rbA->velocity.x : 0.0f, rbA ? rbA->velocity.y : 0.0f, 0.0f);
-                        JPH::Vec3 jphVelB(rbB ? rbB->velocity.x : 0.0f, rbB ? rbB->velocity.y : 0.0f, 0.0f);
+                        JPH::Vec3 jphVelA(rbA ? rbA->linearVelocity.x : 0.0f, rbA ? rbA->linearVelocity.y : 0.0f, 0.0f);
+                        JPH::Vec3 jphVelB(rbB ? rbB->linearVelocity.x : 0.0f, rbB ? rbB->linearVelocity.y : 0.0f, 0.0f);
 
                         // 2. Compute Relative Velocity along the normal vector
                         JPH::Vec3 relVel = jphVelB - jphVelA;
@@ -171,15 +182,15 @@ void CollisionSystem2D::Update(float dt)
                                 JPH::Vec3 jphImpulse = impulseScalar * jphNormal;
 
                                 // 6. Apply impulses right back onto your custom velocity storage arrays
-                                if (rbA && !rbA->isStationary)
+                                if (rbA && !rbA->isStatic)
                                 {
-                                    rbA->velocity.x -= jphImpulse.GetX() * invMassA;
-                                    rbA->velocity.y -= jphImpulse.GetY() * invMassA;
+                                    rbA->linearVelocity.x -= jphImpulse.GetX() * invMassA;
+                                    rbA->linearVelocity.y -= jphImpulse.GetY() * invMassA;
                                 }
-                                if (rbB && !rbB->isStationary)
+                                if (rbB && !rbB->isStatic)
                                 {
-                                    rbB->velocity.x += jphImpulse.GetX() * invMassB;
-                                    rbB->velocity.y += jphImpulse.GetY() * invMassB;
+                                    rbB->linearVelocity.x += jphImpulse.GetX() * invMassB;
+                                    rbB->linearVelocity.y += jphImpulse.GetY() * invMassB;
                                 }
                             }
                         }
@@ -458,8 +469,10 @@ void CollisionSystem2D::seperateBodies(Transform2D* transformA, Transform2D* tra
 
 void CollisionSystem2D::OnEntityAdded(EntityID e)
 {
-    Transform2D* transform = m_ecs->GetComponent<Transform2D>(e);
-    Collider2D* collider = m_ecs->GetComponent<Collider2D>(e);
+    ECS* ecs = m_ctx->Get<ECS>();
+
+    Transform2D* transform = ecs->GetComponent<Transform2D>(e);
+    Collider2D* collider = ecs->GetComponent<Collider2D>(e);
 
     Rectangle* aabb = collider->GetAABB(transform);
     float minX, minY;

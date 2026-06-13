@@ -145,18 +145,16 @@
     <ClInclude Include="include\Graphics\Font.h" />
     <ClInclude Include="include\Graphics\Renderer.h" />
     <ClInclude Include="include\Graphics\Systems.h" />
-    <ClInclude Include="include\Graphics\Systems\SpriteSystem.h" />
-    <ClInclude Include="include\Graphics\Texture\Texture.h" />
-    <ClInclude Include="include\Graphics\Texture\TextureLoader.h" />
+    <ClInclude Include="include\Graphics\Systems\SpriteSystem2D.h" />
+    <ClInclude Include="include\Graphics\Texture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Camera\Camera2D.cpp" />
     <ClCompile Include="src\Camera\Camera3D.cpp" />
     <ClCompile Include="src\Font.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
-    <ClCompile Include="src\Systems\SpriteSystem.cpp" />
-    <ClCompile Include="src\Texture\Texture.cpp" />
-    <ClCompile Include="src\Texture\TextureLoader.cpp" />
+    <ClCompile Include="src\Systems\SpriteSystem2D.cpp" />
+    <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

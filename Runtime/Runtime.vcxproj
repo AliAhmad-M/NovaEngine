@@ -108,7 +108,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
+;JPH_OBJECT_STREAM;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Physics\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -125,7 +126,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
+;JPH_OBJECT_STREAM;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Physics\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -137,12 +139,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\Runtime\Scene\IScene.h" />
+    <ClInclude Include="include\Runtime\EngineRuntime.h" />
+    <ClInclude Include="include\Runtime\Scene\Scene.h" />
     <ClInclude Include="include\Runtime\Scene\SceneManager.h" />
+    <ClInclude Include="include\Runtime\ContentLoader.h" />
     <ClInclude Include="include\Runtime\Tilemap\Tilemap.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\EngineRuntime.cpp" />
     <ClCompile Include="src\Scene\SceneManager.cpp" />
+    <ClCompile Include="src\ContentLoader.cpp" />
     <ClCompile Include="src\Tilemap\Tilemap.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
