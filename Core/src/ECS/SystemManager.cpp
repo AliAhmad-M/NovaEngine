@@ -1,4 +1,4 @@
-#include "Core/ECS/SystemManager.h"
+#include <Core/ECS/SystemManager.h>
 
 void SystemManager::OnEntityDestroyed(EntityID entity) {
 	for (auto const& pair : m_systems) {

@@ -145,8 +145,8 @@
     <ClInclude Include="include\Physics\Systems\PhysicsSystem2D.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CollisionSystem2D.cpp" />
-    <ClCompile Include="src\PhysicsSystem2D.cpp" />
+    <ClCompile Include="src\Systems\CollisionSystem2D.cpp" />
+    <ClCompile Include="src\Systems\PhysicsSystem2D.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

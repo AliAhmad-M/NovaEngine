@@ -1,2 +1,2 @@
 #pragma once
-#include "Systems/SpriteSystem.h"
+#include "Systems/SpriteSystem2D.h"

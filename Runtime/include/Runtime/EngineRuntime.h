@@ -1,0 +1,39 @@
+#pragma once
+
+#include <Core/EngineContext.h>
+#include <Core/ECS/ECS.h>
+#include <Platform/Window.h>
+#include <Platform/InputMap.h>
+#include <Graphics/Renderer.h>
+#include <Graphics/Camera/Camera2D.h>
+#include <Runtime/ContentLoader.h>
+#include <Runtime/Scene/SceneManager.h>
+
+class EngineRuntime 
+{
+public:
+	EngineContext* GetContext();
+
+	bool Init();
+	void Update();
+	void Close();
+
+protected:
+	// Global engine context
+	EngineContext m_context;
+
+private:
+	void registerComponents();
+	void initializeSystems();
+
+	ECS           m_ecs;
+	Window        m_window;
+	InputMap      m_inputMap;
+	Renderer      m_renderer;
+	Camera2D      m_camera;
+	ContentLoader m_contentLoader;
+	SceneManager  m_sceneManager;
+
+	bool          m_running = true;
+	double        m_deltaTime = 0;
+};

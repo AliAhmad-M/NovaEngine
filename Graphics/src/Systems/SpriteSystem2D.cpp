@@ -1,34 +1,52 @@
+#include <Graphics/Systems/SpriteSystem2D.h>
+#include <Core/Utilities/Matrix4x4.h>
+#include <Graphics/Renderer.h>
+#include <Graphics/Camera/Camera2D.h>
+#include <Platform/Window.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include <Core/Utilities/Matrix4x4.h>
-#include <Graphics/Systems/SpriteSystem.h>
-
 #define CAMERA_MARGIN 32
 
-void SpriteSystem::Update(float dt) {
-    if (m_camera == nullptr) {
-        fprintf(stderr, "[ERROR]: Camera is NULL!\n");
-        exit(1);
-    }
-    if (m_window == nullptr) {
-        fprintf(stderr, "[ERROR]: Window is NULL!\n");
-        exit(1);
-    }
-    if (m_renderer == nullptr) {
-        fprintf(stderr, "[ERROR]: Renderer is NULL!\n");
-        exit(1);
-    }
-    if (m_ecs == nullptr) {
-        fprintf(stderr, "[ERROR]: ECS is NULL!\n");
+void SpriteSystem2D::Update(float dt) {
+
+    // Get dependencies from context
+    if (m_ctx == nullptr) {
+        fprintf(stderr, "[ERROR]: EngineContext is NULL!\n");
         exit(1);
     }
 
-    Camera2D* camera2D = static_cast<Camera2D*>(m_camera);
+    Camera2D* camera2D  = m_ctx->Get<Camera2D>();
+    Window* window      = m_ctx->Get<Window>();
+    Renderer* renderer  = m_ctx->Get<Renderer>();
+    ECS* ecs            = m_ctx->Get<ECS>();
+
+    if (camera2D == nullptr) 
+    {
+        fprintf(stderr, "[ERROR]: SpriteSystem, Camera is NULL!\n");
+        exit(1);
+    }
+    if (window == nullptr) 
+    {
+        fprintf(stderr, "[ERROR]: SpriteSystem, Window is NULL!\n");
+        exit(1);
+    }
+    if (renderer == nullptr) 
+    {
+        fprintf(stderr, "[ERROR]: SpriteSystem, Renderer is NULL!\n");
+        exit(1);
+    }
+    if (ecs == nullptr) 
+    {
+        fprintf(stderr, "[ERROR]: SpriteSystem, ECS is NULL!\n");
+        exit(1);
+    }
+
 
     // Get window size
     int windowWidth, windowHeight;
-    m_window->GetSize(&windowWidth, &windowHeight);
+    window->GetSize(&windowWidth, &windowHeight);
 
     // Get camera offset
     Vector2 cameraOffset = camera2D->GetOffset();
@@ -41,8 +59,8 @@ void SpriteSystem::Update(float dt) {
 
     for (size_t i = 0; i < m_entities.size(); i++) {
         EntityID e = m_entities[i];
-        Transform2D* transform = m_ecs->GetComponent<Transform2D>(e);
-        Sprite2D* sprite = m_ecs->GetComponent<Sprite2D>(e);
+        Transform2D* transform = ecs->GetComponent<Transform2D>(e);
+        Sprite2D* sprite = ecs->GetComponent<Sprite2D>(e);
 
         // Frustrum culling check
         float scaledWidth = sprite->GetFrameWidth() * transform->scale.x;
@@ -92,7 +110,7 @@ void SpriteSystem::Update(float dt) {
         if (sprite->flipv) { v += vh; vh = -vh; }
 
         // Draw the sprites
-        m_renderer->DrawQuad(
+        renderer->DrawQuad(
             sprite->texture->GetHandle(),
             { transform->position.x - cameraOffset.x, transform->position.y - cameraOffset.y },
             { scaledWidth, scaledHeight },
@@ -101,16 +119,16 @@ void SpriteSystem::Update(float dt) {
         );
     }
 
-    if (enableYSort || zSortingNeeded) sortRenderingOrder(m_ecs);
+    if (enableYSort || zSortingNeeded) sortRenderingOrder(ecs);
 }
 
-void SpriteSystem::OnEntityAdded(EntityID e) {
+void SpriteSystem2D::OnEntityAdded(EntityID e) {
     // Add the entity, sort the layers
     m_entities.push_back(e);
     zSortingNeeded = true;
 }
 
-void SpriteSystem::OnEntityRemoved(EntityID e) {
+void SpriteSystem2D::OnEntityRemoved(EntityID e) {
     // Position of entity in vector
     auto position = std::find(
         m_entities.begin(),
@@ -121,9 +139,9 @@ void SpriteSystem::OnEntityRemoved(EntityID e) {
     m_entities.erase(position);
 }
 
-void SpriteSystem::OnAllEntitiesRemoved() { m_entities.clear(); }
+void SpriteSystem2D::OnAllEntitiesRemoved() { m_entities.clear(); }
 
-void SpriteSystem::sortRenderingOrder(ECS* ecs) {
+void SpriteSystem2D::sortRenderingOrder(ECS* ecs) {
     // Insertion sort entities based on Z indexes and Y sort origins
     for (size_t i = 1; i < m_entities.size(); i++) {
         EntityID key = m_entities[i];
@@ -166,7 +184,7 @@ void SpriteSystem::sortRenderingOrder(ECS* ecs) {
     zSortingNeeded = false;
 }
 
-float SpriteSystem::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* sprite) {
+float SpriteSystem2D::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* sprite) {
     Vector2 position = transform->position;
     float ySortOrigin = sprite->ySortOrigin;
 

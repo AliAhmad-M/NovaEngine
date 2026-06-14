@@ -1,4 +1,5 @@
 #pragma once
+#include <Core/EngineContext.h>
 #include "Types.h"
 #include "SparseSet.h"
 #include "EntityManager.h"
@@ -182,10 +183,10 @@ public:
      * @param args Additional constructor arguments (e.g. ECS*, Camera*, Renderer*)
      * @return Shared pointer to registered system
      */
-    template <typename T, typename... Args>
-    std::shared_ptr<T> RegisterSystem(Args&&... args) 
+    template <typename T>
+    std::shared_ptr<T> RegisterSystem(EngineContext* ctx) 
     {
-        return m_systemManager->RegisterSystem<T>(std::forward<Args>(args)...);
+        return m_systemManager->RegisterSystem<T>(ctx);
     }
 
     /**

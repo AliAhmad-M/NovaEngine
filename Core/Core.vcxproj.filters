@@ -98,5 +98,8 @@
     <ClInclude Include="include\Core\Utilities\Shape2D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Core\EngineContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

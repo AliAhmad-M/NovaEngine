@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Core/EngineContext.h>
 #include <Core/ECS/ECS.h>
 #include <Core/ECS/ISystem.h>
 
 struct PhysicsSystem2D : public ISystem 
 {
-	PhysicsSystem2D(ECS* ecs) : m_ecs(ecs) {}
+	PhysicsSystem2D(EngineContext* ctx) : m_ctx(ctx) {}
 
 	void Update(float dt) override;
 
@@ -14,6 +15,6 @@ struct PhysicsSystem2D : public ISystem
 	void OnAllEntitiesRemoved() override;
 
 private:
-	ECS* m_ecs = nullptr;
+	EngineContext* m_ctx;
 	std::vector<EntityID> m_entities;
 };
