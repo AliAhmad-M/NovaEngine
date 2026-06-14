@@ -7,6 +7,14 @@
 AssetBrowserPanel::AssetBrowserPanel(EditorContext* ctx)
     : m_ctx(ctx)
 {
+    m_iconFolder.LoadFromFile("../Editor/assets/icons/icon_folder.png");
+    m_iconTexture.LoadFromFile("../Editor/assets/icons/icon_texture.png");
+    m_iconScene.LoadFromFile("../Editor/assets/icons/icon_scene.png");
+    m_iconAudio.LoadFromFile("../Editor/assets/icons/icon_audio.png");
+    m_iconScript.LoadFromFile("../Editor/assets/icons/icon_script.png");
+    m_iconFont.LoadFromFile("../Editor/assets/icons/icon_font.png");
+    m_iconPhysics.LoadFromFile("../Editor/assets/icons/icon_physics.png");
+
     // Default to the project's assets folder
     m_rootPath = std::filesystem::path("../Test/project/");
     m_currentPath = m_rootPath;
@@ -25,6 +33,7 @@ AssetType AssetBrowserPanel::ClassifyExtension(const std::string& ext) const
     if (ext == ".json" || ext == ".scene") return AssetType::Scene;
     if (ext == ".ttf" || ext == ".otf")  return AssetType::Font;
     if (ext == ".wav" || ext == ".ogg" || ext == ".mp3") return AssetType::Audio;
+    if (ext == ".phys" || ext == ".physics")         return AssetType::Physics;
     return AssetType::Unknown;
 }
 
@@ -37,6 +46,21 @@ const char* AssetBrowserPanel::AssetTypeIcon(AssetType t) const
     case AssetType::Font:    return "[FNT]";
     case AssetType::Audio:   return "[SND]";
     default:                 return "[   ]";
+    }
+}
+
+GLuint AssetBrowserPanel::GetEntryIcon(const AssetEntry& entry) const
+{
+    if (entry.isDirectory) return m_iconFolder.GetHandle();
+
+    switch (entry.type)
+    {
+    case AssetType::Texture:  return m_iconTexture.GetHandle();
+    case AssetType::Scene:    return m_iconScene.GetHandle();
+    case AssetType::Audio:    return m_iconAudio.GetHandle();
+    case AssetType::Font:     return m_iconFont.GetHandle();
+    case AssetType::Physics:  return m_iconPhysics.GetHandle();
+    default:                  return m_iconScript.GetHandle(); // script as fallback
     }
 }
 
@@ -167,7 +191,6 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
         ImGui::TreePop();
     }
 }
-
 void AssetBrowserPanel::DrawContentGrid()
 {
     float cellSize = m_iconSize + 16.0f;
@@ -179,32 +202,39 @@ void AssetBrowserPanel::DrawContentGrid()
     int column = 0;
     for (const auto& entry : m_entries)
     {
-        // Apply text filter
         if (m_filter[0] != '\0')
         {
             if (entry.filename.find(m_filter) == std::string::npos)
                 continue;
         }
 
-        // Push a unique ID per entry
         ImGui::PushID(entry.path.c_str());
-
-        // Group icon and text
         ImGui::BeginGroup();
 
         bool isSelected = (m_selectedFile == entry.path);
         ImVec2 iconSize(m_iconSize, m_iconSize);
         ImVec4 bgColor = isSelected
             ? ImVec4(0.26f, 0.50f, 0.84f, 0.50f)
-            : ImVec4(0.16f, 0.16f, 0.19f, 1.00f);
+            : ImVec4(0.0f, 0.0f, 0.0f, 0.0f);  // transparent when not selected
 
+        GLuint iconTex = GetEntryIcon(entry);
+
+        // only 3 PushStyleColor calls, not 6
         ImGui::PushStyleColor(ImGuiCol_Button, bgColor);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.26f, 0.50f, 0.84f, 0.30f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.26f, 0.50f, 0.84f, 0.70f));
 
-        // Draw Icon Button
-        const char* icon = entry.isDirectory ? "[DIR]" : AssetTypeIcon(entry.type);
-        bool iconClicked = ImGui::Button(icon, iconSize);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+        bool iconClicked = ImGui::ImageButton(
+            "##icon",
+            (ImTextureID)(intptr_t)iconTex,
+            ImVec2(m_iconSize, m_iconSize),
+            ImVec2(0, 0),           // uv0
+            ImVec2(1, 1),           // uv1
+            ImVec4(0, 0, 0, 0),     // background → transparent
+            ImVec4(1, 1, 1, 1)      // tint → white
+        );
+        ImGui::PopStyleVar();
 
         ImGui::PopStyleColor(3);
 
@@ -215,15 +245,15 @@ void AssetBrowserPanel::DrawContentGrid()
                 m_lastSelectedPath = entry.path;
         }
 
-        // Context menu handler
+        // Context menu
         if (ImGui::BeginPopupContextItem("##assetCtx"))
         {
             ImGui::TextDisabled("%s", entry.filename.c_str());
             ImGui::Separator();
             if (!entry.isDirectory)
             {
-                if (ImGui::MenuItem("Load"))        m_lastSelectedPath = entry.path;
-                if (ImGui::MenuItem("Copy Path"))   ImGui::SetClipboardText(entry.path.c_str());
+                if (ImGui::MenuItem("Load"))       m_lastSelectedPath = entry.path;
+                if (ImGui::MenuItem("Copy Path"))  ImGui::SetClipboardText(entry.path.c_str());
             }
             if (ImGui::MenuItem("Show in Explorer"))
             {
@@ -235,30 +265,25 @@ void AssetBrowserPanel::DrawContentGrid()
             ImGui::EndPopup();
         }
 
-        // Tooltip on the icon
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", entry.filename.c_str());
 
-        // Draw filename label
-        ImGui::PushItemWidth(iconSize.x);
+        // Filename label
         std::string truncated = entry.filename;
         if (truncated.size() > 10)
             truncated = truncated.substr(0, 9) + "...";
 
-        // Center text alignment calculation relative to the icon width
         float textWidth = ImGui::CalcTextSize(truncated.c_str()).x;
         if (textWidth < iconSize.x)
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (iconSize.x - textWidth) * 0.5f);
 
         ImGui::TextUnformatted(truncated.c_str());
-        ImGui::PopItemWidth();
 
         if (ImGui::IsItemHovered() && entry.filename.size() > 10)
             ImGui::SetTooltip("%s", entry.filename.c_str());
 
         ImGui::EndGroup();
 
-        // Handle selection from clicking
         if (iconClicked || (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)))
         {
             m_selectedFile = entry.path;

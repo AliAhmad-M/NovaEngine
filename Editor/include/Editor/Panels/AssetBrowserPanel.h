@@ -4,9 +4,10 @@
 #include <vector>
 #include <filesystem>
 #include <Editor/EditorContext.h>
+#include <Graphics/Texture/Texture.h>
 #include <imgui.h>
 
-enum class AssetType { Unknown, Texture, Scene, Font, Audio };
+enum class AssetType { Unknown, Texture, Scene, Font, Audio, Physics };  // added Physics
 
 struct AssetEntry
 {
@@ -33,8 +34,9 @@ private:
     void DrawDirectoryTree(const std::filesystem::path& root);
     void DrawContentGrid();
 
-    AssetType ClassifyExtension(const std::string& ext) const;
+    AssetType   ClassifyExtension(const std::string& ext) const;
     const char* AssetTypeIcon(AssetType t) const;
+    GLuint      GetEntryIcon(const AssetEntry& entry) const;  
 
     EditorContext* m_ctx = nullptr;
     ImGuiWindowFlags         m_windowFlags = 0;
@@ -44,7 +46,15 @@ private:
     std::string              m_lastSelectedPath;
     std::string              m_selectedFile;
 
+    // Icons
+    Texture m_iconFolder;
+    Texture m_iconTexture;
+    Texture m_iconScene;
+    Texture m_iconAudio;
+    Texture m_iconScript;
+    Texture m_iconFont;
+    Texture m_iconPhysics;
+
     float  m_iconSize = 64.0f;
     char   m_filter[128] = {};
 };
-

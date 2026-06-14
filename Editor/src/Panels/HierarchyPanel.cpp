@@ -6,10 +6,26 @@
 
 HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctx(ctx)
 {
+
+    // Load icons
+    m_iconEntity.LoadFromFile("../Editor/assets/icons/icon_entity.png");
+    m_iconCamera.LoadFromFile("../Editor/assets/icons/icon_camera.png");
+    m_iconLight.LoadFromFile("../Editor/assets/icons/icon_light.png");
+
     // Placeholder entities
-    m_entities.push_back({ m_nextId++, "Camera" });
-    m_entities.push_back({ m_nextId++, "Entity0" });
-    m_entities.push_back({ m_nextId++, "Entity1" });
+    m_entities.push_back({ m_nextId++, "Camera", EntityType::Camera });
+    m_entities.push_back({ m_nextId++, "Entity0", EntityType::Entity });
+    m_entities.push_back({ m_nextId++, "Entity1", EntityType::Entity });
+}
+
+GLuint HierarchyPanel::GetEntityIcon(EntityType type) const
+{
+    switch (type)
+    {
+    case EntityType::Camera:  return m_iconCamera.GetHandle();
+    case EntityType::Light:   return m_iconLight.GetHandle();
+    default:                  return m_iconEntity.GetHandle();
+    }
 }
 
 void HierarchyPanel::Draw()
@@ -35,32 +51,55 @@ void HierarchyPanel::DrawCreateButton()
     {
         char name[64];
         std::snprintf(name, sizeof(name), "Entity_%d", m_nextId);
-        m_entities.push_back({ m_nextId++, name });
+        m_entities.push_back({ m_nextId++, name, EntityType::Entity });
     }
-}
-
+    }
 void HierarchyPanel::DrawEntityList()
 {
-    static char filterBuf[128] = {};
-
     for (auto& node : m_entities)
     {
-        // Selectable row
         bool selected = (m_ctx->selectedEntity == node.id);
 
-        ImGuiSelectableFlags flags = ImGuiSelectableFlags_SpanAllColumns |
-            ImGuiSelectableFlags_AllowDoubleClick;
-        if (ImGui::Selectable(node.name.c_str(), selected, flags))
+        ImGui::PushID(node.id);
+
+        // Save cursor position
+        ImVec2 rowPos = ImGui::GetCursorPos();
+
+        // Draw selectable background first (invisible label)
+        if (ImGui::Selectable("##row", selected,
+            ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick,
+            ImVec2(0, 24)))
         {
             m_ctx->selectedEntity = node.id;
         }
 
-        // Right-click on a specific entity
+        // Right-click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
         {
             m_ctx->selectedEntity = node.id;
             ImGui::OpenPopup("EntityRowMenu");
         }
+
+        // Draw icon and text ON TOP of selectable
+        ImGui::SetCursorPos(rowPos);
+
+        // Icon tint — white when selected, grey when not
+        ImVec4 tint = selected
+            ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
+            : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+
+        GLuint iconTex = GetEntityIcon(node.type);
+        ImGui::ImageWithBg(
+            (ImTextureID)(intptr_t)iconTex,
+            ImVec2(30, 30),
+            ImVec2(0, 0),
+            ImVec2(1, 1),
+            ImVec4(0, 0, 0, 0),
+            tint
+        );
+        ImGui::SameLine();
+        ImGui::SetCursorPosY(rowPos.y + 4.0f);  // vertically center text
+        ImGui::Text("%s", node.name.c_str());
 
         // Per-row context menu
         if (ImGui::BeginPopup("EntityRowMenu"))
@@ -69,7 +108,6 @@ void HierarchyPanel::DrawEntityList()
             ImGui::Separator();
             if (ImGui::MenuItem("Delete"))
             {
-                // Remove entity from list and deselect
                 m_entities.erase(
                     std::remove_if(m_entities.begin(), m_entities.end(),
                         [&](const EntityNode& e) { return e.id == node.id; }),
@@ -77,13 +115,15 @@ void HierarchyPanel::DrawEntityList()
                 if (m_ctx->selectedEntity == node.id)
                     m_ctx->selectedEntity = -1;
                 ImGui::EndPopup();
+                ImGui::PopID();
                 break;
             }
             ImGui::EndPopup();
         }
+
+        ImGui::PopID();
     }
 }
-
 void HierarchyPanel::DrawContextMenu()
 {
     if (ImGui::BeginPopup("HierarchyContextMenu"))
