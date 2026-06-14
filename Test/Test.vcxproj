@@ -149,10 +149,24 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\character_preview.png" />
+    <Image Include="project\assets\dirt.png" />
+    <Image Include="project\assets\ninja.png" />
+    <Image Include="project\assets\slime.png" />
+    <Image Include="project\assets\spring.png" />
+    <Image Include="project\assets\summer.png" />
+    <Image Include="project\assets\texture.png" />
+    <Image Include="project\assets\tree.png" />
+    <Image Include="project\assets\water - spring.png" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="project\include\Test\Scenes\GraphicsTest.h" />
     <ClInclude Include="project\include\Test\Scenes\DynamicsTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="project\assets\boldpixels.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="project\assets\tilemap.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

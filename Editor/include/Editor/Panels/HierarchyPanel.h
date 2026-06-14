@@ -35,8 +35,8 @@ private:
 
     int m_nextId = 0;
 
-    Texture m_iconEntity;
-    Texture m_iconCamera;
-    Texture m_iconLight;
+    Texture* m_iconEntity;
+    Texture* m_iconCamera;
+    Texture* m_iconLight;
 };
 

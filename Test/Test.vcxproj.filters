@@ -29,6 +29,30 @@
     <Image Include="assets\character_preview.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="project\assets\dirt.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\ninja.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\slime.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\spring.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\summer.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\texture.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\tree.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="project\assets\water - spring.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="project\include\Test\Scenes\DynamicsTest.h">
@@ -37,5 +61,11 @@
     <ClInclude Include="project\include\Test\Scenes\GraphicsTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="project\assets\boldpixels.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="project\assets\tilemap.json" />
   </ItemGroup>
 </Project>

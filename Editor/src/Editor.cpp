@@ -192,6 +192,7 @@ void Editor::Run()
 
 void Editor::Shutdown()
 {
+    m_ctx.contentLoader.Cleanup();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

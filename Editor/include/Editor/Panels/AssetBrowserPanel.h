@@ -47,13 +47,13 @@ private:
     std::string              m_selectedFile;
 
     // Icons
-    Texture m_iconFolder;
-    Texture m_iconTexture;
-    Texture m_iconScene;
-    Texture m_iconAudio;
-    Texture m_iconScript;
-    Texture m_iconFont;
-    Texture m_iconPhysics;
+    Texture* m_iconFolder;
+    Texture* m_iconTexture;
+    Texture* m_iconScene;
+    Texture* m_iconAudio;
+    Texture* m_iconScript;
+    Texture* m_iconFont;
+    Texture* m_iconPhysics;
 
     float  m_iconSize = 64.0f;
     char   m_filter[128] = {};

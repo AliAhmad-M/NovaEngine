@@ -54,4 +54,36 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icons\icon_audio.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_camera.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_entity.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_folder.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_font.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_light.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_physics.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_scene.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_script.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\icons\icon_texture.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

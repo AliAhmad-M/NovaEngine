@@ -6,11 +6,10 @@
 
 HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctx(ctx)
 {
-
     // Load icons
-    m_iconEntity.LoadFromFile("../Editor/assets/icons/icon_entity.png");
-    m_iconCamera.LoadFromFile("../Editor/assets/icons/icon_camera.png");
-    m_iconLight.LoadFromFile("../Editor/assets/icons/icon_light.png");
+    m_iconEntity = ctx->contentLoader.LoadTexture("assets/icons/icon_entity.png");
+    m_iconCamera = ctx->contentLoader.LoadTexture("assets/icons/icon_camera.png");
+    m_iconLight = ctx->contentLoader.LoadTexture("assets/icons/icon_light.png");
 
     // Placeholder entities
     m_entities.push_back({ m_nextId++, "Camera", EntityType::Camera });
@@ -22,9 +21,9 @@ GLuint HierarchyPanel::GetEntityIcon(EntityType type) const
 {
     switch (type)
     {
-    case EntityType::Camera:  return m_iconCamera.GetHandle();
-    case EntityType::Light:   return m_iconLight.GetHandle();
-    default:                  return m_iconEntity.GetHandle();
+        case EntityType::Camera:  return m_iconCamera->GetHandle();
+        case EntityType::Light:   return m_iconLight->GetHandle();
+        default:                  return m_iconEntity->GetHandle();
     }
 }
 
@@ -80,22 +79,22 @@ void HierarchyPanel::DrawEntityList()
             ImGui::OpenPopup("EntityRowMenu");
         }
 
-        // Draw icon and text ON TOP of selectable
+        // Draw icon and text
         ImGui::SetCursorPos(rowPos);
 
-        // Icon tint — white when selected, grey when not
+        // Icon tint
         ImVec4 tint = selected
             ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
             : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
 
         GLuint iconTex = GetEntityIcon(node.type);
-        ImGui::ImageWithBg(
+        ImGui::Image(
             (ImTextureID)(intptr_t)iconTex,
             ImVec2(30, 30),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            ImVec4(0, 0, 0, 0),
-            tint
+            tint,
+            ImVec4(0, 0, 0, 0)
         );
         ImGui::SameLine();
         ImGui::SetCursorPosY(rowPos.y + 4.0f);  // vertically center text

@@ -7,13 +7,13 @@
 AssetBrowserPanel::AssetBrowserPanel(EditorContext* ctx)
     : m_ctx(ctx)
 {
-    m_iconFolder.LoadFromFile("../Editor/assets/icons/icon_folder.png");
-    m_iconTexture.LoadFromFile("../Editor/assets/icons/icon_texture.png");
-    m_iconScene.LoadFromFile("../Editor/assets/icons/icon_scene.png");
-    m_iconAudio.LoadFromFile("../Editor/assets/icons/icon_audio.png");
-    m_iconScript.LoadFromFile("../Editor/assets/icons/icon_script.png");
-    m_iconFont.LoadFromFile("../Editor/assets/icons/icon_font.png");
-    m_iconPhysics.LoadFromFile("../Editor/assets/icons/icon_physics.png");
+    m_iconFolder = m_ctx->contentLoader.LoadTexture("assets/icons/icon_folder.png");
+    m_iconTexture = m_ctx->contentLoader.LoadTexture("assets/icons/icon_texture.png");
+    m_iconScene = m_ctx->contentLoader.LoadTexture("assets/icons/icon_scene.png");
+    m_iconAudio = m_ctx->contentLoader.LoadTexture("assets/icons/icon_audio.png");
+    m_iconScript = m_ctx->contentLoader.LoadTexture("assets/icons/icon_script.png");
+    m_iconFont = m_ctx->contentLoader.LoadTexture("assets/icons/icon_font.png");
+    m_iconPhysics = m_ctx->contentLoader.LoadTexture("assets/icons/icon_physics.png");
 
     // Default to the project's assets folder
     m_rootPath = std::filesystem::path("../Test/project/");
@@ -51,16 +51,16 @@ const char* AssetBrowserPanel::AssetTypeIcon(AssetType t) const
 
 GLuint AssetBrowserPanel::GetEntryIcon(const AssetEntry& entry) const
 {
-    if (entry.isDirectory) return m_iconFolder.GetHandle();
+    if (entry.isDirectory) return m_iconFolder->GetHandle();
 
     switch (entry.type)
     {
-    case AssetType::Texture:  return m_iconTexture.GetHandle();
-    case AssetType::Scene:    return m_iconScene.GetHandle();
-    case AssetType::Audio:    return m_iconAudio.GetHandle();
-    case AssetType::Font:     return m_iconFont.GetHandle();
-    case AssetType::Physics:  return m_iconPhysics.GetHandle();
-    default:                  return m_iconScript.GetHandle(); // script as fallback
+        case AssetType::Texture:  return m_iconTexture->GetHandle();
+        case AssetType::Scene:    return m_iconScene->GetHandle();
+        case AssetType::Audio:    return m_iconAudio->GetHandle();
+        case AssetType::Font:     return m_iconFont->GetHandle();
+        case AssetType::Physics:  return m_iconPhysics->GetHandle();
+        default:                  return m_iconScript->GetHandle();
     }
 }
 
@@ -90,10 +90,12 @@ void AssetBrowserPanel::Refresh()
     }
 
     // Directories first, then alphabetical
-    std::sort(m_entries.begin(), m_entries.end(), [](const AssetEntry& a, const AssetEntry& b) {
-        if (a.isDirectory != b.isDirectory) return a.isDirectory > b.isDirectory;
-        return a.filename < b.filename;
-        });
+    std::sort(m_entries.begin(), m_entries.end(), [](const AssetEntry& a, const AssetEntry& b) 
+        {
+            if (a.isDirectory != b.isDirectory) return a.isDirectory > b.isDirectory;
+            return a.filename < b.filename;
+        }
+    );
 }
 
 void AssetBrowserPanel::Draw()

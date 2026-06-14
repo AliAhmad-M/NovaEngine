@@ -157,6 +157,18 @@
     <ClInclude Include="include\Editor\Panels\InspectorPanel.h" />
     <ClInclude Include="include\Editor\Panels\ScenePanel.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icons\icon_audio.png" />
+    <Image Include="assets\icons\icon_camera.png" />
+    <Image Include="assets\icons\icon_entity.png" />
+    <Image Include="assets\icons\icon_folder.png" />
+    <Image Include="assets\icons\icon_font.png" />
+    <Image Include="assets\icons\icon_light.png" />
+    <Image Include="assets\icons\icon_physics.png" />
+    <Image Include="assets\icons\icon_scene.png" />
+    <Image Include="assets\icons\icon_script.png" />
+    <Image Include="assets\icons\icon_texture.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
