@@ -4,7 +4,7 @@
 #include <vector>
 #include <filesystem>
 #include <Editor/EditorContext.h>
-#include <Graphics/Texture/Texture.h>
+#include <Graphics/Texture.h>
 #include <imgui.h>
 
 enum class AssetType { Unknown, Texture, Scene, Font, Audio, Physics };  // added Physics

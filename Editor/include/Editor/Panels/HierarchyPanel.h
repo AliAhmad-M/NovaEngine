@@ -3,7 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <Editor/EditorContext.h>
-#include <Graphics/Texture/Texture.h>
+#include <Graphics/Texture.h>
 #include <imgui.h>
 
 enum class EntityType { Entity, Camera, Light };
