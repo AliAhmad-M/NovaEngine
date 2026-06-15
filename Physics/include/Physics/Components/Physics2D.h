@@ -8,24 +8,14 @@
  */
 struct Physics2D
 {
-    // The current rate of change of position
-    Vector2 linearVelocity;
+    Vector2 linearVelocity = Vector2::ZERO;
+    float angularVelocity = 0.0f;
 
-    // The current rate of change of velocity
-    Vector2 acceleration;
+    Vector2 acceleration = Vector2::ZERO;
+    Vector2 force = Vector2::ZERO;
 
-    // Accumulated net force
-    Vector2 force;
-
-    // Exponential linear velocity decay factor
-    float linearDamping;
-
-    // Coefficient of bounciness
-    float restitution;
-
-    // Flag determining if body is stationary
-    bool isStatic;
-
+    bool lockPosition;
+    bool lockRotation;
     /**
      * @brief Constructs a Physics2D component with the given mass and stationary state
      * @param mass The mass of the body. Must be positive and non-zero
@@ -33,11 +23,16 @@ struct Physics2D
      * @param damping Rate of exponential velocity decay over time
      * @param bounciness Restitution coefficient (0.0 to 1.0)
      */
-    Physics2D(float mass = 1.0f, bool isStatic = false, float damping = 0.0f, float bounciness = 0.2f)
-        : linearVelocity(Vector2::ZERO), acceleration(Vector2::ZERO), force(Vector2::ZERO),
-        linearDamping(damping), restitution(bounciness), isStatic(isStatic)
+    Physics2D(float mass = 1.0f, float restitution = 0.2f, float staticFriction = 0.5f, float dynamicFriction = 0.3f,
+        float linearDamping = 0.0f, float angularDamping = 0.0f, bool lockPosition = false, bool lockRotation = false)
+        : m_restitution(restitution), lockPosition(lockPosition), lockRotation(lockRotation)
     {
         SetMass(mass);
+        SetRestitution(restitution);
+        SetStaticFriction(staticFriction);
+        SetDynamicFriction(dynamicFriction);
+        SetLinearDamping(linearDamping);
+        SetAngularDamping(angularDamping);
     }
 
     /**
@@ -84,10 +79,107 @@ struct Physics2D
         }
 
         // Inverse mass (0.0f for static bodies to represent infinite mass)
-        m_invMass = isStatic ? 0.0f : (1.0f / m_mass);
+        m_invMass = lockPosition ? 0.0f : (1.0f / m_mass);
+    }
+
+/**
+     * @brief Retrieves the current coefficient of restitution
+     * @return The scalar restitution value (usually between 0.0 and 1.0)
+     */
+    float GetRestitution() const 
+    {
+        return m_restitution;
+    }
+
+    /**
+     * @brief Updates the coefficient of restitution
+     * @param restitution The new restitution value. Will be clamped between 0.0f and 1.0f
+     */
+    void SetRestitution(float restitution) 
+    {
+        m_restitution = std::clamp(restitution, 0.0f, 1.0f);
+    }
+
+    /**
+     * @brief Retrieves the current static friction coefficient
+     * @return The static friction coefficient
+     */
+    float GetStaticFriction() const 
+    {
+        return m_staticFriction;
+    }
+
+    /**
+     * @brief Updates the static friction coefficient
+     * @param staticFriction The new static friction value. Must be non-negative
+     */
+    void SetStaticFriction(float staticFriction) 
+    {
+        m_staticFriction = std::max(0.0f, staticFriction);
+    }
+
+    /**
+     * @brief Retrieves the current dynamic friction coefficient
+     * @return The dynamic friction coefficient
+     */
+    float GetDynamicFriction() const 
+    {
+        return m_dynamicFriction;
+    }
+
+    /**
+     * @brief Updates the dynamic friction coefficient
+     * @param dynamicFriction The new dynamic friction value. Must be non-negative
+     */
+    void SetDynamicFriction(float dynamicFriction) 
+    {
+        m_dynamicFriction = std::max(0.0f, dynamicFriction);
+    }
+
+    /**
+     * @brief Retrieves the current linear damping coefficient
+     * @return The linear damping coefficient
+     */
+    float GetLinearDamping() const 
+    {
+        return m_linearDamping;
+    }
+
+    /**
+     * @brief Updates the linear damping coefficient
+     * @param linearDamping The new linear damping value. Must be non-negative
+     */
+    void SetLinearDamping(float linearDamping) 
+    {
+        m_linearDamping = std::max(0.0f, linearDamping);
+    }
+
+    /**
+     * @brief Retrieves the current angular damping coefficient
+     * @return The angular damping coefficient
+     */
+    float GetAngularDamping() const 
+    {
+        return m_angularDamping;
+    }
+
+    /**
+     * @brief Updates the angular damping coefficient
+     * @param angularDamping The new angular damping value. Must be non-negative
+     */
+    void SetAngularDamping(float angularDamping)
+    {
+        m_angularDamping = std::max(0.0f, angularDamping);
     }
 
 private:
     float m_mass;
     float m_invMass;
+
+    float m_restitution;
+    float m_staticFriction;
+    float m_dynamicFriction;
+
+    float m_linearDamping;
+    float m_angularDamping;
 };

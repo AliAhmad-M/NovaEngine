@@ -141,9 +141,11 @@ void DynamicsTest::spawnBallWithImpulse()
         EntityID ball = s_ecs->CreateEntity();
         s_ecs->AddComponent<Transform2D>(ball, Transform2D(m_spawnPoint, 0.0f, Vector2(1.0f, 1.0f)));
         s_ecs->AddComponent<Collider2D>(ball, Collider2D(Vector2(BALL_RADIUS, BALL_RADIUS), BALL_RADIUS, true));
-        s_ecs->AddComponent<Physics2D>(ball, Physics2D(1.2f, false, 0.2f, 0.7f));
+        s_ecs->AddComponent<Physics2D>(ball, Physics2D());
 
-        s_ecs->GetComponent<Physics2D>(ball)->linearVelocity = initialVelocity;
+        Physics2D* phys = s_ecs->GetComponent<Physics2D>(ball);
+        phys->SetRestitution(0.5f); phys->SetLinearDamping(0.5f); 
+        phys->linearVelocity = initialVelocity; 
         m_spawnedBalls.push_back(ball);
     }
 }
@@ -158,29 +160,30 @@ void DynamicsTest::applyWindowConstraints(int windowWidth, int windowHeight)
 
         if (trans && col && phys) {
             float radius = col->GetRadius(trans->scale.x, trans->scale.y);
+            float restitution = phys->GetRestitution();
 
             // Left
             if (trans->position.x - radius < 0.0f) {
                 trans->position.x = radius;
-                if (phys->linearVelocity.x < 0.0f) phys->linearVelocity.x = -phys->linearVelocity.x * phys->restitution;
+                if (phys->linearVelocity.x < 0.0f) phys->linearVelocity.x = -phys->linearVelocity.x * restitution;
             }
 
             // Right
             else if (trans->position.x + radius > (float)windowWidth) {
                 trans->position.x = (float)windowWidth - radius;
-                if (phys->linearVelocity.x > 0.0f) phys->linearVelocity.x = -phys->linearVelocity.x * phys->restitution;
+                if (phys->linearVelocity.x > 0.0f) phys->linearVelocity.x = -phys->linearVelocity.x * restitution;
             }
 
             // Bottom
             if (trans->position.y + radius > (float)windowHeight) {
                 trans->position.y = (float)windowHeight - radius;
-                if (phys->linearVelocity.y > 0.0f) phys->linearVelocity.y = -phys->linearVelocity.y * phys->restitution;
+                if (phys->linearVelocity.y > 0.0f) phys->linearVelocity.y = -phys->linearVelocity.y * restitution;
             }
 
             // Top
             else if (trans->position.y - radius < 0.0f) {
                 trans->position.y = radius;
-                if (phys->linearVelocity.y < 0.0f) phys->linearVelocity.y = -phys->linearVelocity.y * phys->restitution;
+                if (phys->linearVelocity.y < 0.0f) phys->linearVelocity.y = -phys->linearVelocity.y * restitution;
             }
         }
     }

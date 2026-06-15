@@ -1,8 +1,5 @@
 #include <Physics/Systems/CollisionSystem2D.h>
 
-#include <Jolt/Jolt.h>
-#include <Jolt/Physics/Constraints/ContactConstraintManager.h>
-
 void CollisionSystem2D::sortEdges()
 {
     // Insertion sort on the edges
@@ -83,7 +80,7 @@ void CollisionSystem2D::Update(float dt)
                         isColliding = checkCircleCircleCollision(
                             worldCenterA, worldCenterB,
                             colliderA->GetRadius(transformA->scale.x, transformA->scale.y),
-                            colliderB->GetRadius(transformB->scale.x, transformB->scale.y), &normal, &depth
+                            colliderB->GetRadius(transformB->scale.x, transformB->scale.y), normal, depth
                         );
                     }
 
@@ -93,7 +90,7 @@ void CollisionSystem2D::Update(float dt)
                         isColliding = checkBoxBoxCollision(
                             worldCenterA, worldCenterB,
                             colliderA->GetTransformedVertices(transformA),
-                            colliderB->GetTransformedVertices(transformB), &normal, &depth
+                            colliderB->GetTransformedVertices(transformB), normal, depth
                         );
 
                         // Make sure normal always faces in the direction of centerB to centerA
@@ -128,7 +125,7 @@ void CollisionSystem2D::Update(float dt)
                         }
 
                         isColliding = checkCircleBoxCollision(
-                            centerC, centerP, radius, vertices, &normal, &depth
+                            centerC, centerP, radius, vertices, normal, depth
                         );
 
                         // Make sure normal always faces in the direction of centerB to centerA
@@ -138,7 +135,7 @@ void CollisionSystem2D::Update(float dt)
 
                     if (isColliding)
                     {
-                        // Set collider properties and apply seperation
+                        // Set collider properties and apply separation
                         colliderA->isColliding = true;
                         colliderB->isColliding = true;
 
@@ -148,54 +145,50 @@ void CollisionSystem2D::Update(float dt)
                         auto* rbA = ecs->HasComponent<Physics2D>(entityA) ? ecs->GetComponent<Physics2D>(entityA) : nullptr;
                         auto* rbB = ecs->HasComponent<Physics2D>(entityB) ? ecs->GetComponent<Physics2D>(entityB) : nullptr;
 
-                        // 1. Convert your 2D vectors into Jolt-compatible vector formats (JPH::Vec3 or JPH::RVec3)
-                        // Jolt is a 3D engine, so we map 2D (X, Y) to 3D (X, Y, 0)
-                        JPH::Vec3 jphNormal(normal.x, normal.y, 0.0f);
-                        JPH::Vec3 jphVelA(rbA ? rbA->linearVelocity.x : 0.0f, rbA ? rbA->linearVelocity.y : 0.0f, 0.0f);
-                        JPH::Vec3 jphVelB(rbB ? rbB->linearVelocity.x : 0.0f, rbB ? rbB->linearVelocity.y : 0.0f, 0.0f);
-
-                        // 2. Compute Relative Velocity along the normal vector
-                        JPH::Vec3 relVel = jphVelB - jphVelA;
-                        float vn = relVel.Dot(jphNormal);
+                        // Compute Relative Velocity along the normal vector
+                        Vector2 velA = rbA ? rbA->linearVelocity : Vector2::ZERO;
+                        Vector2 velB = rbB ? rbB->linearVelocity : Vector2::ZERO;
+                        Vector2 relVel = velB - velA;
+                        float vn = Vector2::Dot(relVel, normal);
 
                         // If objects are already separating, do not push or bounce them
                         if (vn < 0.0f)
                         {
-                            // 3. Extract mass properties using Jolt's standard physics equations
                             float invMassA = rbA ? rbA->GetInverseMass() : 0.0f;
                             float invMassB = rbB ? rbB->GetInverseMass() : 0.0f;
                             float totalInvMass = invMassA + invMassB;
 
                             if (totalInvMass > 0.0f)
                             {
-                                // 4. Mix restitution (bounciness) parameters
-                                float mixedRestitution = 0.2f;
-                                if (rbA && rbB) mixedRestitution = std::min(rbA->restitution, rbB->restitution);
-                                else if (rbA)   mixedRestitution = rbA->restitution;
-                                else if (rbB)   mixedRestitution = rbB->restitution;
+                                float restitutionA = rbA ? rbA->GetRestitution() : 0.2f;
+                                float restitutionB = rbB ? rbB->GetRestitution() : 0.2f;
 
-                                // 5. Calculate the Impulse Scalar using Jolt's core contact constraint math
+                                // Mix restitution (bounciness) parameters
+                                float mixedRestitution = 0.2f;
+                                if (rbA && rbB) mixedRestitution = std::min(restitutionA, restitutionB);
+                                else if (rbA) mixedRestitution = restitutionA;
+                                else if (rbB) mixedRestitution = restitutionB;
+
+                                // Calculate the Impulse Scalar
                                 // Impulse j = -(1 + e) * vn / (1/mA + 1/mB)
                                 float impulseScalar = -(1.0f + mixedRestitution) * vn;
                                 impulseScalar /= totalInvMass;
 
-                                JPH::Vec3 jphImpulse = impulseScalar * jphNormal;
+                                Vector2 impulse = normal * impulseScalar;
 
-                                // 6. Apply impulses right back onto your custom velocity storage arrays
-                                if (rbA && !rbA->isStatic)
+                                // Apply impulses right back onto velocity storage arrays
+                                if (rbA && !rbA->lockPosition)
                                 {
-                                    rbA->linearVelocity.x -= jphImpulse.GetX() * invMassA;
-                                    rbA->linearVelocity.y -= jphImpulse.GetY() * invMassA;
+                                    rbA->linearVelocity -= impulse * invMassA;
                                 }
-                                if (rbB && !rbB->isStatic)
+                                if (rbB && !rbB->lockPosition)
                                 {
-                                    rbB->linearVelocity.x += jphImpulse.GetX() * invMassB;
-                                    rbB->linearVelocity.y += jphImpulse.GetY() * invMassB;
+                                    rbB->linearVelocity += impulse * invMassB;
                                 }
                             }
                         }
 
-                        // Seperate the colliding bodies
+                        // Separate the colliding bodies
                         seperateBodies(transformA, transformB, normal, depth, colliderA->isStatic, colliderB->isStatic);
                     }
 
@@ -222,17 +215,17 @@ void CollisionSystem2D::Update(float dt)
 }
 
 bool CollisionSystem2D::checkCircleCircleCollision(
-    Vector2& centerA, Vector2& centerB, float radiusA, float radiusB, Vector2* normal, float* depth
+    Vector2& centerA, Vector2& centerB, float radiusA, float radiusB, Vector2& outNormal, float& outDepth
 )
 {
-    *normal = Vector2::ZERO;
-    *depth = 0.0f;
+    outNormal = Vector2::ZERO;
+    outDepth = 0.0f;
 
     float distance = Vector2::Magnitude(centerB - centerA);
     float totalRadii = radiusA + radiusB;
 
-    *normal = Vector2::Normalize(centerB - centerA);
-    *depth = totalRadii - distance;
+    outNormal = Vector2::Normalize(centerB - centerA);
+    outDepth = totalRadii - distance;
 
     // Collision occurs if distance between circles is less than the sum of their radii
     return distance < totalRadii;
@@ -240,11 +233,11 @@ bool CollisionSystem2D::checkCircleCircleCollision(
 
 bool CollisionSystem2D::checkBoxBoxCollision(
     Vector2& centerA, Vector2& centerB,
-    std::array<Vector2, 4>& verticesA, std::array<Vector2, 4>& verticesB, Vector2* normal, float* depth
+    std::array<Vector2, 4>& verticesA, std::array<Vector2, 4>& verticesB, Vector2& outNormal, float& outDepth
 )
 {
-    *normal = Vector2::ZERO;
-    *depth = (float)INFINITY;
+    outNormal = Vector2::ZERO;
+    outDepth = (float)INFINITY;
 
     // Polygon A
     for (size_t i = 0; i < verticesA.size(); i++)
@@ -269,10 +262,10 @@ bool CollisionSystem2D::checkBoxBoxCollision(
         if (minA >= maxB || minB >= maxA) return false;
 
         float axisDepth = std::min(maxB - minA, maxA - minB);
-        if (axisDepth < *depth)
+        if (axisDepth < outDepth)
         {
-            *depth = axisDepth;
-            *normal = axis;
+            outDepth = axisDepth;
+            outNormal = axis;
         }
     }
 
@@ -299,10 +292,10 @@ bool CollisionSystem2D::checkBoxBoxCollision(
         if (minA >= maxB || minB >= maxA) return false;
 
         float axisDepth = std::min(maxB - minA, maxA - minB);
-        if (axisDepth < *depth)
+        if (axisDepth < outDepth)
         {
-            *depth = axisDepth;
-            *normal = axis;
+            outDepth = axisDepth;
+            outNormal = axis;
         }
     }
 
@@ -311,11 +304,11 @@ bool CollisionSystem2D::checkBoxBoxCollision(
 
 bool CollisionSystem2D::checkCircleBoxCollision(
     Vector2& centerC, Vector2& centerP,
-    float radius, std::array<Vector2, 4>& vertices, Vector2* normal, float* depth
+    float radius, std::array<Vector2, 4>& vertices, Vector2& outNormal, float& outDepth
 )
 {
-    *normal = Vector2::ZERO;
-    *depth = (float)INFINITY;
+    outNormal = Vector2::ZERO;
+    outDepth = (float)INFINITY;
 
     Vector2 axis = Vector2::ZERO;
     float axisDepth = 0.0f;
@@ -344,10 +337,10 @@ bool CollisionSystem2D::checkCircleBoxCollision(
         if (minA >= maxB || minB >= maxA) return false;
 
         axisDepth = std::min(maxB - minA, maxA - minB);
-        if (axisDepth < *depth)
+        if (axisDepth < outDepth)
         {
-            *depth = axisDepth;
-            *normal = axis;
+            outDepth = axisDepth;
+            outNormal = axis;
         }
     }
 
@@ -366,10 +359,10 @@ bool CollisionSystem2D::checkCircleBoxCollision(
     if (minA >= maxB || minB >= maxA) return false;
 
     axisDepth = std::min(maxB - minA, maxA - minB);
-    if (axisDepth < *depth)
+    if (axisDepth < outDepth)
     {
-        *depth = axisDepth;
-        *normal = axis;
+        outDepth = axisDepth;
+        outNormal = axis;
     }
 
     return true;

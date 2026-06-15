@@ -16,23 +16,29 @@ void PhysicsSystem2D::Update(float dt)
         auto* transform = ecs->GetComponent<Transform2D>(e);
         auto* rigidbody = ecs->GetComponent<Physics2D>(e);
 
-        if (rigidbody->isStatic) continue;
-
-        // Calculate semi-implicit acceleration from accumulated frames forces
-        Vector2 totalAcceleration = rigidbody->acceleration + (rigidbody->force * rigidbody->GetInverseMass());
-
-        // Integrate velocity
-        rigidbody->linearVelocity += totalAcceleration * METER * dt;
-
-        // Apply exponential linear damping
-        if (rigidbody->linearDamping > 0.0f)
+        if (!rigidbody->lockPosition) 
         {
-            // v = v * e^(-damping * dt)
-            rigidbody->linearVelocity = rigidbody->linearVelocity * std::exp(-rigidbody->linearDamping * dt);
+            // Calculate semi-implicit acceleration from accumulated frames forces
+            Vector2 totalAcceleration = rigidbody->acceleration + (rigidbody->force * rigidbody->GetInverseMass());
+
+            // Integrate velocity
+            rigidbody->linearVelocity += totalAcceleration * METER * dt;
+
+            // Apply exponential linear damping v = v * e^(-damping * dt)
+            rigidbody->linearVelocity = rigidbody->linearVelocity * std::exp(-rigidbody->GetLinearDamping() * dt);
+
+            // Integrate position
+            transform->position += rigidbody->linearVelocity * dt;
         }
 
-        // Integrate position
-        transform->position += rigidbody->linearVelocity * dt;
+        if (!rigidbody->lockRotation)
+        {
+            // Apply exponential angular damping
+            rigidbody->angularVelocity = rigidbody->angularVelocity * std::exp(-rigidbody->GetAngularDamping() * dt);
+
+            // Integrate rotation
+            transform->rotation += rigidbody->angularVelocity * dt;
+        }
 
         // Clear accumulated parameters for next frame
         rigidbody->force = Vector2::ZERO;

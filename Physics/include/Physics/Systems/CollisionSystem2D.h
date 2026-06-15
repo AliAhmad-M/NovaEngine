@@ -22,6 +22,23 @@ struct CollisionSystem2D : public ISystem
 private:
     EngineContext* m_ctx;
 
+    // Represents contact between 2 colliding objects
+    struct CollisionManifold
+    {
+        EntityID entityA;
+        EntityID entityB;
+        Vector2  normal;
+        float    depth;
+        Vector2  contactP1;
+        Vector2  contactP2;
+        int      contactCount;
+
+        CollisionManifold(EntityID a, EntityID b,const Vector2& normal, float depth, 
+            const Vector2& contactP1, const Vector2& contactP2, int contactCount)
+            : entityA(a), entityB(b), normal(normal), depth(depth), 
+            contactP1(contactP1), contactP2(contactP2), contactCount(std::clamp(contactCount, 0, 2)) {}
+    };
+
     // Represents AABB vertical edge
     struct Edge 
 	{
@@ -44,25 +61,31 @@ private:
     bool checkCircleCircleCollision(
         Vector2& centerA, Vector2& centerB, 
         float radiusA, float radiusB, 
-        Vector2* normal, float* depth
+        Vector2& outNormal, float& outDepth
     );
-
+    
     bool checkBoxBoxCollision(
         Vector2& centerA, Vector2& centerB,
         std::array<Vector2, 4>& verticesA, 
-        std::array<Vector2, 4>& verticesB, Vector2* normal, float* depth
+        std::array<Vector2, 4>& verticesB, Vector2& outNormal, float& outDepth
     );
 
     bool checkCircleBoxCollision(
         Vector2& centerC, Vector2& centerP,
         float radius, 
-        std::array<Vector2, 4>& vertices, Vector2* normal, float* depth
+        std::array<Vector2, 4>& vertices, Vector2& outDepth, float& outNormal
     );
 
     size_t findClosestVertex(
         const Vector2& center, 
         const std::array<Vector2, 4>& vertices
     );
+    
+    //void pointSegmentDistance(
+    //    const Vector2& point,
+    //    const Vector2& a, const Vector2& b,
+    //    float& outDistanceSq, Vector2& outContactPoint
+    //);
 
     void projectVertices(
         const std::array<Vector2, 4>& vertices, 

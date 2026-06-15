@@ -12,7 +12,7 @@
 #include <Core/Utilities/Shape2D.h>
 #include <Core/Utilities/Color.h>
 
-#define M_PI 3.14159274f
+static constexpr float PI = 3.14159274f;
 
 /**
  * @brief Component that defines geometric shapes for collision detection and resolution.
@@ -89,7 +89,7 @@ struct Collider2D
             return empty;
         }
 
-        float radians = transform->rotation * ((float)M_PI / 180.0f);
+        float radians = transform->rotation * ((float)PI / 180.0f);
 
         // Create a transformation matrix
         Matrix3x2 transformationMatrix =
