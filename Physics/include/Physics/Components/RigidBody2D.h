@@ -1,10 +1,6 @@
 #pragma once
+
 #include <box2d/box2d.h>
-#include <box2d/b2_body.h>
-#include <box2d/b2_fixture.h>
-#include <box2d/b2_circle_shape.h>
-#include <box2d/b2_polygon_shape.h>
-#include <box2d/b2_world_callbacks.h>
 #include <bitset>
 #include <algorithm>
 #include <Core/Utilities/Vector2.h>
@@ -15,11 +11,12 @@ static constexpr float PHYSICS_PPM = 64.0f;
 struct RigidBody2D
 {
 public:
-    b2Body* body = nullptr;
-    b2Fixture* fixture = nullptr;
-    bool isColliding = false;
-    Vector2 normal = Vector2::ZERO;
+    b2BodyId  body = b2_nullBodyId;
+    b2ShapeId fixture = b2_nullShapeId;
+
     Vector2 centerOffset = Vector2::ZERO;
+    Vector2 normal = Vector2::ZERO;
+    bool isColliding = false;
 
     /**
      * @brief Creates a circular physics body
@@ -31,16 +28,20 @@ public:
      * @param restitution How bouncy the body is, from 0 to 1
      * @param friction How slippery the surface is, from 0 to 1
      * @param lockRotation If true, prevents forces from making the body rotate
+     * @param linearDamping Damping applied to linear velocity, reduces speed over time
+     * @param angularDamping Damping applied to angular velocity, reduces rotation over time
      */
     RigidBody2D(
         const Vector2& centerOffset,
         float r,
-        bool isStatic = false,
-        bool isSensor = false,
+        bool  isStatic = false,
+        bool  isSensor = false,
         float density = 1.0f,
         float restitution = 0.2f,
         float friction = 0.5f,
-        bool lockRotation = false
+        bool  lockRotation = false,
+        float linearDamping = 0.0f,
+        float angularDamping = 0.0f
     )
         : centerOffset(centerOffset)
         , m_shape(Shape2D::CIRCLE)
@@ -50,6 +51,8 @@ public:
         , m_restitution(std::clamp(restitution, 0.0f, 1.0f))
         , m_friction(std::clamp(friction, 0.0f, 1.0f))
         , m_lockRotation(lockRotation)
+        , m_linearDamping(std::max(0.0f, linearDamping))
+        , m_angularDamping(std::max(0.0f, angularDamping))
     {
         m_circle.radius = std::max(0.001f, r);
         m_layer.set(0);
@@ -67,17 +70,21 @@ public:
      * @param restitution How bouncy the body is, from 0 to 1
      * @param friction How slippery the surface is, from 0 to 1
      * @param lockRotation If true, prevents forces from making the body rotate
+     * @param linearDamping Damping applied to linear velocity, reduces speed over time
+     * @param angularDamping Damping applied to angular velocity, reduces rotation over time
      */
     RigidBody2D(
         const Vector2& centerOffset,
         float w,
         float h,
-        bool isStatic = false,
-        bool isSensor = false,
+        bool  isStatic = false,
+        bool  isSensor = false,
         float density = 1.0f,
         float restitution = 0.2f,
         float friction = 0.5f,
-        bool lockRotation = false
+        bool  lockRotation = false,
+        float linearDamping = 0.0f,
+        float angularDamping = 0.0f
     )
         : centerOffset(centerOffset)
         , m_shape(Shape2D::BOX)
@@ -87,6 +94,8 @@ public:
         , m_restitution(std::clamp(restitution, 0.0f, 1.0f))
         , m_friction(std::clamp(friction, 0.0f, 1.0f))
         , m_lockRotation(lockRotation)
+        , m_linearDamping(std::max(0.0f, linearDamping))
+        , m_angularDamping(std::max(0.0f, angularDamping))
     {
         m_box.halfW = std::max(0.001f, w * 0.5f);
         m_box.halfH = std::max(0.001f, h * 0.5f);
@@ -109,21 +118,23 @@ public:
     /**
      * @brief Updates the radius dynamically
      * @param radius New radius in pixels
-     * @param currentScale Optional multiplier
+     * @param currentScale Optional uniform scale multiplier
      */
     void SetRadius(float radius, float currentScale = 1.0f)
     {
         if (m_shape != Shape2D::CIRCLE) return;
         m_circle.radius = std::max(0.001f, radius);
 
-        if (fixture)
+        if (B2_IS_NON_NULL(fixture))
         {
-            auto* circleShape = dynamic_cast<b2CircleShape*>(fixture->GetShape());
-            if (circleShape)
-            {
-                circleShape->m_radius = (m_circle.radius * currentScale) / PHYSICS_PPM;
-                synchronizeMassData();
-            }
+            b2Circle circle;
+            circle.center = {
+                (centerOffset.x * currentScale) / PHYSICS_PPM,
+                (centerOffset.y * currentScale) / PHYSICS_PPM
+            };
+            circle.radius = (m_circle.radius * currentScale) / PHYSICS_PPM;
+            b2Shape_SetCircle(fixture, &circle);
+            synchronizeMassData();
         }
     }
 
@@ -131,13 +142,13 @@ public:
      * @brief Gets half width span
      * @return Stored half width in pixels
      */
-    float GetHalfWidth() const { return m_shape == Shape2D::BOX ? m_box.halfW : 0.0f; }
+    float GetHalfWidth()  const { return m_shape == Shape2D::BOX ? m_box.halfW : 0.0f; }
 
     /**
      * @brief Gets full width span
      * @return Width of the body in pixels
      */
-    float GetFullWidth() const { return m_shape == Shape2D::BOX ? m_box.halfW * 2.0f : 0.0f; }
+    float GetFullWidth()  const { return m_shape == Shape2D::BOX ? m_box.halfW * 2.0f : 0.0f; }
 
     /**
      * @brief Gets half height span
@@ -155,7 +166,7 @@ public:
      * @brief Updates the rectangle dimensions dynamically
      * @param w New width in pixels
      * @param h New height in pixels
-     * @param currentScale Optional multiplier
+     * @param currentScale Optional per-axis scale multiplier
      */
     void SetDimensions(float w, float h, const Vector2& currentScale = Vector2::ONE)
     {
@@ -163,18 +174,17 @@ public:
         m_box.halfW = std::max(0.001f, w * 0.5f);
         m_box.halfH = std::max(0.001f, h * 0.5f);
 
-        if (fixture)
+        if (B2_IS_NON_NULL(fixture))
         {
-            auto* polyShape = dynamic_cast<b2PolygonShape*>(fixture->GetShape());
-            if (polyShape)
-            {
-                float scaledHalfW = (m_box.halfW * currentScale.x) / PHYSICS_PPM;
-                float scaledHalfH = (m_box.halfH * currentScale.y) / PHYSICS_PPM;
-                b2Vec2 scaledOffset = { (centerOffset.x * currentScale.x) / PHYSICS_PPM, (centerOffset.y * currentScale.y) / PHYSICS_PPM };
-
-                polyShape->SetAsBox(scaledHalfW, scaledHalfH, scaledOffset, 0.0f);
-                synchronizeMassData();
-            }
+            float   scaledHalfW = (m_box.halfW * currentScale.x) / PHYSICS_PPM;
+            float   scaledHalfH = (m_box.halfH * currentScale.y) / PHYSICS_PPM;
+            b2Vec2  offset = {
+                (centerOffset.x * currentScale.x) / PHYSICS_PPM,
+                (centerOffset.y * currentScale.y) / PHYSICS_PPM
+            };
+            b2Polygon polygon = b2MakeOffsetBox(scaledHalfW, scaledHalfH, offset, b2Rot_identity);
+            b2Shape_SetPolygon(fixture, &polygon);
+            synchronizeMassData();
         }
     }
 
@@ -186,7 +196,7 @@ public:
     /**
      * @brief Gets the complete collision mask bitset
      */
-    uint8_t GetCollisionMaskRaw() const { return static_cast<uint8_t>(m_mask.to_ulong()); }
+    uint8_t GetCollisionMaskRaw()  const { return static_cast<uint8_t>(m_mask.to_ulong()); }
 
     /**
      * @brief Overwrites the entire collision layer bitset
@@ -198,7 +208,7 @@ public:
      * @brief Overwrites the entire collision mask bitset
      * @param rawMask Byte configuration setting mask flags
      */
-    void SetCollisionMaskRaw(uint8_t rawMask) { m_mask = std::bitset<8>(rawMask); synchronizeFilterData(); }
+    void SetCollisionMaskRaw(uint8_t rawMask) { m_mask = std::bitset<8>(rawMask);  synchronizeFilterData(); }
 
     /**
      * @brief Assigns a single bit state flag into collision layer
@@ -210,9 +220,9 @@ public:
     /**
      * @brief Assigns a single bit state flag into collision mask
      * @param index Targeted specific bit index coordinate (0 to 7)
-     * @param value True turns the tracking bit active, false sets the flag clear.
+     * @param value True turns the tracking bit active, false sets the flag clear
      */
-    void SetCollisionMask(uint8_t index, bool value) { if (index < 8) { m_mask.set(index, value); synchronizeFilterData(); } }
+    void SetCollisionMask(uint8_t index, bool value) { if (index < 8) { m_mask.set(index, value);  synchronizeFilterData(); } }
 
     /**
      * @brief Reads a designated bit state value from the collision layer
@@ -238,9 +248,9 @@ public:
     void SetStatic(bool isStatic)
     {
         m_isStatic = isStatic;
-        if (body)
+        if (B2_IS_NON_NULL(body))
         {
-            body->SetType(m_isStatic ? b2_staticBody : b2_dynamicBody);
+            b2Body_SetType(body, m_isStatic ? b2_staticBody : b2_dynamicBody);
             synchronizeMassData();
         }
     }
@@ -253,11 +263,11 @@ public:
     /**
      * @brief Toggles whether the body should resolve collisions or act as a sensor
      * @param isSensor True makes it a sensor, false enables collision resolution
+     * @note The change takes effect when the body is recreated (typically on next system update)
      */
     void SetSensor(bool isSensor)
     {
         m_isSensor = isSensor;
-        if (fixture) fixture->SetSensor(m_isSensor);
     }
 
     /**
@@ -272,7 +282,7 @@ public:
     void SetLockRotation(bool lock)
     {
         m_lockRotation = lock;
-        if (body) body->SetFixedRotation(m_lockRotation);
+        if (B2_IS_NON_NULL(body)) b2Body_SetFixedRotation(body, m_lockRotation);
     }
 
     /**
@@ -287,11 +297,8 @@ public:
     void SetDensity(float density)
     {
         m_density = std::max(0.0f, density);
-        if (fixture)
-        {
-            fixture->SetDensity(m_density);
-            synchronizeMassData();
-        }
+        if (B2_IS_NON_NULL(fixture))
+            b2Shape_SetDensity(fixture, m_density, true);
     }
 
     /**
@@ -306,7 +313,7 @@ public:
     void SetRestitution(float restitution)
     {
         m_restitution = std::clamp(restitution, 0.0f, 1.0f);
-        if (fixture) fixture->SetRestitution(m_restitution);
+        if (B2_IS_NON_NULL(fixture)) b2Shape_SetRestitution(fixture, m_restitution);
     }
 
     /**
@@ -316,22 +323,44 @@ public:
 
     /**
      * @brief Adjusts the surface friction coefficient
-     * @param friction Coefficient clamped 0.0f and 1.0f
+     * @param friction Coefficient clamped between 0.0f and 1.0f
      */
     void SetFriction(float friction)
     {
         m_friction = std::clamp(friction, 0.0f, 1.0f);
-        if (fixture)
-        {
-            fixture->SetFriction(m_friction);
-            if (body)
-            {
-                for (b2ContactEdge* ce = body->GetContactList(); ce; ce = ce->next)
-                {
-                    ce->contact->ResetFriction();
-                }
-            }
-        }
+        if (B2_IS_NON_NULL(fixture)) b2Shape_SetFriction(fixture, m_friction);
+    }
+
+    /**
+     * @brief Gets the linear damping coefficient
+     * @return Damping value that reduces linear velocity over time
+     */
+    float GetLinearDamping() const { return m_linearDamping; }
+
+    /**
+     * @brief Adjusts the linear damping coefficient
+     * @param damping Non-negative damping value, reduces linear velocity over time
+     */
+    void SetLinearDamping(float damping)
+    {
+        m_linearDamping = std::max(0.0f, damping);
+        if (B2_IS_NON_NULL(body)) b2Body_SetLinearDamping(body, m_linearDamping);
+    }
+
+    /**
+     * @brief Gets the angular damping coefficient
+     * @return Damping value that reduces angular velocity over time
+     */
+    float GetAngularDamping() const { return m_angularDamping; }
+
+    /**
+     * @brief Adjusts the angular damping coefficient
+     * @param damping Non-negative damping value, reduces angular velocity over time
+     */
+    void SetAngularDamping(float damping)
+    {
+        m_angularDamping = std::max(0.0f, damping);
+        if (B2_IS_NON_NULL(body)) b2Body_SetAngularDamping(body, m_angularDamping);
     }
 
     /** @brief Returns if body is in contact with floor */
@@ -346,17 +375,30 @@ public:
     /** @brief Returns if body is in contact with wall on the right */
     bool IsOnRightWall() const { return normal.x < -0.5f; }
 
-    /** @brief Returns whether this body is in a valid state or not */
-    bool IsValid()       const { return body != nullptr; }
+    /**
+     * @brief Returns whether this body is in a valid state or not
+     */
+    bool IsValid() const { return B2_IS_NON_NULL(body); }
 
     /**
-     * @brief Applies a constant linear continous force
+     * @brief Applies a constant linear continuous force
      * @param f Force vector in pixel dimensions
      */
     void ApplyForce(const Vector2& f) const
     {
-        if (body) body->ApplyForceToCenter({ f.x / PHYSICS_PPM, f.y / PHYSICS_PPM }, true);
+        if (B2_IS_NON_NULL(body))
+            b2Body_ApplyForceToCenter(body, { f.x / PHYSICS_PPM, f.y / PHYSICS_PPM }, true);
     }
+
+	/**
+	 * @brief Applies a constant angular continuous torque
+	 * @param torque Torque value in pixel dimensions
+	 */
+	void ApplyTorque(float torque) const
+	{
+		if (B2_IS_NON_NULL(body))
+			b2Body_ApplyTorque(body, torque, true);
+	}
 
     /**
      * @brief Applies an instantaneous sudden impulse
@@ -364,7 +406,8 @@ public:
      */
     void ApplyImpulse(const Vector2& impulse) const
     {
-        if (body) body->ApplyLinearImpulseToCenter({ impulse.x / PHYSICS_PPM, impulse.y / PHYSICS_PPM }, true);
+        if (B2_IS_NON_NULL(body))
+            b2Body_ApplyLinearImpulseToCenter(body, { impulse.x / PHYSICS_PPM, impulse.y / PHYSICS_PPM }, true);
     }
 
     /**
@@ -373,8 +416,8 @@ public:
      */
     Vector2 GetLinearVelocity() const
     {
-        if (!body) return Vector2::ZERO;
-        b2Vec2 v = body->GetLinearVelocity();
+        if (B2_IS_NULL(body)) return Vector2::ZERO;
+        b2Vec2 v = b2Body_GetLinearVelocity(body);
         return { v.x * PHYSICS_PPM, v.y * PHYSICS_PPM };
     }
 
@@ -384,36 +427,42 @@ public:
      */
     void SetLinearVelocity(const Vector2& v) const
     {
-        if (body) body->SetLinearVelocity({ v.x / PHYSICS_PPM, v.y / PHYSICS_PPM });
+        if (B2_IS_NON_NULL(body))
+            b2Body_SetLinearVelocity(body, { v.x / PHYSICS_PPM, v.y / PHYSICS_PPM });
     }
 
     /**
      * @brief Gets the body's current angular velocity
      * @return Angular velocity in radians per second
      */
-    float GetAngularVelocity() const { return body ? body->GetAngularVelocity() : 0.0f; }
+    float GetAngularVelocity() const
+    {
+        return B2_IS_NON_NULL(body) ? b2Body_GetAngularVelocity(body) : 0.0f;
+    }
 
     /**
-     * @brief Set's the body's current angular velocity
+     * @brief Sets the body's current angular velocity
      * @param radPerSec Target velocity in radians per second
      */
-    void SetAngularVelocity(float radPerSec) const { if (body) body->SetAngularVelocity(radPerSec); }
+    void SetAngularVelocity(float radPerSec) const
+    {
+        if (B2_IS_NON_NULL(body)) b2Body_SetAngularVelocity(body, radPerSec);
+    }
 
 private:
     void synchronizeMassData()
     {
-        if (body) body->ResetMassData();
+        if (B2_IS_NON_NULL(body)) b2Body_ApplyMassFromShapes(body);
     }
 
     void synchronizeFilterData()
     {
-        if (fixture)
+        if (B2_IS_NON_NULL(fixture))
         {
-            b2Filter filter;
-            filter.categoryBits = static_cast<uint16>(m_layer.to_ulong());
-            filter.maskBits = static_cast<uint16>(m_mask.to_ulong());
-            filter.groupIndex = 0;
-            fixture->SetFilterData(filter);
+            b2Filter filter = b2DefaultFilter();
+            filter.categoryBits = static_cast<uint64_t>(m_layer.to_ulong());
+            filter.maskBits = static_cast<uint64_t>(m_mask.to_ulong());
+            b2Shape_SetFilter(fixture, filter);
         }
     }
 
@@ -427,10 +476,12 @@ private:
     float m_density;
     float m_restitution;
     float m_friction;
+    float m_linearDamping;
+    float m_angularDamping;
 
-    bool  m_isStatic;
-    bool  m_isSensor;
-    bool  m_lockRotation;
+    bool m_isStatic;
+    bool m_isSensor;
+    bool m_lockRotation;
 
     std::bitset<8> m_layer;
     std::bitset<8> m_mask;

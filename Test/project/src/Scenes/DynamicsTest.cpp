@@ -19,9 +19,9 @@ static InputMap* s_inputMap;
 static Renderer* s_renderer;
 static Font* s_font;
 
-static constexpr float BALL_RADIUS = 8.0f;
-static constexpr float BOX_WIDTH   = 32.0f;
-static constexpr float BOX_HEIGHT  = 32.0f;
+static constexpr float BALL_RADIUS = 12.0f;
+static constexpr float BOX_WIDTH   = 24.0f;
+static constexpr float BOX_HEIGHT  = 24.0f;
 
 static float s_spawnTimer = 0.0f;
 static constexpr float SPAWN_COOLDOWN = 0.05f;

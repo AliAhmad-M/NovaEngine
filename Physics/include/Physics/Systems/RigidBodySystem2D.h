@@ -1,55 +1,9 @@
 #pragma once
 #include <box2d/box2d.h>
-#include <box2d/b2_world.h>
-#include <box2d/b2_world_callbacks.h>
-#include <box2d/b2_contact.h>
 #include <vector>
 #include <Core/ECS/ECS.h>
 #include <Core/Components/Transform2D.h>
 #include <Physics/Components/RigidBody2D.h>
-
-// Listens for contact information
-class PhysicsContactListener : public b2ContactListener
-{
-public:
-    struct ContactEvent
-    {
-        b2Body* bodyA;
-        b2Body* bodyB;
-        float   normalX;
-        float   normalY;
-    };
-
-    std::vector<ContactEvent> beginEvents;
-    std::vector<ContactEvent> endEvents;
-
-    void Clear()
-    {
-        beginEvents.clear();
-        endEvents.clear();
-    }
-
-    void BeginContact(b2Contact* contact) override
-    {
-        b2WorldManifold wm;
-        contact->GetWorldManifold(&wm);
-        beginEvents.push_back({
-            contact->GetFixtureA()->GetBody(),
-            contact->GetFixtureB()->GetBody(),
-            wm.normal.x,
-            wm.normal.y
-        });
-    }
-
-    void EndContact(b2Contact* contact) override
-    {
-        endEvents.push_back({
-            contact->GetFixtureA()->GetBody(),
-            contact->GetFixtureB()->GetBody(),
-            0.0f, 0.0f
-        });
-    }
-};
 
 class RigidBodySystem2D : public ISystem
 {
@@ -72,7 +26,7 @@ public:
 
     void TeleportEntity(EntityID e);
 
-    b2World* GetWorld() const { return m_world; }
+    b2WorldId GetWorldId() const { return m_worldId; }
 
 private:
     void BuildBody(EntityID e, const Transform2D* transform, RigidBody2D* rb);
@@ -81,6 +35,5 @@ private:
     void ProcessContacts();
 
     EngineContext* m_ctx;
-    b2World* m_world = nullptr;
-    PhysicsContactListener  m_listener;
+    b2WorldId m_worldId = b2_nullWorldId;
 };
