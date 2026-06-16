@@ -5,10 +5,9 @@
 #include <sstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
-#include <Core/ECS/ECS.h>
+#include <Core/EngineContext.h>
 #include <Core/Utilities/Vector2.h>
 #include <Graphics/Texture.h>
-#include <Graphics/Renderer.h>
 
 struct Tile 
 {
@@ -26,18 +25,18 @@ class Tilemap
 {
 public:
 	Tilemap() = default;
-	Tilemap(ECS* ecs, int tileSizeX = 16, int tileSizeY = 16, const Vector2& scale = Vector2::ONE);
+	Tilemap(EngineContext* ctx, int tileSizeX = 16, int tileSizeY = 16, const Vector2& scale = Vector2::ONE);
 
 	void AddTileset(const Texture* tileset, int firstgid);
 	void LoadTilemap(const std::string& path);
 	void GenerateMap(
-		Renderer* renderer, const Vector2& origin = Vector2::ZERO,
+		const Vector2& origin = Vector2::ZERO,
 		float rotation = 0.0f, int startZIndex = 0
 	);
 	void AddCollision(int layer, const std::vector<int>& tiles);
 
 private:
-	ECS* m_ecs;
+	EngineContext* m_ctx;
 
 	int m_mapWidth = 0;
 	int m_mapHeight = 0;

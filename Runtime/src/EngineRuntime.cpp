@@ -97,24 +97,18 @@ void EngineRuntime::registerComponents()
 {
     m_ecs.RegisterComponent<Transform2D>();
     m_ecs.RegisterComponent<Sprite2D>();
-    m_ecs.RegisterComponent<Collider2D>();
-    m_ecs.RegisterComponent<Physics2D>();
+    m_ecs.RegisterComponent<RigidBody2D>();
 }
 
 void EngineRuntime::initializeSystems() 
 {
-    // Initialize sprite system
+    // Initialize sprite system (2D)
     m_ecs.RegisterSystem<SpriteSystem2D>(&m_context);
     m_ecs.AddComponentToSystem<Transform2D, SpriteSystem2D>();
     m_ecs.AddComponentToSystem<Sprite2D, SpriteSystem2D>();
 
-    // Initialize collision system
-    m_ecs.RegisterSystem<CollisionSystem2D>(&m_context);
-    m_ecs.AddComponentToSystem<Transform2D, CollisionSystem2D>();
-    m_ecs.AddComponentToSystem<Collider2D, CollisionSystem2D>();
-
-    // Initialize physics system
-    m_ecs.RegisterSystem<PhysicsSystem2D>(&m_context);
-    m_ecs.AddComponentToSystem<Transform2D, PhysicsSystem2D>();
-    m_ecs.AddComponentToSystem<Physics2D, PhysicsSystem2D>();
+    // Initialize physics system (2D)
+    m_ecs.RegisterSystem<RigidBodySystem2D>(&m_context);
+    m_ecs.AddComponentToSystem<Transform2D, RigidBodySystem2D>();
+    m_ecs.AddComponentToSystem<RigidBody2D, RigidBodySystem2D>();
 }

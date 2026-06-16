@@ -30,6 +30,8 @@ public:
      */
     void Begin(const Matrix4x4& projection);
 
+    void DrawLine(Vector2 a, Vector2 b, const Color& color, float thickness = 2.0f);
+
     /**
      * @brief Draws a textured and tinted quad.
      * @param texture  OpenGL texture ID.

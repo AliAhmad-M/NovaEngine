@@ -18,12 +18,14 @@ public:
 
 private:
     std::vector<EntityID> m_spawnedBalls;
-    Vector2 m_spawnPoint = Vector2(100.0f, 100.0f);
-    const float BALL_RADIUS = 8.0f;
+    std::vector<EntityID> m_spawnedBoxes;
+    std::vector<EntityID> m_staticBodies;
+
     float m_currentFPS = 0.0f;
     float m_fpsTimer = 0.0f;
-    int m_frameCount = 0;
+    int   m_frameCount = 0;
 
-    void spawnBallWithImpulse();
-    void applyWindowConstraints(int windowWidth, int windowHeight);
+    void spawnCircle();
+    void spawnBox();
+    void createStaticBodies();
 };

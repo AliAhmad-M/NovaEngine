@@ -22,6 +22,15 @@
     },
     "openal-soft",
     "joltphysics",
-    "nlohmann-json"
+    "nlohmann-json",
+    "box2d",
+    {
+      "name": "imgui",
+      "features": [
+        "glfw-binding",
+        "opengl3-binding",
+        "docking-experimental"
+      ]
+    }
   ]
 }

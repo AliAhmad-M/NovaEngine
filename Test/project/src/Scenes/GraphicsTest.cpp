@@ -13,8 +13,6 @@
 #include <Platform/InputMap.h>
 #include <Runtime/EngineRuntime.h>
 
-#include <glad/glad.h> 
-
 static ContentLoader* s_contentLoader;
 
 static ECS* s_ecs;
@@ -63,7 +61,11 @@ void GraphicsTest::Ready()
     Vector2 centerOffset = Vector2(8.0f, 14.0f);
     float colliderWidth = 10.0f;
     float colliderHeight = 6.0f;
-    s_ecs->AddComponent<Collider2D>(m_ninjaEntity, Collider2D(centerOffset, colliderWidth, colliderHeight));
+    s_ecs->AddComponent<RigidBody2D>(m_ninjaEntity, RigidBody2D(centerOffset, colliderWidth, colliderHeight));
+    s_ecs->GetComponent<RigidBody2D>(m_ninjaEntity)->SetLockRotation(true);
+
+    // Remove gravity from scene
+    s_ecs->GetSystem<RigidBodySystem2D>()->SetGravity(Vector2::ZERO);
 
     // Bind inputs
     s_inputMap->Bind("move_up", GLFW_KEY_UP);
@@ -75,7 +77,7 @@ void GraphicsTest::Ready()
     int tileSize = 16;
     float tileScaling = 4.0f;
 
-    Tilemap tilemap = Tilemap(s_ecs, tileSize, tileSize, Vector2(tileScaling, tileScaling));
+    Tilemap tilemap = Tilemap(m_context, tileSize, tileSize, Vector2(tileScaling, tileScaling));
 
     tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/spring.png"), 1);
     tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/dirt.png"), 29);
@@ -85,14 +87,14 @@ void GraphicsTest::Ready()
     tilemap.AddTileset(s_contentLoader->LoadTexture("project/assets/summer.png"), 123);
 
     tilemap.LoadTilemap("project/assets/tilemap.json");
-    tilemap.GenerateMap(s_renderer);
+    tilemap.GenerateMap();
 
     tilemap.AddCollision(1, { 59, 60, 61, 62, 63, 64, 65, 66 });
 }
 
 void GraphicsTest::Update(float dt)
 {
-    // FPS
+    // FPS counter tracking
     m_fpsTimer += dt;
     m_frameCount++;
     if (m_fpsTimer >= 0.5f) {
@@ -103,67 +105,69 @@ void GraphicsTest::Update(float dt)
 
     auto* transform = s_ecs->GetComponent<Transform2D>(m_ninjaEntity);
     auto* sprite = s_ecs->GetComponent<Sprite2D>(m_ninjaEntity);
+    auto* rb = s_ecs->GetComponent<RigidBody2D>(m_ninjaEntity);
 
     float moveSpeed = 150.0f;
-    bool  isMoving = false;
+    bool isMoving = false;
+    Vector2 velocity = Vector2::ZERO;
 
     int windowWidth, windowHeight;
     s_window->GetSize(&windowWidth, &windowHeight);
 
     // Update camera offset
-    s_camera2D->SetOffset(s_window, 
+    s_camera2D->SetOffset(s_window,
         transform->position - Vector2((float)windowWidth * 0.5f, (float)windowHeight * 0.5f));
 
-    // Track last facing direction
     std::string targetAnimation = m_lastDirection;
 
     // Movement + walk animations
     if (s_inputMap->IsButtonDown("move_up")) {
-        transform->position.y -= moveSpeed * dt;
+        velocity.y = -moveSpeed;
         targetAnimation = "walk_up";
         m_lastDirection = "idle_up";
         isMoving = true;
     }
     else if (s_inputMap->IsButtonDown("move_down")) {
-        transform->position.y += moveSpeed * dt;
+        velocity.y = moveSpeed;
         targetAnimation = "walk_down";
         m_lastDirection = "idle_down";
         isMoving = true;
     }
 
     if (s_inputMap->IsButtonDown("move_left")) {
-        transform->position.x -= moveSpeed * dt;
+        velocity.x = -moveSpeed;
         targetAnimation = "walk_left";
         m_lastDirection = "idle_left";
         isMoving = true;
     }
     else if (s_inputMap->IsButtonDown("move_right")) {
-        transform->position.x += moveSpeed * dt;
+        velocity.x = moveSpeed;
         targetAnimation = "walk_right";
         m_lastDirection = "idle_right";
         isMoving = true;
     }
 
-    // Switch to directional idle when no key held
-    if (!isMoving) targetAnimation = m_lastDirection;
+    // Pass the calculated velocity to the physics body
+    if (rb) {
+        rb->SetLinearVelocity(velocity);
+    }
 
+    if (!isMoving) targetAnimation = m_lastDirection;
     sprite->SetAnimation(targetAnimation);
 
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
         0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
 
-    // Collisions
-    s_ecs->GetSystem<CollisionSystem2D>()->Update(dt);
-    
+    // Physics
+    s_ecs->GetSystem<RigidBodySystem2D>()->Update(dt);
+
     // Rendering
     s_renderer->Begin(projection);
-        //Draw sprites
-        s_ecs->GetSystem<SpriteSystem2D>()->Update(dt);
+    s_ecs->GetSystem<SpriteSystem2D>()->Update(dt);
 
-        // Draw text
-        s_renderer->DrawText(*s_font, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);        
-        char statsBuffer[64]; sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", s_ecs->GetEntityCount(), m_currentFPS);
-        s_renderer->DrawText(*s_font, statsBuffer, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
+    s_renderer->DrawText(*s_font, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
+    char statsBuffer[64]; sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", s_ecs->GetEntityCount(), m_currentFPS);
+    s_renderer->DrawText(*s_font, statsBuffer, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
     s_renderer->Flush();
 }
 

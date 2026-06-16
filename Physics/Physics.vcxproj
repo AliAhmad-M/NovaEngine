@@ -138,15 +138,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\Physics\Components.h" />
-    <ClInclude Include="include\Physics\Components\Collider2D.h" />
-    <ClInclude Include="include\Physics\Components\Physics2D.h" />
+    <ClInclude Include="include\Physics\Components\RigidBody2D.h" />
     <ClInclude Include="include\Physics\Systems.h" />
-    <ClInclude Include="include\Physics\Systems\CollisionSystem2D.h" />
-    <ClInclude Include="include\Physics\Systems\PhysicsSystem2D.h" />
+    <ClInclude Include="include\Physics\Systems\RigidBodySystem2D.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Systems\CollisionSystem2D.cpp" />
-    <ClCompile Include="src\Systems\PhysicsSystem2D.cpp" />
+    <ClCompile Include="src\Systems\RigidBodySystem2D.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

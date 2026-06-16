@@ -1,13 +1,15 @@
 #include <Runtime/Tilemap/Tilemap.h>
 #include <Core/Utilities/Matrix4x4.h>
+#include <Core/ECS/ECS.h>
 #include <Core/Components.h>
+#include <Graphics/Renderer.h>
+#include <Graphics/Components.h> 
 #include <Physics/Components.h>
 #include <Runtime/ContentLoader.h>
-#include <Graphics/Components.h>
 #include <cmath>
 
-Tilemap::Tilemap(ECS* ecs, int tileSizeX, int tileSizeY, const Vector2& scale)
-	: m_ecs(ecs)
+Tilemap::Tilemap(EngineContext* ctx, int tileSizeX, int tileSizeY, const Vector2& scale)
+	: m_ctx(ctx)
 {
 	m_tileSizeX = std::max(1, tileSizeX);
 	m_tileSizeY = std::max(1, tileSizeY);
@@ -219,8 +221,10 @@ void Tilemap::loadInfiniteTilemap(const nlohmann::json& mapfilejson)
 	}
 }
 
-void Tilemap::GenerateMap(Renderer* renderer, const Vector2& origin, float rotation, int startZIndex)
+void Tilemap::GenerateMap(const Vector2& origin, float rotation, int startZIndex)
 {
+	ECS* ecs = m_ctx->Get<ECS>(); Renderer* renderer = m_ctx->Get<Renderer>();
+
 	if (m_layers.empty() || m_tiles.empty()) return;
 
 	int pixelW = (int)(m_mapWidth * m_tileSizeX);
@@ -275,9 +279,9 @@ void Tilemap::GenerateMap(Renderer* renderer, const Vector2& origin, float rotat
 		renderer->Flush();
 		layerTexture->UnbindFBO();
 
-		EntityID entity = m_ecs->CreateEntity();
-		m_ecs->AddComponent(entity, Transform2D(origin, rotation, m_scale));
-		m_ecs->AddComponent(entity, Sprite2D(layerTexture, 1, 1, startZIndex + (int)layerIdx));
+		EntityID entity = ecs->CreateEntity();
+		ecs->AddComponent(entity, Transform2D(origin, rotation, m_scale));
+		ecs->AddComponent(entity, Sprite2D(layerTexture, 1, 1, startZIndex + (int)layerIdx));
 	}
 }
 
@@ -313,6 +317,8 @@ void Tilemap::AddCollision(int layer, const std::vector<int>& tiles)
 
 void Tilemap::generateCollisionTiles()
 {
+	ECS* ecs = m_ctx->Get<ECS>();
+
 	for (size_t row = 0; row < m_mapHeight; row++)
 	{
 		size_t col = 0;
@@ -361,9 +367,9 @@ void Tilemap::generateCollisionTiles()
 				float y = (float)row * m_tileSizeY * m_scale.y;
 
 				// Create tile entity
-				EntityID tileColliderEntity = m_ecs->CreateEntity();
-				m_ecs->AddComponent(tileColliderEntity, Transform2D(Vector2(x, y), 0.0f, m_scale));
-				m_ecs->AddComponent(tileColliderEntity, Collider2D(Vector2(w / 2.0f, h / 2.0f), w, h, true, true));
+				EntityID tileColliderEntity = ecs->CreateEntity();
+				ecs->AddComponent(tileColliderEntity, Transform2D(Vector2(x, y), 0.0f, m_scale));
+				ecs->AddComponent(tileColliderEntity, RigidBody2D(Vector2(w / 2.0f, h / 2.0f), w, h, true, false));
 			}
 			else
 			{

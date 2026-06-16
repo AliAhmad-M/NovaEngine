@@ -77,6 +77,22 @@ void Renderer::Begin(const Matrix4x4& projection) {
     m_vertexBatch.clear();
 }
 
+void Renderer::DrawLine(Vector2 a, Vector2 b, const Color& color, float thickness)
+{
+    Vector2 dir = { b.x - a.x, b.y - a.y };
+    float len = sqrtf(dir.x * dir.x + dir.y * dir.y);
+    if (len < 0.0001f) return;
+
+    // Angle of the line direction
+    float angle = atan2f(dir.y, dir.x) * (180.0f / 3.14159f);
+
+    // Midpoint of the segment
+    Vector2 mid = { (a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f };
+    Vector2 quadPos = { mid.x - len * 0.5f, mid.y - thickness * 0.5f };
+
+    pushQuad(m_whiteTexture, quadPos, { len, thickness }, angle, 0, 0, 1, 1, color);
+}
+
 void Renderer::DrawQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
     float tx, float ty, float tw, float th, const Color& color)
 {
@@ -88,18 +104,34 @@ void Renderer::DrawRect(Vector2 pos, Vector2 size, float rotation, const Color& 
     if (!outline)
     {
         pushQuad(m_whiteTexture, pos, size, rotation, 0, 0, 1, 1, color);
+        return;
     }
-    else
-    {
-        // Top
-        pushQuad(m_whiteTexture, { pos.x, pos.y }, { size.x, thickness }, rotation, 0, 0, 1, 1, color);
-        // Bottom
-        pushQuad(m_whiteTexture, { pos.x, pos.y + size.y - thickness }, { size.x, thickness }, rotation, 0, 0, 1, 1, color);
-        // Left
-        pushQuad(m_whiteTexture, { pos.x, pos.y }, { thickness, size.y }, rotation, 0, 0, 1, 1, color);
-        // Right
-        pushQuad(m_whiteTexture, { pos.x + size.x - thickness, pos.y }, { thickness, size.y }, rotation, 0, 0, 1, 1, color);
-    }
+
+    // Compute actual rotated corners
+    float rad = rotation * (3.14159f / 180.0f);
+    float cosR = cosf(rad);
+    float sinR = sinf(rad);
+    float hw = size.x * 0.5f;
+    float hh = size.y * 0.5f;
+
+    Vector2 center = { pos.x + hw, pos.y + hh };
+
+    auto rotate = [&](float lx, float ly) -> Vector2 {
+        return {
+            center.x + lx * cosR - ly * sinR,
+            center.y + lx * sinR + ly * cosR
+        };
+        };
+
+    Vector2 tl = rotate(-hw, -hh);
+    Vector2 tr = rotate(hw, -hh);
+    Vector2 br = rotate(hw, hh);
+    Vector2 bl = rotate(-hw, hh);
+
+    DrawLine(tl, tr, color, thickness);
+    DrawLine(tr, br, color, thickness);
+    DrawLine(br, bl, color, thickness);
+    DrawLine(bl, tl, color, thickness);
 }
 
 void Renderer::DrawCircle(Vector2 center, float radius, const Color& color, bool outline, int segments, float thickness)
