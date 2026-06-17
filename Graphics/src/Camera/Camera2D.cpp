@@ -1,7 +1,6 @@
 #include <Graphics/Camera/Camera2D.h>
 #include <cstdio>
 
-// Set offset within boundaries
 void Camera2D::SetOffset(Window* window, const Vector2& newOffset)
 {
     if (!window)
@@ -51,13 +50,22 @@ void Camera2D::SetOffset(Window* window, const Vector2& newOffset)
     }
 
     // Set the clamped offset
-    m_offset = clampedOffset;
+    m_camOffset = clampedOffset;
 }
 
-// Return camera offset
 Vector2& Camera2D::GetOffset()
 {
-    return m_offset;
+    return m_camOffset;
+}
+
+float Camera2D::GetZoom()
+{
+	return m_zoom;
+}
+
+void Camera2D::SetZoom(float zoom)
+{
+	m_zoom = std::max(0.01f, zoom);
 }
 
 void Camera2D::SetBoundaries(Window* window, float left, float right, float up, float down)

@@ -12,7 +12,7 @@ int main()
     EngineContext* context = runtime.GetContext();
     
     // Setup scenes
-    std::string defaultScene = "Physics";
+    std::string defaultScene = "Graphics";
     SceneManager* sceneManager = context->Get<SceneManager>();
     sceneManager->CreateScene<DynamicsTest>("Physics", context);
     sceneManager->CreateScene<GraphicsTest>("Graphics", context);

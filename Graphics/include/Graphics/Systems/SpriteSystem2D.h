@@ -23,6 +23,6 @@ private:
     std::vector<EntityID> m_entities;
     bool zSortingNeeded = false;
 
-    void sortRenderingOrder(ECS* ecs);
+    void sortRenderingOrder();
     float getGlobalYSortOrigin(Transform2D* transform, Sprite2D* sprite);
 };
