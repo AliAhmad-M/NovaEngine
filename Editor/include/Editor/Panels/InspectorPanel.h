@@ -14,19 +14,17 @@ public:
 private:
     void DrawTransform2D();
     void DrawSprite2D();
-    void DrawCollider2D();
-    void DrawPhysics2D();
-    void DrawMonoBehavior();
+	void DrawRigidBody2D();
+    void DrawCustomBehavior();
     void DrawAddComponentMenu();
 
     EditorContext* m_ctx = nullptr;
     ImGuiWindowFlags m_windowFlags = 0;
 
     bool m_hasTransform = true;
-    bool m_hasSprite = false;
-    bool m_hasCollider = false;
-    bool m_hasPhysics = false;
-    bool m_hasMonoBehavior = false;
+    bool m_hasSprite2D = false;
+    bool m_hasRigidBody2D = false;
+    bool m_hasCustomBehavior = false;
 
     // Placeholder transform data
     float m_pos[2] = { 0.0f, 0.0f };
@@ -43,10 +41,9 @@ private:
     bool  m_isTrigger = false;
 
     // Placeholder physics data
-    float m_mass = 1.0f;
+    float m_density = 1.0f;
     float m_restitution = 0.3f;
-    bool  m_isKinematic = false;
-    float m_velocity[2] = { 0.0f, 0.0f };
+    float m_linVelocity[2] = { 0.0f, 0.0f };
 
     // Placeholder custom behaviour
     char m_scriptName[128] = "MyBehavior";

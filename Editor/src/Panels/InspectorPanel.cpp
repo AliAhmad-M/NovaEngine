@@ -120,10 +120,9 @@ void InspectorPanel::Draw()
 
     // Draw each component block
     if (m_hasTransform)   DrawTransform2D();
-    if (m_hasSprite)      DrawSprite2D();
-    if (m_hasCollider)    DrawCollider2D();
-    if (m_hasPhysics)     DrawPhysics2D();
-    if (m_hasMonoBehavior) DrawMonoBehavior();
+    if (m_hasSprite2D)      DrawSprite2D();
+    if (m_hasRigidBody2D)    DrawRigidBody2D();
+    if (m_hasCustomBehavior) DrawCustomBehavior();
 
     ImGui::Spacing();
     DrawAddComponentMenu();
@@ -147,7 +146,7 @@ void InspectorPanel::DrawTransform2D()
 
 void InspectorPanel::DrawSprite2D()
 {
-    if (!BeginComponent("Sprite2D", &m_hasSprite)) return;
+    if (!BeginComponent("Sprite2D", &m_hasSprite2D)) return;
 
     BeginPropertyTable();
 
@@ -170,43 +169,29 @@ void InspectorPanel::DrawSprite2D()
     EndComponent();
 }
 
-void InspectorPanel::DrawCollider2D()
+void InspectorPanel::DrawRigidBody2D() 
 {
-    if (!BeginComponent("Collider2D", &m_hasCollider)) return;
+	if (!BeginComponent("RigidBody2D", &m_hasRigidBody2D)) return;
 
     BeginPropertyTable();
 
-    NextRow(); FieldVec2("Offset", m_colliderOffset);
-    NextRow(); FieldVec2("Size", m_colliderSize, 0.5f);
-    NextRow(); FieldBool("Is Trigger", &m_isTrigger);
-
-    EndPropertyTable();
-    EndComponent();
-}
-
-void InspectorPanel::DrawPhysics2D()
-{
-    if (!BeginComponent("Physics2D", &m_hasPhysics)) return;
-
-    BeginPropertyTable();
-
-    NextRow(); FieldFloat("Mass", &m_mass, 0.01f, 0.001f, 1000.0f);
+    NextRow(); FieldFloat("Density", &m_density, 0.01f, 0.001f, 1000.0f);
     NextRow(); FieldFloat("Restitution", &m_restitution, 0.01f, 0.0f, 1.0f);
-    NextRow(); FieldBool("Is Kinematic", &m_isKinematic);
-    NextRow(); FieldVec2("Velocity", m_velocity);
+    NextRow(); FieldVec2("Linear Velocity", m_linVelocity);
 
     EndPropertyTable();
     EndComponent();
 }
 
-void InspectorPanel::DrawMonoBehavior()
+void InspectorPanel::DrawCustomBehavior()
 {
-    if (!BeginComponent("MonoBehavior", &m_hasMonoBehavior)) return;
+    if (!BeginComponent("CustomBehavior", &m_hasCustomBehavior)) return;
 
     BeginPropertyTable();
     NextRow(); FieldString("Script", m_scriptName, sizeof(m_scriptName));
     EndPropertyTable();
 
+    // Placeholder text
     ImGui::Spacing();
     ImGui::TextDisabled("Custom behavior properties will appear here.");
 
@@ -227,10 +212,9 @@ void InspectorPanel::DrawAddComponentMenu()
         ImGui::Separator();
 
         if (!m_hasTransform && ImGui::MenuItem("Transform2D"))   m_hasTransform = true;
-        if (!m_hasSprite && ImGui::MenuItem("Sprite2D"))      m_hasSprite = true;
-        if (!m_hasCollider && ImGui::MenuItem("Collider2D"))    m_hasCollider = true;
-        if (!m_hasPhysics && ImGui::MenuItem("Physics2D"))     m_hasPhysics = true;
-        if (!m_hasMonoBehavior && ImGui::MenuItem("MonoBehavior")) m_hasMonoBehavior = true;
+        if (!m_hasSprite2D && ImGui::MenuItem("Sprite2D"))      m_hasSprite2D = true;
+        if (!m_hasRigidBody2D && ImGui::MenuItem("RigidBody2D"))    m_hasRigidBody2D = true;
+        if (!m_hasCustomBehavior && ImGui::MenuItem("CustomBehavior")) m_hasCustomBehavior = true;
 
         ImGui::EndPopup();
     }
