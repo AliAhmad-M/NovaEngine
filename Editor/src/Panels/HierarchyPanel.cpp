@@ -1,30 +1,18 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/HierarchyPanel.h>
+#include <Editor/Panels/ScenePanel.h>
+#include <Core/ECS/ECS.h>
 #include <imgui.h>
 #include <cstring>
 #include <cstdio>
+#include <algorithm>
 
 HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctx(ctx)
 {
-    // Load icons
-    m_iconEntity = ctx->contentLoader.LoadTexture("assets/icons/icon_entity.png");
-    m_iconCamera = ctx->contentLoader.LoadTexture("assets/icons/icon_camera.png");
-    m_iconLight = ctx->contentLoader.LoadTexture("assets/icons/icon_light.png");
-
-    // Placeholder entities
-    m_entities.push_back({ m_nextId++, "Camera", EntityType::Camera });
-    m_entities.push_back({ m_nextId++, "Entity0", EntityType::Entity });
-    m_entities.push_back({ m_nextId++, "Entity1", EntityType::Entity });
-}
-
-GLuint HierarchyPanel::GetEntityIcon(EntityType type) const
-{
-    switch (type)
-    {
-        case EntityType::Camera:  return m_iconCamera->GetHandle();
-        case EntityType::Light:   return m_iconLight->GetHandle();
-        default:                  return m_iconEntity->GetHandle();
-    }
+	ContentLoader* contentLoader = ctx->engineContext ? ctx->engineContext->Get<ContentLoader>() : nullptr;
+    m_iconEntity = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_entity.png") : nullptr;
+    m_iconCamera = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_camera.png") : nullptr;
+    m_iconLight = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_light.png") : nullptr;
 }
 
 void HierarchyPanel::Draw()
@@ -33,9 +21,12 @@ void HierarchyPanel::Draw()
 
     DrawCreateButton();
     ImGui::Separator();
-    DrawEntityList();
 
-    // Right-click on empty space inside the panel
+    if (m_ctx->activeScene)
+        DrawEntityList();
+    else
+        ImGui::TextDisabled("No scene open");
+
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
         ImGui::OpenPopup("HierarchyContextMenu");
 
@@ -44,50 +35,66 @@ void HierarchyPanel::Draw()
     ImGui::End();
 }
 
+void HierarchyPanel::CreateEntity()
+{
+    if (!m_ctx->activeScene || !m_ctx->engineContext) return;
+
+    ECS* ecs = m_ctx->engineContext->Get<ECS>();
+    if (!ecs) return;
+
+    EntityID newEntity = ecs->CreateEntity();
+
+    char name[64];
+    std::snprintf(name, sizeof(name), "Entity_%zu",
+        m_ctx->activeScene->GetEntities().size());
+
+    m_ctx->activeScene->AddEntity(newEntity, name);
+
+    // Mark scene as modified
+    if (m_ctx->scenePanel)
+        m_ctx->scenePanel->MarkSceneAsDirty();
+}
+
 void HierarchyPanel::DrawCreateButton()
 {
+    if (!m_ctx->activeScene || !m_ctx->engineContext) return;
+
     if (ImGui::Button("+ Add Entity"))
-    {
-        char name[64];
-        std::snprintf(name, sizeof(name), "Entity_%d", m_nextId);
-        m_entities.push_back({ m_nextId++, name, EntityType::Entity });
-    }
-    }
+        CreateEntity();
+}
+
 void HierarchyPanel::DrawEntityList()
 {
-    for (auto& node : m_entities)
+    auto& entities = m_ctx->activeScene->GetEntities();
+
+    for (auto& node : entities)
     {
-        bool selected = (m_ctx->selectedEntity == node.id);
+        bool selected = (m_ctx->selectedEntity == static_cast<int>(node.id));
 
-        ImGui::PushID(node.id);
+        ImGui::PushID(static_cast<int>(node.id));
 
-        // Save cursor position
         ImVec2 rowPos = ImGui::GetCursorPos();
 
-        // Draw selectable background first (invisible label)
         if (ImGui::Selectable("##row", selected,
             ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick,
             ImVec2(0, 24)))
         {
-            m_ctx->selectedEntity = node.id;
+            m_ctx->selectedEntity = static_cast<int>(node.id);
         }
 
-        // Right-click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
         {
-            m_ctx->selectedEntity = node.id;
+            m_ctx->selectedEntity = static_cast<int>(node.id);
             ImGui::OpenPopup("EntityRowMenu");
         }
 
-        // Draw icon and text
         ImGui::SetCursorPos(rowPos);
 
-        // Icon tint
         ImVec4 tint = selected
             ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
             : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
 
-        GLuint iconTex = GetEntityIcon(node.type);
+        GLuint iconTex = m_iconEntity->GetHandle();
         ImGui::Image(
             (ImTextureID)(intptr_t)iconTex,
             ImVec2(30, 30),
@@ -97,22 +104,29 @@ void HierarchyPanel::DrawEntityList()
             ImVec4(0, 0, 0, 0)
         );
         ImGui::SameLine();
-        ImGui::SetCursorPosY(rowPos.y + 4.0f);  // vertically center text
+        ImGui::SetCursorPosY(rowPos.y + 4.0f);
         ImGui::Text("%s", node.name.c_str());
 
-        // Per-row context menu
         if (ImGui::BeginPopup("EntityRowMenu"))
         {
             ImGui::TextDisabled("%s", node.name.c_str());
             ImGui::Separator();
             if (ImGui::MenuItem("Delete"))
             {
-                m_entities.erase(
-                    std::remove_if(m_entities.begin(), m_entities.end(),
-                        [&](const EntityNode& e) { return e.id == node.id; }),
-                    m_entities.end());
-                if (m_ctx->selectedEntity == node.id)
+                EntityID idToRemove = node.id;
+
+                if (ECS* ecs = m_ctx->engineContext ? m_ctx->engineContext->Get<ECS>() : nullptr)
+                    ecs->DeleteEntity(idToRemove);
+
+                m_ctx->activeScene->RemoveEntity(idToRemove);
+
+                if (m_ctx->selectedEntity == static_cast<int>(idToRemove))
                     m_ctx->selectedEntity = -1;
+
+                // Mark scene as modified
+                if (m_ctx->scenePanel)
+                    m_ctx->scenePanel->MarkSceneAsDirty();
+
                 ImGui::EndPopup();
                 ImGui::PopID();
                 break;
@@ -123,15 +137,14 @@ void HierarchyPanel::DrawEntityList()
         ImGui::PopID();
     }
 }
+
 void HierarchyPanel::DrawContextMenu()
 {
     if (ImGui::BeginPopup("HierarchyContextMenu"))
     {
         if (ImGui::MenuItem("Create Empty Entity"))
         {
-            char name[64];
-            std::snprintf(name, sizeof(name), "Entity_%d", m_nextId);
-            m_entities.push_back({ m_nextId++, name });
+            CreateEntity();
         }
         ImGui::EndPopup();
     }

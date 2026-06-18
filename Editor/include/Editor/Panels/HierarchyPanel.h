@@ -1,19 +1,8 @@
 #pragma once
 #include <string>
-#include <vector>
-#include <algorithm>
 #include <Editor/EditorContext.h>
 #include <Graphics/Texture.h>
 #include <imgui.h>
-
-enum class EntityType { Entity, Camera, Light };
-
-struct EntityNode
-{
-    int id = -1;
-    std::string name = "Entity";
-    EntityType  type = EntityType::Entity;
-};
 
 class HierarchyPanel
 {
@@ -27,16 +16,12 @@ private:
     void DrawEntityList();
     void DrawContextMenu();
     void DrawCreateButton();
-    GLuint GetEntityIcon(EntityType type) const;
+    void CreateEntity();
 
-    EditorContext*          m_ctx = nullptr;
-    ImGuiWindowFlags        m_windowFlags = 0;
-    std::vector<EntityNode> m_entities;
-
-    int m_nextId = 0;
+    EditorContext* m_ctx = nullptr;
+    ImGuiWindowFlags m_windowFlags = 0;
 
     Texture* m_iconEntity;
     Texture* m_iconCamera;
     Texture* m_iconLight;
 };
-

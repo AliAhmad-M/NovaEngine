@@ -6,7 +6,8 @@
 /**
  * @brief 2D texture loaded from an image file.
  */
-class Texture {
+class Texture 
+{
 public:
     /** @brief Creates an empty texture. */
     Texture();

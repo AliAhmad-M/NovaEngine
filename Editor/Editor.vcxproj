@@ -148,6 +148,7 @@
     <ClCompile Include="src\Panels\HierarchyPanel.cpp" />
     <ClCompile Include="src\Panels\InspectorPanel.cpp" />
     <ClCompile Include="src\Panels\ScenePanel.cpp" />
+    <ClCompile Include="src\Scene\SceneSerializer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Editor\Editor.h" />
@@ -156,6 +157,8 @@
     <ClInclude Include="include\Editor\Panels\HierarchyPanel.h" />
     <ClInclude Include="include\Editor\Panels\InspectorPanel.h" />
     <ClInclude Include="include\Editor\Panels\ScenePanel.h" />
+    <ClInclude Include="include\Editor\Scene\EditorScene.h" />
+    <ClInclude Include="include\Editor\Scene\SceneSerializer.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\icons\icon_audio.png" />

@@ -7,7 +7,8 @@
 /**
  * @brief Helper class to load textures
  */
-class ContentLoader {
+class ContentLoader 
+{
 public:
 
     /**
@@ -18,12 +19,26 @@ public:
     Texture* LoadTexture(const std::string& path);
 
     /**
+     * @brief Gets the file path of a loaded texture
+     * @param texture Pointer to the texture
+     * @return File path of the texture, or empty string if not found
+     */
+    std::string GetTexturePath(const Texture* texture);
+
+    /**
      * @brief Loads or retrieves a font by path
      * @param path File path to the font
      * @param fontSize Size of the font
      * @return Pointer to Texture, nullptr if loading fails
      */
-    Font* LoadFont(const std::string& path, float fontsSize);
+    Font* LoadFont(const std::string& path, float fontSize);
+
+    /**
+     * @brief Gets the file path of a loaded font
+     * @param font Pointer to the font
+     * @return File path of the font, or empty string if not found
+     */
+    std::string GetFontPath(const Font* font);
     
     /**
      * @brief Cleans up all loaded assets

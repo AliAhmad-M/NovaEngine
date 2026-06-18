@@ -79,8 +79,6 @@ void DynamicsTest::Update(float dt)
         }
     }
 
-    s_ecs->GetSystem<RigidBodySystem2D>()->Update(dt);
-
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
         0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
 
@@ -186,30 +184,39 @@ void DynamicsTest::createStaticBodies()
     float halfThick = thickness * 0.5f;
 
     // Top Wall
-    Vector2 pos(fWidth * 0.5f, -halfThick);
-    EntityID id = s_ecs->CreateEntity();
-    s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
-    s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, fWidth, thickness, true, false, 1.0f, 0.5f, 0.3f));
-    m_staticBodies.push_back(id);
+    {
+        Vector2 pos(fWidth * 0.5f, -halfThick);
+        EntityID id = s_ecs->CreateEntity();
+        s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
+        s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, fWidth, thickness, true, false, 1.0f, 0.5f, 0.3f));
+        m_staticBodies.push_back(id);    
+    }
 
     // Bottom Wall
-    Vector2 pos(fWidth * 0.5f, fHeight + halfThick);
-    EntityID id = s_ecs->CreateEntity();
-    s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
-    s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, fWidth, thickness, true, false, 1.0f, 0.5f, 0.3f));
-    m_staticBodies.push_back(id);
+    {
+        Vector2 pos(fWidth * 0.5f, fHeight + halfThick);
+        EntityID id = s_ecs->CreateEntity();
+        s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
+        s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, fWidth, thickness, true, false, 1.0f, 0.5f, 0.3f));
+        m_staticBodies.push_back(id);
+    }
 
-    // Left Wall
-    Vector2 pos(-halfThick, fHeight * 0.5f);
-    EntityID id = s_ecs->CreateEntity();
-    s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
-    s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, thickness, fHeight, true, false, 1.0f, 0.5f, 0.3f));
-    m_staticBodies.push_back(id);
+    {
+        // Left Wall
+        Vector2 pos(-halfThick, fHeight * 0.5f);
+        EntityID id = s_ecs->CreateEntity();
+        s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
+        s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, thickness, fHeight, true, false, 1.0f, 0.5f, 0.3f));
+        m_staticBodies.push_back(id);
+    }
+
 
     // Right Wall
-    Vector2 pos(fWidth + halfThick, fHeight * 0.5f);
-    EntityID id = s_ecs->CreateEntity();
-    s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
-    s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, thickness, fHeight, true, false, 1.0f, 0.5f, 0.3f));
-    m_staticBodies.push_back(id);
+    {
+        Vector2 pos(fWidth + halfThick, fHeight * 0.5f);
+        EntityID id = s_ecs->CreateEntity();
+        s_ecs->AddComponent<Transform2D>(id, Transform2D(pos, 0.0f, Vector2(1.0f, 1.0f)));
+        s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, thickness, fHeight, true, false, 1.0f, 0.5f, 0.3f));
+        m_staticBodies.push_back(id);
+    }
 }

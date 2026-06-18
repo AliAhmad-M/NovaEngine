@@ -21,9 +21,6 @@
     <ClInclude Include="include\Runtime\Scene\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Runtime\Tilemap\Tilemap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\Runtime\EngineRuntime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -33,9 +30,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Scene\SceneManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Tilemap\Tilemap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\EngineRuntime.cpp">

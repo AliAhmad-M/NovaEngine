@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <filesystem>
 
 ScenePanel::ScenePanel(EditorContext* ctx)
     : m_ctx(ctx)
@@ -63,7 +64,18 @@ void ScenePanel::DrawTabBar()
         {
             m_activeTab = i;
             // Sync context
-            m_ctx->activeScenePath = tab.filePath.empty() ? tab.name : tab.filePath;
+            if (!tab.filePath.empty())
+            {
+                m_ctx->activeScenePath = tab.filePath;
+            }
+            else
+            {
+                // Construct the default save path for unsaved scenes
+                std::filesystem::path projectScenesDir = std::filesystem::current_path() / ".." / "Test" / "project" / "scenes";
+                projectScenesDir = std::filesystem::absolute(projectScenesDir);
+                m_ctx->activeScenePath = (projectScenesDir / (tab.name + ".json")).string();
+            }
+            m_ctx->activeScene = tab.scene.get();
             ImGui::EndTabItem();
         }
 
@@ -159,7 +171,14 @@ void ScenePanel::NewScene()
     int idx = (int)m_sceneTabs.size();
     char name[64];
     std::snprintf(name, sizeof(name), "Untitled_%d", idx);
-    m_sceneTabs.push_back({ name, "", false });
+
+    SceneTab tab;
+    tab.name = name;
+    tab.filePath = "";
+    tab.isDirty = true;  // Mark new scenes as dirty (unsaved)
+    tab.scene = std::make_unique<EditorScene>(name);
+
+    m_sceneTabs.push_back(std::move(tab));
 }
 
 void ScenePanel::CloseScene(int index)
@@ -168,4 +187,16 @@ void ScenePanel::CloseScene(int index)
     m_sceneTabs.erase(m_sceneTabs.begin() + index);
     if (m_activeTab >= (int)m_sceneTabs.size())
         m_activeTab = (int)m_sceneTabs.size() - 1;
+}
+
+void ScenePanel::MarkSceneAsSaved()
+{
+    if (m_activeTab >= 0 && m_activeTab < (int)m_sceneTabs.size())
+        m_sceneTabs[m_activeTab].isDirty = false;
+}
+
+void ScenePanel::MarkSceneAsDirty()
+{
+    if (m_activeTab >= 0 && m_activeTab < (int)m_sceneTabs.size())
+        m_sceneTabs[m_activeTab].isDirty = true;
 }

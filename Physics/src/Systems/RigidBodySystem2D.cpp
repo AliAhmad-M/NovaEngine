@@ -112,7 +112,6 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     auto* rb = ecs->GetComponent<RigidBody2D>(e);
 
     BuildBody(e, transform, rb);
-    entities.insert(e);
 }
 
 void RigidBodySystem2D::OnEntityRemoved(EntityID e)
@@ -126,8 +125,6 @@ void RigidBodySystem2D::OnEntityRemoved(EntityID e)
         rb->body = b2_nullBodyId;
         rb->fixture = b2_nullShapeId;
     }
-
-    entities.erase(e);
 }
 
 void RigidBodySystem2D::OnAllEntitiesRemoved()
@@ -146,7 +143,6 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
 
     Vector2 g = GetGravity();
     b2DestroyWorld(m_worldId);
-    entities.clear();
 
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = PointToB2(g.x, g.y);

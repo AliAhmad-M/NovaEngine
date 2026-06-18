@@ -2,7 +2,9 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <Editor/EditorContext.h>
+#include <Editor/Scene/EditorScene.h>
 #include <imgui.h>
 
 // Represents one scene tab/entry managed by the panel.
@@ -11,6 +13,7 @@ struct SceneTab
     std::string name;       // Display name
     std::string filePath;   // Path to scene
     bool isDirty = false;   // Unsaved changes
+    std::unique_ptr<EditorScene> scene;  // The actual scene data
 };
 
 class ScenePanel
@@ -20,6 +23,9 @@ public:
 
     void Draw();
     void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
+
+    void MarkSceneAsSaved();
+    void MarkSceneAsDirty();
 
 private:
     void DrawTabBar();

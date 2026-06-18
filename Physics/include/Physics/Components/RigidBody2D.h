@@ -14,7 +14,7 @@ public:
     b2BodyId  body = b2_nullBodyId;
     b2ShapeId fixture = b2_nullShapeId;
 
-    Vector2 centerOffset = Vector2::ZERO;
+    Vector2 centerOffset;
     Vector2 normal = Vector2::ZERO;
     bool isColliding = false;
 

@@ -1,5 +1,9 @@
 #include <Editor/Panels/InspectorPanel.h>
 #include <imgui.h>
+#include <cstring>
+
+#include <Core/ECS/ECS.h>
+#include <Graphics/Texture.h>
 
 static void FieldVec2(const char* label, float* v, float speed = 0.1f)
 {
@@ -22,6 +26,16 @@ static void FieldFloat(const char* label, float* v, float speed = 0.01f,
     ImGui::PopID();
 }
 
+static void FieldInt(const char* label, int* v, float speed = 1.0f, int vmin = 0, int vmax = 0)
+{
+    ImGui::PushID(label);
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::DragInt("##v", v, speed, vmin, vmax);
+    ImGui::PopID();
+}
+
 static void FieldBool(const char* label, bool* v)
 {
     ImGui::PushID(label);
@@ -41,7 +55,7 @@ static void FieldString(const char* label, char* buf, size_t bufSize)
     ImGui::PopID();
 }
 
-static bool BeginComponent(const char* name, bool* pOpen = nullptr)
+static bool BeginComponent(const char* name, bool* removeRequested = nullptr)
 {
     ImGui::PushID(name);
 
@@ -54,16 +68,14 @@ static bool BeginComponent(const char* name, bool* pOpen = nullptr)
 
     bool open = ImGui::TreeNodeEx(name, flags);
 
-    // Remove-component button
-    if (pOpen)
+    if (removeRequested)
     {
         float btnW = ImGui::GetFrameHeight();
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - btnW + ImGui::GetCursorPosX()
             - ImGui::GetStyle().ItemSpacing.x);
-        if (ImGui::Button("x", ImVec2(btnW, btnW))) *pOpen = false;
+        if (ImGui::Button("x", ImVec2(btnW, btnW))) *removeRequested = true;
     }
 
-    // Clean up ID stack
     if (!open)
     {
         ImGui::PopID();
@@ -72,13 +84,12 @@ static bool BeginComponent(const char* name, bool* pOpen = nullptr)
     return open;
 }
 
-static void EndComponent() 
-{ 
-    ImGui::TreePop(); 
+static void EndComponent()
+{
+    ImGui::TreePop();
     ImGui::PopID();
 }
 
-// Two-column property table helpers
 static void BeginPropertyTable()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4, 3));
@@ -109,7 +120,16 @@ void InspectorPanel::Draw()
         return;
     }
 
-    // Entity name header (stub)
+    ECS* ecs = m_ctx->engineContext ? m_ctx->engineContext->Get<ECS>() : nullptr;
+    if (!ecs)
+    {
+        ImGui::TextDisabled("No ECS available");
+        ImGui::End();
+        return;
+    }
+
+    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+
     char nameLabel[64];
     std::snprintf(nameLabel, sizeof(nameLabel), "Entity %d", m_ctx->selectedEntity);
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
@@ -118,11 +138,15 @@ void InspectorPanel::Draw()
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Draw each component block
-    if (m_hasTransform)   DrawTransform2D();
-    if (m_hasSprite2D)      DrawSprite2D();
-    if (m_hasRigidBody2D)    DrawRigidBody2D();
-    if (m_hasCustomBehavior) DrawCustomBehavior();
+	// Draw each component section if the entity has that component
+    if (Transform2D* t = ecs->GetComponent<Transform2D>(entity))
+        DrawTransform2D(*t);
+
+    if (Sprite2D* s = ecs->GetComponent<Sprite2D>(entity))
+        DrawSprite2D(*s);
+
+    if (RigidBody2D* rb = ecs->GetComponent<RigidBody2D>(entity))
+        DrawRigidBody2D(*rb);
 
     ImGui::Spacing();
     DrawAddComponentMenu();
@@ -130,77 +154,192 @@ void InspectorPanel::Draw()
     ImGui::End();
 }
 
-void InspectorPanel::DrawTransform2D()
+void InspectorPanel::DrawTransform2D(Transform2D& t)
 {
-    if (!BeginComponent("Transform2D", &m_hasTransform)) return;
+    bool removeRequested = false;
+    if (!BeginComponent("Transform2D", &removeRequested)) return;
 
     BeginPropertyTable();
-
-    NextRow(); FieldVec2("Position", m_pos);
-    NextRow(); FieldFloat("Rotation", &m_rot, 0.5f);
-    NextRow(); FieldVec2("Scale", m_scale);
-
+    NextRow(); FieldVec2("Position", &t.position.x);
+    NextRow(); FieldFloat("Rotation", &t.rotation, 0.5f);
+    NextRow(); FieldVec2("Scale", &t.scale.x);
     EndPropertyTable();
+
     EndComponent();
+
+    if (removeRequested)
+    {
+        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ecs->RemoveComponent<Transform2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+    }
 }
 
-void InspectorPanel::DrawSprite2D()
+void InspectorPanel::DrawTexturePathField(Sprite2D& s)
 {
-    if (!BeginComponent("Sprite2D", &m_hasSprite2D)) return;
+    // Get path to the texture
+    static char pathBuf[256];
+    std::string currentPath = m_ctx->engineContext->Get<ContentLoader>()->GetTexturePath(s.texture);
+    std::snprintf(pathBuf, sizeof(pathBuf), "%s", currentPath.c_str());
 
-    BeginPropertyTable();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Texture");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-28.0f);
 
-    NextRow(); FieldString("Texture", m_texturePath, sizeof(m_texturePath));
+    if (ImGui::InputText("##texPath", pathBuf, sizeof(pathBuf), ImGuiInputTextFlags_EnterReturnsTrue))
+    {
+        Texture* loaded = m_ctx->engineContext->Get<ContentLoader>()->LoadTexture(pathBuf);
+        if (loaded) s.texture = loaded;
+    }
 
-    // Inline "Browse" button on the same row
     ImGui::SameLine();
     if (ImGui::SmallButton("..."))
     {
-        // TODO: open file picker
+        // TODO: open Asset Browser picker filtered to AssetType::Texture
+    }
+}
+
+void InspectorPanel::DrawSprite2D(Sprite2D& s)
+{
+    bool removeRequested = false;
+    if (!BeginComponent("Sprite2D", &removeRequested)) return;
+
+    BeginPropertyTable();
+
+    NextRow(); DrawTexturePathField(s);
+
+    NextRow(); FieldInt("H Frames", &s.hframes, 1, 1, 0);
+    NextRow(); FieldInt("V Frames", &s.vframes, 1, 1, 0);
+    NextRow(); FieldInt("Frame", &s.frame, 1, 0, 0);
+    NextRow(); FieldBool("Flip H", &s.fliph);
+    NextRow(); FieldBool("Flip V", &s.flipv);
+    NextRow(); FieldFloat("Y Sort Origin", &s.ySortOrigin, 0.5f);
+    NextRow(); FieldBool("Apply Y Sort", &s.applyYSort);
+
+    NextRow();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Z Index");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-1.0f);
+    int zIndex = s.GetZIndex();
+    if (ImGui::DragInt("##zindex", &zIndex))
+        s.SetZIndex(zIndex);
+
+    EndPropertyTable();
+    EndComponent();
+
+    if (removeRequested)
+    {
+        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ecs->RemoveComponent<Sprite2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+    }
+}
+
+void InspectorPanel::DrawRigidBody2D(RigidBody2D& rb)
+{
+    bool removeRequested = false;
+    if (!BeginComponent("RigidBody2D", &removeRequested)) return;
+
+	BeginPropertyTable();
+
+	NextRow(); FieldVec2("Center Offset", &rb.centerOffset.x);
+
+    if (rb.GetShape() == Shape2D::CIRCLE)
+    {
+        NextRow();
+        ImGui::PushID("Radius");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Radius");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        float radius = rb.GetRadius();
+        if (ImGui::DragFloat("##radius", &radius, 0.5f, 0.001f))
+            rb.SetRadius(radius);
+        ImGui::PopID();
+    }
+    else
+    {
+        NextRow();
+        ImGui::PushID("Width");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Width");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        float width = rb.GetFullWidth();
+        if (ImGui::DragFloat("##width", &width, 0.5f, 0.001f))
+            rb.SetDimensions(width, rb.GetFullHeight());
+        ImGui::PopID();
+
+        NextRow();
+        ImGui::PushID("Height");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Height");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        float height = rb.GetFullHeight();
+        if (ImGui::DragFloat("##height", &height, 0.5f, 0.001f))
+            rb.SetDimensions(rb.GetFullWidth(), height);
+        ImGui::PopID();
     }
 
     NextRow();
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Color");
-    ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
-    ImGui::ColorEdit4("##color", m_color);
+    bool isStatic = rb.IsStatic();
+    FieldBool("Static", &isStatic);
+    if (isStatic != rb.IsStatic())
+        rb.SetStatic(isStatic);
+
+    NextRow();
+    bool isSensor = rb.IsSensor();
+    FieldBool("Sensor", &isSensor);
+    if (isSensor != rb.IsSensor())
+        rb.SetSensor(isSensor);
+
+    NextRow();
+    float density = rb.GetDensity();
+    FieldFloat("Density", &density, 0.01f, 0.0f, 0.0f);
+    if (density != rb.GetDensity())
+        rb.SetDensity(density);
+
+    NextRow();
+    float restitution = rb.GetRestitution();
+    FieldFloat("Restitution", &restitution, 0.01f, 0.0f, 1.0f);
+    if (restitution != rb.GetRestitution())
+        rb.SetRestitution(restitution);
+
+    NextRow();
+    float friction = rb.GetFriction();
+    FieldFloat("Friction", &friction, 0.01f, 0.0f, 1.0f);
+    if (friction != rb.GetFriction())
+        rb.SetFriction(friction);
+
+    NextRow();
+    bool lockRotation = rb.LockRotation();
+    FieldBool("Lock Rotation", &lockRotation);
+    if (lockRotation != rb.LockRotation())
+        rb.SetLockRotation(lockRotation);
+
+    NextRow();
+    float linearDamping = rb.GetLinearDamping();
+    FieldFloat("Linear Damping", &linearDamping, 0.01f, 0.0f, 0.0f);
+    if (linearDamping != rb.GetLinearDamping())
+        rb.SetLinearDamping(linearDamping);
+
+    NextRow();
+    float angularDamping = rb.GetAngularDamping();
+    FieldFloat("Angular Damping", &angularDamping, 0.01f, 0.0f, 0.0f);
+    if (angularDamping != rb.GetAngularDamping())
+        rb.SetAngularDamping(angularDamping);
 
     EndPropertyTable();
     EndComponent();
-}
 
-void InspectorPanel::DrawRigidBody2D() 
-{
-	if (!BeginComponent("RigidBody2D", &m_hasRigidBody2D)) return;
-
-    BeginPropertyTable();
-
-    NextRow(); FieldFloat("Density", &m_density, 0.01f, 0.001f, 1000.0f);
-    NextRow(); FieldFloat("Restitution", &m_restitution, 0.01f, 0.0f, 1.0f);
-    NextRow(); FieldVec2("Linear Velocity", m_linVelocity);
-
-    EndPropertyTable();
-    EndComponent();
-}
-
-void InspectorPanel::DrawCustomBehavior()
-{
-    if (!BeginComponent("CustomBehavior", &m_hasCustomBehavior)) return;
-
-    BeginPropertyTable();
-    NextRow(); FieldString("Script", m_scriptName, sizeof(m_scriptName));
-    EndPropertyTable();
-
-    // Placeholder text
-    ImGui::Spacing();
-    ImGui::TextDisabled("Custom behavior properties will appear here.");
-
-    EndComponent();
+    if (removeRequested)
+    {
+        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ecs->RemoveComponent<RigidBody2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+    }
 }
 
 void InspectorPanel::DrawAddComponentMenu()
 {
-    // "Add Component" button
+    ECS* ecs = m_ctx->engineContext->Get<ECS>();
+    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+
     float btnW = 200.0f;
     ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - btnW) * 0.5f);
     if (ImGui::Button("Add Component", ImVec2(btnW, 0)))
@@ -211,12 +350,16 @@ void InspectorPanel::DrawAddComponentMenu()
         ImGui::TextDisabled("Components");
         ImGui::Separator();
 
-        if (!m_hasTransform && ImGui::MenuItem("Transform2D"))   m_hasTransform = true;
-        if (!m_hasSprite2D && ImGui::MenuItem("Sprite2D"))      m_hasSprite2D = true;
-        if (!m_hasRigidBody2D && ImGui::MenuItem("RigidBody2D"))    m_hasRigidBody2D = true;
-        if (!m_hasCustomBehavior && ImGui::MenuItem("CustomBehavior")) m_hasCustomBehavior = true;
+        if (!ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
+            ecs->AddComponent<Transform2D>(entity, Transform2D());
+
+        if (!ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
+            ecs->AddComponent<Sprite2D>(entity, Sprite2D());
+        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("Circle RigidBody2D"))
+            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
+		if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("Box RigidBody2D"))
+            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
 
         ImGui::EndPopup();
     }
 }
-

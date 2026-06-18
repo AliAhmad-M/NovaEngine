@@ -1,7 +1,6 @@
 #include <Graphics/Systems/SpriteSystem2D.h>
 #include <Core/Utilities/Matrix4x4.h>
 #include <Graphics/Renderer.h>
-#include <Graphics/Camera/Camera2D.h>
 #include <Platform/Window.h>
 
 #include <glad/glad.h>
@@ -88,8 +87,7 @@ void SpriteSystem2D::Update(float dt)
 
     if (camera2D == nullptr) 
     {
-        fprintf(stderr, "[ERROR]: SpriteSystem -> Camera is NULL!\n");
-        exit(1);
+        fprintf(stderr, "[WARN]: SpriteSystem -> Main camera is NULL!\n");
     }
     if (window == nullptr) 
     {
@@ -113,8 +111,8 @@ void SpriteSystem2D::Update(float dt)
     window->GetSize(&windowWidth, &windowHeight);
 
     // Get camera offset and zoom
-    Vector2 camOffset = camera2D->GetOffset();
-    float zoom = camera2D->GetZoom();
+    Vector2 camOffset = camera2D ? camera2D->GetOffset() : Vector2::ZERO;
+    float zoom = camera2D ? camera2D->GetZoom() : 1.0f;
 
     // Calculate culling bounds
     float cullLeft = camOffset.x - CAMERA_MARGIN;

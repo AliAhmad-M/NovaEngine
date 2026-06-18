@@ -7,7 +7,7 @@
 #include <Graphics/Texture.h>
 #include <imgui.h>
 
-enum class AssetType { Unknown, Texture, Scene, Font, Audio, Physics };  // added Physics
+enum class AssetType { Unknown, Texture, Scene, Font, Audio };
 
 struct AssetEntry
 {
@@ -53,7 +53,6 @@ private:
     Texture* m_iconAudio;
     Texture* m_iconScript;
     Texture* m_iconFont;
-    Texture* m_iconPhysics;
 
     float  m_iconSize = 64.0f;
     char   m_filter[128] = {};

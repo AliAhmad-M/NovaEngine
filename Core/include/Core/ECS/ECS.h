@@ -40,23 +40,28 @@ public:
      * @brief Deletes an entity and all its components
      * @param entity Entity to delete
      */
-    void DeleteEntity(EntityID entity) {
-        m_entityManager->DeleteEntity(entity);
+    void DeleteEntity(EntityID entity) 
+    {
         m_systemManager->OnEntityDestroyed(entity);
-
-        for (auto& pair : m_sparseSets) {
+        
+        for (auto& pair : m_sparseSets) 
+        {
             pair.second->OnEntityDestroyed(entity);
         }
+
+        m_entityManager->DeleteEntity(entity);
     }
 
     /**
      * @brief Deletes all entities and components
      */
-    void DeleteAllEntities() {
+    void DeleteAllEntities() 
+    {
         m_entityManager->ClearEntites();
         m_systemManager->OnAllEntitesDestroyed();
 
-        for (auto& pair : m_sparseSets) {
+        for (auto& pair : m_sparseSets) 
+        {
             pair.second->OnAllEntitiesDestroyed();
         }
     }
@@ -224,7 +229,8 @@ private:
     {
         const std::type_index typeIndex(typeid(T));
         auto it = m_sparseSets.find(typeIndex);
-        if (it != m_sparseSets.end()) {
+        if (it != m_sparseSets.end()) 
+        {
             return static_cast<SparseSet<T>*>(it->second.get());
         }
 

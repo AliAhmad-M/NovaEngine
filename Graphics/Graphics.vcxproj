@@ -137,22 +137,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\Graphics\Camera\Camera2D.h" />
-    <ClInclude Include="include\Graphics\Camera\Camera3D.h" />
-    <ClInclude Include="include\Graphics\Camera\ICamera.h" />
     <ClInclude Include="include\Graphics\Components.h" />
+    <ClInclude Include="include\Graphics\Components\Camera2D.h" />
     <ClInclude Include="include\Graphics\Components\Sprite2D.h" />
     <ClInclude Include="include\Graphics\Font.h" />
     <ClInclude Include="include\Graphics\Renderer.h" />
     <ClInclude Include="include\Graphics\Systems.h" />
+    <ClInclude Include="include\Graphics\Systems\CameraSystem2D.h" />
     <ClInclude Include="include\Graphics\Systems\SpriteSystem2D.h" />
     <ClInclude Include="include\Graphics\Texture.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Camera\Camera2D.cpp" />
-    <ClCompile Include="src\Camera\Camera3D.cpp" />
     <ClCompile Include="src\Font.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
+    <ClCompile Include="src\Systems\CameraSystem2D.cpp" />
     <ClCompile Include="src\Systems\SpriteSystem2D.cpp" />
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>

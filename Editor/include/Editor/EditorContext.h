@@ -1,12 +1,23 @@
 #pragma once
 #include <Runtime/ContentLoader.h>
+#include <Core/EngineContext.h>
+#include <Editor/Scene/EditorScene.h>
 #include <string>
+
+class ScenePanel;
 
 // Shared context across multiple panels
 struct EditorContext
 {
-    int selectedEntity = -1;
-    std::string activeScenePath;
+	int selectedEntity = -1;
+	std::string activeScenePath;
 
-    ContentLoader contentLoader;
+	// Engine-side context pointer for services
+	EngineContext* engineContext = nullptr;
+
+	// The scene currently focused in the editor
+	EditorScene* activeScene = nullptr;
+
+	// Reference to scene panel for marking dirty state
+	ScenePanel* scenePanel = nullptr;
 };

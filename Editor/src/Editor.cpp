@@ -3,6 +3,7 @@
 #include <Editor/Panels/InspectorPanel.h>
 #include <Editor/Panels/AssetBrowserPanel.h>
 #include <Editor/Panels/ScenePanel.h>
+#include <Runtime/EngineRuntime.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -11,6 +12,7 @@
 
 #include <GLFW/glfw3.h>
 #include <cstdio>
+#include <filesystem>
 
 static void applyUnityTheme()
 {
@@ -157,17 +159,27 @@ bool Editor::Init()
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    applyUnityTheme();
+	applyUnityTheme();
 
-    io.Fonts->AddFontFromFileTTF("../Test/project/assets/Inter_18pt-Regular.ttf", 18.0f);
+	io.Fonts->AddFontFromFileTTF("../Test/project/assets/Inter_18pt-Regular.ttf", 18.0f);
 
-    // Load panels
-    m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
-    m_inspectorPanel = std::make_unique<InspectorPanel>(&m_ctx);
-    m_assetBrowserPanel = std::make_unique<AssetBrowserPanel>(&m_ctx);
-    m_scenePanel = std::make_unique<ScenePanel>(&m_ctx);
+	// Init runtime
+	m_runtime.Init(true);
+	m_ctx.engineContext = m_runtime.GetContext();
 
-    return true;
+	// Load panels
+	m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
+	m_inspectorPanel = std::make_unique<InspectorPanel>(&m_ctx);
+	m_assetBrowserPanel = std::make_unique<AssetBrowserPanel>(&m_ctx);
+	m_scenePanel = std::make_unique<ScenePanel>(&m_ctx);
+
+	// Initialize scene serializer
+	m_sceneSerializer = std::make_unique<SceneSerializer>(m_ctx.engineContext);
+
+	// Set scene panel reference in context for dirty marking
+	m_ctx.scenePanel = m_scenePanel.get();
+
+	return true;
 }
 
 void Editor::Run()
@@ -180,7 +192,14 @@ void Editor::Run()
         drawMenuBar();   // draw menu bar first
         buildLayout();   // then dockspace
 
-        // Just draw panels — no SetNextWindowPos/Size needed
+        // Handle keyboard shortcuts
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
+        {
+            saveActiveScene();
+        }
+
+        // Just draw panels
         m_hierarchyPanel->Draw();
         m_inspectorPanel->Draw();
         m_assetBrowserPanel->Draw();
@@ -192,7 +211,7 @@ void Editor::Run()
 
 void Editor::Shutdown()
 {
-    m_ctx.contentLoader.Cleanup();
+    m_runtime.Close();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -224,16 +243,6 @@ void Editor::endFrame()
 
 void Editor::buildLayout()
 {
-    // -----------------------------------------------------------------------
-    //  ┌──────────┬─────────────────────┬───────────┐
-    //             │                     │           │
-    //  │Hierarchy │      Scene          │ Inspector │
-    //  │          │                     │           │
-    //  ├──────────┴─────────────────────┤           │
-    //  │       Asset Browser            │           │
-    //  └────────────────────────────────┴───────────┘
-    // -----------------------------------------------------------------------
-
     // Fullscreen host window
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -303,7 +312,10 @@ void Editor::drawMenuBar()
         {
             if (ImGui::MenuItem("New Scene", "Ctrl+N")) { m_ctx.activeScenePath.clear(); }
             if (ImGui::MenuItem("Open Scene", "Ctrl+O")) { /* TODO: open file dialog */ }
-            if (ImGui::MenuItem("Save Scene", "Ctrl+S")) { /* TODO: save JSON */ }
+            if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
+            {
+                saveActiveScene();
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("Exit"))    m_running = false;
             ImGui::EndMenu();
@@ -337,5 +349,41 @@ void Editor::drawMenuBar()
         }
 
         ImGui::EndMainMenuBar();
+    }
+}
+
+void Editor::saveActiveScene()
+{
+    if (!m_ctx.activeScene || !m_sceneSerializer)
+    {
+        fprintf(stderr, "[Editor] Cannot save: no active scene or serializer\n");
+        return;
+    }
+
+    // Determine save path
+    std::string savePath = m_ctx.activeScenePath;
+    if (savePath.empty())
+    {
+        fprintf(stderr, "[Editor] No valid save path\n");
+        return;
+    }
+
+    // Save the scene
+    if (m_sceneSerializer->Save(*m_ctx.activeScene, savePath))
+    {
+        m_scenePanel->MarkSceneAsSaved();
+        printf("[Editor] Scene saved to: %s\n", savePath.c_str());
+    }
+    else
+    {
+        fprintf(stderr, "[Editor] Failed to save scene to: %s\n", savePath.c_str());
+    }
+}
+
+void Editor::markSceneDirty()
+{
+    if (m_ctx.scenePanel)
+    {
+        m_ctx.scenePanel->MarkSceneAsDirty();
     }
 }

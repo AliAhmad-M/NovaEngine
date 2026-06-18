@@ -7,13 +7,14 @@
 AssetBrowserPanel::AssetBrowserPanel(EditorContext* ctx)
     : m_ctx(ctx)
 {
-    m_iconFolder = m_ctx->contentLoader.LoadTexture("assets/icons/icon_folder.png");
-    m_iconTexture = m_ctx->contentLoader.LoadTexture("assets/icons/icon_texture.png");
-    m_iconScene = m_ctx->contentLoader.LoadTexture("assets/icons/icon_scene.png");
-    m_iconAudio = m_ctx->contentLoader.LoadTexture("assets/icons/icon_audio.png");
-    m_iconScript = m_ctx->contentLoader.LoadTexture("assets/icons/icon_script.png");
-    m_iconFont = m_ctx->contentLoader.LoadTexture("assets/icons/icon_font.png");
-    m_iconPhysics = m_ctx->contentLoader.LoadTexture("assets/icons/icon_physics.png");
+    ContentLoader* contentLoader = ctx->engineContext ? ctx->engineContext->Get<ContentLoader>() : nullptr;
+
+    m_iconFolder = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_folder.png") : nullptr;
+    m_iconTexture = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_texture.png") : nullptr;
+    m_iconScene = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_scene.png") : nullptr;
+    m_iconAudio = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_audio.png") : nullptr;
+    m_iconScript = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_script.png") : nullptr;
+    m_iconFont = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_font.png") : nullptr;
 
     // Default to the project's assets folder
     m_rootPath = std::filesystem::path("../Test/project/");
@@ -33,7 +34,6 @@ AssetType AssetBrowserPanel::ClassifyExtension(const std::string& ext) const
     if (ext == ".json" || ext == ".scene") return AssetType::Scene;
     if (ext == ".ttf" || ext == ".otf")  return AssetType::Font;
     if (ext == ".wav" || ext == ".ogg" || ext == ".mp3") return AssetType::Audio;
-    if (ext == ".phys" || ext == ".physics")         return AssetType::Physics;
     return AssetType::Unknown;
 }
 
@@ -51,16 +51,21 @@ const char* AssetBrowserPanel::AssetTypeIcon(AssetType t) const
 
 GLuint AssetBrowserPanel::GetEntryIcon(const AssetEntry& entry) const
 {
-    if (entry.isDirectory) return m_iconFolder->GetHandle();
+    if (entry.isDirectory) 
+        return m_iconFolder ? m_iconFolder->GetHandle() : 0;
 
     switch (entry.type)
     {
-        case AssetType::Texture:  return m_iconTexture->GetHandle();
-        case AssetType::Scene:    return m_iconScene->GetHandle();
-        case AssetType::Audio:    return m_iconAudio->GetHandle();
-        case AssetType::Font:     return m_iconFont->GetHandle();
-        case AssetType::Physics:  return m_iconPhysics->GetHandle();
-        default:                  return m_iconScript->GetHandle();
+        case AssetType::Texture:  
+            return m_iconTexture ? m_iconTexture->GetHandle() : 0;
+        case AssetType::Scene:    
+            return m_iconScene ? m_iconScene->GetHandle() : 0;
+        case AssetType::Audio:    
+            return m_iconAudio ? m_iconAudio->GetHandle() : 0;
+        case AssetType::Font:     
+            return m_iconFont ? m_iconFont->GetHandle() : 0;
+        default:                  
+            return m_iconScript ? m_iconScript->GetHandle() : 0;
     }
 }
 
@@ -210,6 +215,9 @@ void AssetBrowserPanel::DrawContentGrid()
                 continue;
         }
 
+        GLuint iconTex = GetEntryIcon(entry);
+        if (iconTex == 0) continue;  // Skip rendering if no valid texture
+
         ImGui::PushID(entry.path.c_str());
         ImGui::BeginGroup();
 
@@ -218,8 +226,6 @@ void AssetBrowserPanel::DrawContentGrid()
         ImVec4 bgColor = isSelected
             ? ImVec4(0.26f, 0.50f, 0.84f, 0.50f)
             : ImVec4(0.0f, 0.0f, 0.0f, 0.0f);  // transparent when not selected
-
-        GLuint iconTex = GetEntryIcon(entry);
 
         // only 3 PushStyleColor calls, not 6
         ImGui::PushStyleColor(ImGuiCol_Button, bgColor);
@@ -233,8 +239,8 @@ void AssetBrowserPanel::DrawContentGrid()
             ImVec2(m_iconSize, m_iconSize),
             ImVec2(0, 0),           // uv0
             ImVec2(1, 1),           // uv1
-            ImVec4(0, 0, 0, 0),     // background → transparent
-            ImVec4(1, 1, 1, 1)      // tint → white
+            ImVec4(0, 0, 0, 0),     // background -> transparent
+            ImVec4(1, 1, 1, 1)      // tint -> white
         );
         ImGui::PopStyleVar();
 

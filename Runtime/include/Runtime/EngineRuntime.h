@@ -5,7 +5,6 @@
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
 #include <Graphics/Renderer.h>
-#include <Graphics/Camera/Camera2D.h>
 #include <Runtime/ContentLoader.h>
 #include <Runtime/Scene/SceneManager.h>
 
@@ -14,7 +13,7 @@ class EngineRuntime
 public:
 	EngineContext* GetContext();
 
-	bool Init();
+	bool Init(bool isEditor=false);
 	void Update();
 	void Close();
 
@@ -30,7 +29,6 @@ private:
 	Window        m_window;
 	InputMap      m_inputMap;
 	Renderer      m_renderer;
-	Camera2D      m_camera;
 	ContentLoader m_contentLoader;
 	SceneManager  m_sceneManager;
 
