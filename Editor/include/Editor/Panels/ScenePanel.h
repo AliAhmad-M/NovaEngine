@@ -28,12 +28,12 @@ public:
     void MarkSceneAsDirty();
 
 private:
-    void DrawTabBar();
-    void DrawSceneToolbar();
-    void DrawSceneViewport();
+    void drawTabBar();
+    void drawSceneToolBar();
+    void drawSceneViewport();
 
-    void NewScene();
-    void CloseScene(int index);
+    void newScene();
+    void closeScene(int index);
 
     EditorContext* m_ctx = nullptr;
     ImGuiWindowFlags      m_windowFlags = 0;

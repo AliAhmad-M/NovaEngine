@@ -13,10 +13,10 @@ public:
     void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
 private:
-    void DrawEntityList();
-    void DrawContextMenu();
-    void DrawCreateButton();
-    void CreateEntity();
+    void drawEntityList();
+    void drawContextMenu();
+    void drawCreateButton();
+    void createEntity();
 
     EditorContext* m_ctx = nullptr;
     ImGuiWindowFlags m_windowFlags = 0;

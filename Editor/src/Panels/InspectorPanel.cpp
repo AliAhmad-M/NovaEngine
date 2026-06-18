@@ -1,9 +1,10 @@
 #include <Editor/Panels/InspectorPanel.h>
-#include <imgui.h>
-#include <cstring>
-
 #include <Core/ECS/ECS.h>
 #include <Graphics/Texture.h>
+#include <imgui.h>
+#include <cstring>
+#include <cmath>
+#include <array>
 
 static void FieldVec2(const char* label, float* v, float speed = 0.1f)
 {
@@ -52,6 +53,15 @@ static void FieldString(const char* label, char* buf, size_t bufSize)
     ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputText("##v", buf, bufSize);
+    ImGui::PopID();
+}
+
+static void FieldReadOnly(const char* label, const char* value)
+{
+    ImGui::PushID(label);
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::TextUnformatted(value);
     ImGui::PopID();
 }
 
@@ -138,23 +148,29 @@ void InspectorPanel::Draw()
     ImGui::Separator();
     ImGui::Spacing();
 
-	// Draw each component section if the entity has that component
+    // Draw each component section if the entity has that component
     if (Transform2D* t = ecs->GetComponent<Transform2D>(entity))
-        DrawTransform2D(*t);
+        drawTransform2D(*t);
+
+    if (Camera2D* c = ecs->GetComponent<Camera2D>(entity))
+        drawCamera2D(*c);
 
     if (Sprite2D* s = ecs->GetComponent<Sprite2D>(entity))
-        DrawSprite2D(*s);
+        drawSprite2D(*s);
 
     if (RigidBody2D* rb = ecs->GetComponent<RigidBody2D>(entity))
-        DrawRigidBody2D(*rb);
+        drawRigidBody2D(*rb);
+
+    if (Tilemap2D* tm = ecs->GetComponent<Tilemap2D>(entity))
+        drawTilemap2D(*tm);
 
     ImGui::Spacing();
-    DrawAddComponentMenu();
+    drawAddComponentMenu();
 
     ImGui::End();
 }
 
-void InspectorPanel::DrawTransform2D(Transform2D& t)
+void InspectorPanel::drawTransform2D(Transform2D& t)
 {
     bool removeRequested = false;
     if (!BeginComponent("Transform2D", &removeRequested)) return;
@@ -174,7 +190,138 @@ void InspectorPanel::DrawTransform2D(Transform2D& t)
     }
 }
 
-void InspectorPanel::DrawTexturePathField(Sprite2D& s)
+void InspectorPanel::drawCamera2D(Camera2D& c)
+{
+    bool removeRequested = false;
+    if (!BeginComponent("Camera2D", &removeRequested)) return;
+
+    BeginPropertyTable();
+
+    NextRow();
+    bool isMain = c.isMainCamera;
+    FieldBool("Main Camera", &isMain);
+    if (isMain != c.isMainCamera) c.isMainCamera = isMain;
+
+    NextRow();
+    float zoom = c.GetZoom();
+    FieldFloat("Zoom", &zoom, 0.01f, 0.01f, 0.0f);
+    if (zoom != c.GetZoom())
+        c.SetZoom(zoom);
+
+    // Boundaries: left, right, up, down. Infinite values are edited as
+    // large finite numbers in the UI and converted back to INFINITY on commit.
+    std::array<float, 4> boundaries = c.GetBoundaries();
+    bool boundsChanged = false;
+
+    NextRow();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Left");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-1.0f);
+    {
+        bool unbounded = std::isinf(boundaries[0]);
+        float v = unbounded ? 0.0f : boundaries[0];
+        ImGui::PushID("BoundLeft");
+        if (unbounded) ImGui::BeginDisabled();
+        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[0] = v; boundsChanged = true; }
+        if (unbounded) ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Checkbox("∞##leftInf", &unbounded))
+        {
+            boundaries[0] = unbounded ? -INFINITY : 0.0f;
+            boundsChanged = true;
+        }
+        ImGui::PopID();
+    }
+
+    NextRow();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Right");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-1.0f);
+    {
+        bool unbounded = std::isinf(boundaries[1]);
+        float v = unbounded ? 0.0f : boundaries[1];
+        ImGui::PushID("BoundRight");
+        if (unbounded) ImGui::BeginDisabled();
+        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[1] = v; boundsChanged = true; }
+        if (unbounded) ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Checkbox("∞##rightInf", &unbounded))
+        {
+            boundaries[1] = unbounded ? INFINITY : 0.0f;
+            boundsChanged = true;
+        }
+        ImGui::PopID();
+    }
+
+    NextRow();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Up");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-1.0f);
+    {
+        bool unbounded = std::isinf(boundaries[2]);
+        float v = unbounded ? 0.0f : boundaries[2];
+        ImGui::PushID("BoundUp");
+        if (unbounded) ImGui::BeginDisabled();
+        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[2] = v; boundsChanged = true; }
+        if (unbounded) ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Checkbox("∞##upInf", &unbounded))
+        {
+            boundaries[2] = unbounded ? -INFINITY : 0.0f;
+            boundsChanged = true;
+        }
+        ImGui::PopID();
+    }
+
+    NextRow();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Down");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-1.0f);
+    {
+        bool unbounded = std::isinf(boundaries[3]);
+        float v = unbounded ? 0.0f : boundaries[3];
+        ImGui::PushID("BoundDown");
+        if (unbounded) ImGui::BeginDisabled();
+        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[3] = v; boundsChanged = true; }
+        if (unbounded) ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Checkbox("∞##downInf", &unbounded))
+        {
+            boundaries[3] = unbounded ? INFINITY : 0.0f;
+            boundsChanged = true;
+        }
+        ImGui::PopID();
+    }
+
+    if (boundsChanged)
+        c.SetBoundaries(boundaries);
+
+    int vpW, vpH;
+    c.GetViewPortSize(vpW, vpH);
+    NextRow();
+    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Viewport");
+    ImGui::TableSetColumnIndex(1);
+    int viewport[2] = { vpW, vpH };
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::DragInt2("##viewport", viewport, 1.0f, 1, 0))
+        c.SetViewportSize(viewport[0], viewport[1]);
+
+    const Vector2& offset = c.GetOffset();
+    char offsetBuf[64];
+    std::snprintf(offsetBuf, sizeof(offsetBuf), "(%.2f, %.2f)", offset.x, offset.y);
+    NextRow(); FieldReadOnly("Offset", offsetBuf);
+
+    EndPropertyTable();
+    EndComponent();
+
+    if (removeRequested)
+    {
+        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ecs->RemoveComponent<Camera2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+    }
+}
+
+void InspectorPanel::drawTexturePathField(Sprite2D& s)
 {
     // Get path to the texture
     static char pathBuf[256];
@@ -198,14 +345,14 @@ void InspectorPanel::DrawTexturePathField(Sprite2D& s)
     }
 }
 
-void InspectorPanel::DrawSprite2D(Sprite2D& s)
+void InspectorPanel::drawSprite2D(Sprite2D& s)
 {
     bool removeRequested = false;
     if (!BeginComponent("Sprite2D", &removeRequested)) return;
 
     BeginPropertyTable();
 
-    NextRow(); DrawTexturePathField(s);
+    NextRow(); drawTexturePathField(s);
 
     NextRow(); FieldInt("H Frames", &s.hframes, 1, 1, 0);
     NextRow(); FieldInt("V Frames", &s.vframes, 1, 1, 0);
@@ -233,14 +380,14 @@ void InspectorPanel::DrawSprite2D(Sprite2D& s)
     }
 }
 
-void InspectorPanel::DrawRigidBody2D(RigidBody2D& rb)
+void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
 {
     bool removeRequested = false;
     if (!BeginComponent("RigidBody2D", &removeRequested)) return;
 
-	BeginPropertyTable();
+    BeginPropertyTable();
 
-	NextRow(); FieldVec2("Center Offset", &rb.centerOffset.x);
+    NextRow(); FieldVec2("Center Offset", &rb.centerOffset.x);
 
     if (rb.GetShape() == Shape2D::CIRCLE)
     {
@@ -335,7 +482,66 @@ void InspectorPanel::DrawRigidBody2D(RigidBody2D& rb)
     }
 }
 
-void InspectorPanel::DrawAddComponentMenu()
+void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
+{
+    bool removeRequested = false;
+    if (!BeginComponent("Tilemap2D", &removeRequested)) return;
+
+    // Tilemap2D is populated via LoadTilemap()/AddTileset() rather than
+    // per-field setters, so this is primarily a read-only diagnostic view.
+    BeginPropertyTable();
+
+    char dimsBuf[64];
+    std::snprintf(dimsBuf, sizeof(dimsBuf), "%d x %d tiles", tm.GetMapWidth(), tm.GetMapHeight());
+    NextRow(); FieldReadOnly("Map Size", dimsBuf);
+
+    char tileSizeBuf[64];
+    std::snprintf(tileSizeBuf, sizeof(tileSizeBuf), "%d x %d px", tm.GetTileWidth(), tm.GetTileHeight());
+    NextRow(); FieldReadOnly("Tile Size", tileSizeBuf);
+
+    const Vector2& offset = tm.GetOffset();
+    char offsetBuf[64];
+    std::snprintf(offsetBuf, sizeof(offsetBuf), "(%.2f, %.2f)", offset.x, offset.y);
+    NextRow(); FieldReadOnly("Offset", offsetBuf);
+
+    char tilesetBuf[32];
+    std::snprintf(tilesetBuf, sizeof(tilesetBuf), "%zu tiles", tm.GetTileset().size());
+    NextRow(); FieldReadOnly("Tileset", tilesetBuf);
+
+    char layersBuf[32];
+    std::snprintf(layersBuf, sizeof(layersBuf), "%zu", tm.GetLayers().size());
+    NextRow(); FieldReadOnly("Layers", layersBuf);
+
+    char collisionBuf[32];
+    std::snprintf(collisionBuf, sizeof(collisionBuf), "%zu regions", tm.GetCollisionRegions().size());
+    NextRow(); FieldReadOnly("Collision", collisionBuf);
+
+    char childrenBuf[32];
+    std::snprintf(childrenBuf, sizeof(childrenBuf), "%zu entities", tm.GetChildEntities().size());
+    NextRow(); FieldReadOnly("Children", childrenBuf);
+
+    EndPropertyTable();
+
+    if (!tm.GetLayers().empty() && ImGui::TreeNode("Layer Names"))
+    {
+        for (size_t i = 0; i < tm.GetLayers().size(); i++)
+        {
+            const auto& layer = tm.GetLayers()[i];
+            ImGui::BulletText("[%zu] %s", i, layer.name.empty() ? "(unnamed)" : layer.name.c_str());
+        }
+        ImGui::TreePop();
+    }
+
+    EndComponent();
+
+    if (removeRequested)
+    {
+        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ecs->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+    }
+}
+
+void InspectorPanel::drawAddComponentMenu()
 {
     ECS* ecs = m_ctx->engineContext->Get<ECS>();
     EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
@@ -353,12 +559,18 @@ void InspectorPanel::DrawAddComponentMenu()
         if (!ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
             ecs->AddComponent<Transform2D>(entity, Transform2D());
 
+        if (!ecs->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
+            ecs->AddComponent<Camera2D>(entity, Camera2D());
+
         if (!ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
             ecs->AddComponent<Sprite2D>(entity, Sprite2D());
-        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("Circle RigidBody2D"))
+        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
             ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
-		if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("Box RigidBody2D"))
+        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
             ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
+
+        if (!ecs->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
+            ecs->AddComponent<Tilemap2D>(entity, Tilemap2D());
 
         ImGui::EndPopup();
     }

@@ -19,23 +19,23 @@ void HierarchyPanel::Draw()
 {
     ImGui::Begin("Hierarchy");
 
-    DrawCreateButton();
+    drawCreateButton();
     ImGui::Separator();
 
     if (m_ctx->activeScene)
-        DrawEntityList();
+        drawEntityList();
     else
         ImGui::TextDisabled("No scene open");
 
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
         ImGui::OpenPopup("HierarchyContextMenu");
 
-    DrawContextMenu();
+    drawContextMenu();
 
     ImGui::End();
 }
 
-void HierarchyPanel::CreateEntity()
+void HierarchyPanel::createEntity()
 {
     if (!m_ctx->activeScene || !m_ctx->engineContext) return;
 
@@ -55,15 +55,15 @@ void HierarchyPanel::CreateEntity()
         m_ctx->scenePanel->MarkSceneAsDirty();
 }
 
-void HierarchyPanel::DrawCreateButton()
+void HierarchyPanel::drawCreateButton()
 {
     if (!m_ctx->activeScene || !m_ctx->engineContext) return;
 
     if (ImGui::Button("+ Add Entity"))
-        CreateEntity();
+        createEntity();
 }
 
-void HierarchyPanel::DrawEntityList()
+void HierarchyPanel::drawEntityList()
 {
     auto& entities = m_ctx->activeScene->GetEntities();
 
@@ -138,13 +138,13 @@ void HierarchyPanel::DrawEntityList()
     }
 }
 
-void HierarchyPanel::DrawContextMenu()
+void HierarchyPanel::drawContextMenu()
 {
     if (ImGui::BeginPopup("HierarchyContextMenu"))
     {
         if (ImGui::MenuItem("Create Empty Entity"))
         {
-            CreateEntity();
+            createEntity();
         }
         ImGui::EndPopup();
     }

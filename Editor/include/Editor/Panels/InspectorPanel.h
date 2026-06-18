@@ -4,6 +4,7 @@
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
+#include <World/Components.h>
 #include <imgui.h>
 
 class InspectorPanel
@@ -15,12 +16,15 @@ public:
     void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
 private:
-    void DrawTransform2D(Transform2D& t);
-    void DrawSprite2D(Sprite2D& s);
-    void DrawRigidBody2D(RigidBody2D& rb);
-    void DrawAddComponentMenu();
+    void drawTransform2D(Transform2D& t);
+    void drawCamera2D(Camera2D& c);
+    void drawSprite2D(Sprite2D& s);
+    void drawRigidBody2D(RigidBody2D& rb);
+    void drawTilemap2D(Tilemap2D& tm);
 
-    void DrawTexturePathField(Sprite2D& s);
+    void drawAddComponentMenu();
+
+    void drawTexturePathField(Sprite2D& s);
 
     EditorContext* m_ctx = nullptr;
     ImGuiWindowFlags m_windowFlags = 0;

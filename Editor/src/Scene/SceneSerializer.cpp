@@ -4,12 +4,15 @@
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
+#include <World/Components.h>
 #include <Graphics/Texture.h>
 #include <Runtime/ContentLoader.h>
 
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <cstdio>
+#include <cmath>
+#include <array>
 
 static ContentLoader* s_contentLoader;
 
@@ -34,7 +37,7 @@ namespace
         nlohmann::json j;
 
         // Get texture path
-		j["texturePath"] = s_contentLoader->GetTexturePath(s.texture);
+        j["texturePath"] = s_contentLoader->GetTexturePath(s.texture);
 
         j["hframes"] = s.hframes;
         j["vframes"] = s.vframes;
@@ -95,17 +98,75 @@ namespace
         return j;
     }
 
-    nlohmann::json SerializeCamera(const SceneCamera& cam)
+    // Helper to encode possibly-infinite boundary floats as JSON. nlohmann::json
+    // cannot represent INFINITY/-INFINITY (they're not valid JSON numbers), so
+    // they're stored as sentinel strings and translated back on load.
+    nlohmann::json BoundaryValueToJson(float v)
+    {
+        if (std::isinf(v))
+            return v > 0.0f ? "inf" : "-inf";
+        return v;
+    }
+
+    float BoundaryValueFromJson(const nlohmann::json& j)
+    {
+        if (j.is_string())
+        {
+            const std::string& s = j.get_ref<const std::string&>();
+            if (s == "inf") return INFINITY;
+            if (s == "-inf") return -INFINITY;
+            return 0.0f;
+        }
+        return j.get<float>();
+    }
+
+    nlohmann::json SerializeCamera2D(const Camera2D& c)
     {
         nlohmann::json j;
-        j["boundary"] = nlohmann::json{
-            {"left",  cam.left},
-            {"right", cam.right},
-            {"up",    cam.up},
-            {"down",  cam.down}
+        j["isMainCamera"] = c.isMainCamera;
+        j["zoom"] = c.GetZoom();
+
+        std::array<float, 4> boundaries = c.GetBoundaries();
+        j["boundaries"] = nlohmann::json{
+            {"left",  BoundaryValueToJson(boundaries[0])},
+            {"right", BoundaryValueToJson(boundaries[1])},
+            {"up",    BoundaryValueToJson(boundaries[2])},
+            {"down",  BoundaryValueToJson(boundaries[3])}
         };
-        j["offset"] = Vec2ToJson(cam.offset);
-        j["zoom"] = cam.zoom;
+
+        int vpW, vpH;
+        c.GetViewPortSize(vpW, vpH);
+        j["viewport"] = nlohmann::json{ {"width", vpW}, {"height", vpH} };
+
+        // Offset is derived/clamped state, not authored data, but is stored
+        // for convenience so a reloaded camera starts where it was left.
+        j["offset"] = Vec2ToJson(c.GetOffset());
+
+        return j;
+    }
+
+    nlohmann::json SerializeTilemap2D(const Tilemap2D& tm)
+    {
+        nlohmann::json j;
+
+        // Tilemap2D's grid data is baked/derived from a source .tmj/.json file
+        // and a set of tileset textures. Rather than dumping the (potentially
+        // large) baked grids, we record what's needed to reconstruct it:
+        // the source map path and the tileset load parameters.
+        j["mapPath"] = tm.GetSourceMapPath();
+        j["tileWidth"] = tm.GetTileWidth();
+        j["tileHeight"] = tm.GetTileHeight();
+
+        nlohmann::json tilesets = nlohmann::json::array();
+        for (const TilesetSource2D& src : tm.GetTilesetSources())
+        {
+            tilesets.push_back(nlohmann::json{
+                {"texturePath", src.texturePath},
+                {"firstgid", src.firstgid}
+                });
+        }
+        j["tilesets"] = tilesets;
+
         return j;
     }
 }
@@ -113,7 +174,7 @@ namespace
 SceneSerializer::SceneSerializer(EngineContext* engineContext)
     : m_engineContext(engineContext)
 {
-	s_contentLoader = m_engineContext->Get<ContentLoader>();
+    s_contentLoader = m_engineContext->Get<ContentLoader>();
 }
 
 bool SceneSerializer::Save(const EditorScene& scene, const std::filesystem::path& filePath)
@@ -134,7 +195,6 @@ bool SceneSerializer::Save(const EditorScene& scene, const std::filesystem::path
     nlohmann::json root;
     root["version"] = 1;
     root["name"] = scene.GetName();
-    root["camera"] = SerializeCamera(scene.GetCamera());
 
     nlohmann::json entitiesArray = nlohmann::json::array();
 
@@ -152,6 +212,11 @@ bool SceneSerializer::Save(const EditorScene& scene, const std::filesystem::path
             components["Transform2D"] = SerializeTransform2D(*ecs->GetComponent<Transform2D>(sceneEntity.id));
         }
 
+        if (ecs->HasComponent<Camera2D>(sceneEntity.id))
+        {
+            components["Camera2D"] = SerializeCamera2D(*ecs->GetComponent<Camera2D>(sceneEntity.id));
+        }
+
         if (ecs->HasComponent<Sprite2D>(sceneEntity.id))
         {
             components["Sprite2D"] = SerializeSprite2D(*ecs->GetComponent<Sprite2D>(sceneEntity.id));
@@ -160,6 +225,11 @@ bool SceneSerializer::Save(const EditorScene& scene, const std::filesystem::path
         if (ecs->HasComponent<RigidBody2D>(sceneEntity.id))
         {
             components["RigidBody2D"] = SerializeRigidBody2D(*ecs->GetComponent<RigidBody2D>(sceneEntity.id));
+        }
+
+        if (ecs->HasComponent<Tilemap2D>(sceneEntity.id))
+        {
+            components["Tilemap2D"] = SerializeTilemap2D(*ecs->GetComponent<Tilemap2D>(sceneEntity.id));
         }
 
         entityJson["components"] = components;

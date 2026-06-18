@@ -8,23 +8,23 @@ ScenePanel::ScenePanel(EditorContext* ctx)
     : m_ctx(ctx)
 {
     // Open a default untitled scene on startup
-    NewScene();
+    newScene();
 }
 
 void ScenePanel::Draw()
 {
     ImGui::Begin("Scene");
 
-    DrawSceneToolbar();
+    drawSceneToolBar();
     ImGui::Separator();
-    DrawTabBar();
+    drawTabBar();
     ImGui::Separator();
-    DrawSceneViewport();
+    drawSceneViewport();
 
     ImGui::End();
 }
 
-void ScenePanel::DrawSceneToolbar()
+void ScenePanel::drawSceneToolBar()
 {
     // Grid toggle
     ImGui::Checkbox("Grid", &m_showGrid);
@@ -32,10 +32,10 @@ void ScenePanel::DrawSceneToolbar()
 
     // New scene button
     if (ImGui::SmallButton("+ New Scene"))
-        NewScene();
+        newScene();
 }
 
-void ScenePanel::DrawTabBar()
+void ScenePanel::drawTabBar()
 {
     if (m_sceneTabs.empty()) return;
 
@@ -83,7 +83,7 @@ void ScenePanel::DrawTabBar()
         if (!open)
         {
             // TODO: prompt save scene
-            CloseScene(i);
+            closeScene(i);
             break;
         }
     }
@@ -91,7 +91,7 @@ void ScenePanel::DrawTabBar()
     ImGui::EndTabBar();
 }
 
-void ScenePanel::DrawSceneViewport()
+void ScenePanel::drawSceneViewport()
 {
     // Reserve the remaining space for the viewport area
     ImVec2 viewSize = ImGui::GetContentRegionAvail();
@@ -166,7 +166,7 @@ void ScenePanel::DrawSceneViewport()
     }
 }
 
-void ScenePanel::NewScene()
+void ScenePanel::newScene()
 {
     int idx = (int)m_sceneTabs.size();
     char name[64];
@@ -181,7 +181,7 @@ void ScenePanel::NewScene()
     m_sceneTabs.push_back(std::move(tab));
 }
 
-void ScenePanel::CloseScene(int index)
+void ScenePanel::closeScene(int index)
 {
     if (index < 0 || index >= (int)m_sceneTabs.size()) return;
     m_sceneTabs.erase(m_sceneTabs.begin() + index);
