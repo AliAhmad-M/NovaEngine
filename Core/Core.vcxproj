@@ -137,6 +137,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\EngineDebug.cpp" />
     <ClCompile Include="src\ECS\EntityManager.cpp" />
     <ClCompile Include="src\ECS\SystemManager.cpp" />
     <ClCompile Include="src\Utilities\Color.cpp" />
@@ -150,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="include\Core\Components.h" />
     <ClInclude Include="include\Core\Components\Transform2D.h" />
+    <ClInclude Include="include\Core\EngineDebug.h" />
     <ClInclude Include="include\Core\ECS\Constants.h" />
     <ClInclude Include="include\Core\ECS\ECS.h" />
     <ClInclude Include="include\Core\ECS\EntityManager.h" />

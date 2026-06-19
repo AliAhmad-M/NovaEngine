@@ -12,7 +12,7 @@ void SceneManager::DeleteScene(const std::string& name)
 {
 	if (m_scenes.find(name) == m_scenes.end()) 
 	{
-		fprintf(stderr, "[WARN], Cannot delete scene '%s' as it does not exist\n", name.c_str());
+		EngineDebug::LogWarn("Cannot delete scene '%s' as it does not exist", name.c_str());
 		return;
 	}
 
@@ -22,14 +22,14 @@ void SceneManager::DeleteScene(const std::string& name)
 		m_currentScene = nullptr; // Clear current scene
 	}
 	m_scenes.erase(name);
-	printf("[INFO]: Successfully deleted scene: %s\n", name.c_str());
+	EngineDebug::LogInfo("Successfully deleted scene: %s", name.c_str());
 }
 
 void SceneManager::ChangeScene(const std::string& name) 
 {
 	if (m_scenes.find(name) == m_scenes.end()) 
 	{
-		fprintf(stderr, "[WARN], Cannot change to scene '%s' as it does not exist\n", name.c_str());
+		EngineDebug::LogInfo("Cannot change to scene '%s' as it does not exist", name.c_str());
 		return;
 	}
 
@@ -40,5 +40,5 @@ void SceneManager::ChangeScene(const std::string& name)
 	}
 	m_currentScene = nextScene;
 	m_currentScene->Ready();
-	printf("[INFO]: Successfully changed scene to: %s\n", name.c_str());
+	EngineDebug::LogInfo("Successfully changed scene to: %s", name.c_str());
 }

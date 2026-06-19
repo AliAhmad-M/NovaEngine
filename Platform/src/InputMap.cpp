@@ -1,19 +1,21 @@
 #include <Platform/InputMap.h>
-#include <cstdio>
-
-void InputMap::Bind(const std::string& action, int glfwKey) {
+#include <Core/EngineDebug.h>
+void InputMap::Bind(const std::string& action, int glfwKey) 
+{
     if (m_bindings.count(action))
-        printf("[WARN]: Action '%s' already bound, overriding\n", action.c_str());
+        EngineDebug::LogWarn("Action '%s' already bound, overriding", action.c_str());
 
     m_bindings[action] = glfwKey;
     m_states[action] = KeyState{};
 }
 
-void InputMap::Update(GLFWwindow* window) {
+void InputMap::Update(GLFWwindow* window) 
+{
     m_window = window;
 
     // Update key and mouse button states
-    for (auto& [action, key] : m_bindings) {
+    for (auto& [action, key] : m_bindings) 
+    {
         KeyState& state = m_states[action];
         state.previous = state.current;
 
@@ -36,34 +38,41 @@ void InputMap::Update(GLFWwindow* window) {
     m_globalMouseY = winY + m_localMouseY;
 }
 
-bool InputMap::IsButtonDown(const std::string& action) const {
-    if (!m_states.count(action)) { printf("[WARN]: Action '%s' not bound\n", action.c_str()); return false; }
+bool InputMap::IsButtonDown(const std::string& action) const 
+{
+    
+    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     return m_states.at(action).current;
 }
 
-bool InputMap::IsButtonUp(const std::string& action) const {
-    if (!m_states.count(action)) { printf("[WARN]: Action '%s' not bound\n", action.c_str()); return false; }
+bool InputMap::IsButtonUp(const std::string& action) const 
+{
+    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     return !m_states.at(action).current;
 }
 
-bool InputMap::IsButtonPressed(const std::string& action) const {
-    if (!m_states.count(action)) { printf("[WARN]: Action '%s' not bound\n", action.c_str()); return false; }
+bool InputMap::IsButtonPressed(const std::string& action) const 
+{
+    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     auto& s = m_states.at(action);
     return s.current && !s.previous;
 }
 
-bool InputMap::IsButtonReleased(const std::string& action) const {
-    if (!m_states.count(action)) { printf("[WARN]: Action '%s' not bound\n", action.c_str()); return false; }
+bool InputMap::IsButtonReleased(const std::string& action) const 
+{
+    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     auto& s = m_states.at(action);
     return !s.current && s.previous;
 }
 
-void InputMap::GetGlobalMousePosition(int* x, int* y) const {
+void InputMap::GetGlobalMousePosition(int* x, int* y) const 
+{
     if (x) *x = m_globalMouseX;
     if (y) *y = m_globalMouseY;
 }
 
-void InputMap::GetLocalCursorPosition(int* x, int* y) const {
+void InputMap::GetLocalCursorPosition(int* x, int* y) const 
+{
     if (x) *x = m_localMouseX;
     if (y) *y = m_localMouseY;
 }

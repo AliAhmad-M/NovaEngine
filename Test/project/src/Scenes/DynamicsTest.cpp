@@ -20,8 +20,6 @@ static Renderer* s_renderer;
 static Font* s_font;
 
 static constexpr float BALL_RADIUS = 12.0f;
-static constexpr float BOX_WIDTH   = 24.0f;
-static constexpr float BOX_HEIGHT  = 24.0f;
 
 static float s_spawnTimer = 0.0f;
 static constexpr float SPAWN_COOLDOWN = 0.05f;
@@ -36,8 +34,7 @@ void DynamicsTest::Ready()
     s_renderer = m_context->Get<Renderer>();
     s_font = s_contentLoader->LoadFont("project/assets/boldpixels.ttf", 24.0f);
 
-    s_inputMap->Bind("spawn_circle", GLFW_MOUSE_BUTTON_RIGHT);
-    s_inputMap->Bind("spawn_box", GLFW_MOUSE_BUTTON_LEFT);
+    s_inputMap->Bind("spawn_circle", GLFW_MOUSE_BUTTON_LEFT);
 
     s_spawnTimer = 0.0f;
 
@@ -72,11 +69,6 @@ void DynamicsTest::Update(float dt)
             spawnCircle();
             s_spawnTimer = SPAWN_COOLDOWN; // Reset the clock sequence
         }
-        else if (s_inputMap->IsButtonDown("spawn_box")) 
-        {
-            spawnBox();
-            s_spawnTimer = SPAWN_COOLDOWN; // Reset the clock sequence
-        }
     }
 
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
@@ -106,24 +98,10 @@ void DynamicsTest::Update(float dt)
             s_renderer->DrawCircle(trans->position, rb->GetRadius(), Color::CYAN, true);
     }
 
-    // Draw boxes
-    for (EntityID id : m_spawnedBoxes) 
-    {
-        auto* trans = s_ecs->GetComponent<Transform2D>(id);
-        auto* rb = s_ecs->GetComponent<RigidBody2D>(id);
-        if (trans && rb) 
-        {
-            Vector2 size = Vector2(rb->GetHalfWidth() * 2.0f, rb->GetHalfHeight() * 2.0f);
-            Vector2 topLeftPos = trans->position - Vector2(rb->GetHalfWidth(), rb->GetHalfHeight());
-            s_renderer->DrawRect(topLeftPos, size, trans->rotation, Color::GOLD, true);
-        }
-    }
-
     // HUD
-    size_t total = m_spawnedBalls.size() + m_spawnedBoxes.size();
-    s_renderer->DrawText(*s_font, "Physics Test Sandbox (Box2D)", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
+    s_renderer->DrawText(*s_font, "Physics Test Sandbox", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
     char buf[64];
-    sprintf(buf, "Entities: %zu | FPS: %.1f", total, m_currentFPS);
+    sprintf(buf, "Entities: %zu | FPS: %.1f", m_spawnedBalls.size(), m_currentFPS);
     s_renderer->DrawText(*s_font, buf, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
 
     s_renderer->Flush();
@@ -133,7 +111,6 @@ void DynamicsTest::Leave()
 {
     s_ecs->DeleteAllEntities();
     m_spawnedBalls.clear();
-    m_spawnedBoxes.clear();
     m_staticBodies.clear();
 }
 
@@ -153,24 +130,6 @@ void DynamicsTest::spawnCircle()
     if (liveRb) liveRb->SetLinearVelocity(launchVelocity);
     
     m_spawnedBalls.push_back(id);
-}
-
-void DynamicsTest::spawnBox()
-{
-    int mx, my;
-    s_inputMap->GetLocalCursorPosition(&mx, &my);
-    Vector2 mousePos((float)mx, (float)my);
-
-    Vector2 launchVelocity = (mousePos - SPAWN_ORIGIN);
-
-    EntityID id = s_ecs->CreateEntity();
-    s_ecs->AddComponent<Transform2D>(id, Transform2D(SPAWN_ORIGIN, 0.0f, Vector2(1.0f, 1.0f)));
-    s_ecs->AddComponent<RigidBody2D>(id, RigidBody2D(Vector2::ZERO, BOX_WIDTH, BOX_HEIGHT, false, false, 1.0f, 0.3f, 0.5f));
-
-    auto* liveRb = s_ecs->GetComponent<RigidBody2D>(id);
-    if (liveRb) liveRb->SetLinearVelocity(launchVelocity);
-
-    m_spawnedBoxes.push_back(id);
 }
 
 void DynamicsTest::createStaticBodies()

@@ -1,8 +1,8 @@
 #include <Graphics/Texture.h>
+#include <Core/EngineDebug.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
-#include <cstdio>
 
 Texture::Texture() = default;
 
@@ -15,7 +15,7 @@ bool Texture::LoadFromFile(const std::string& path)
     m_pixels = stbi_load(path.c_str(), &m_width, &m_height, &channels, 4);
     if (!m_pixels) 
     {
-        fprintf(stderr, "[WARN]: Failed to load texture: %s\n", path.c_str());
+        EngineDebug::LogWarn("Failed to load texture: %s", path.c_str());
         return false;
     }
 

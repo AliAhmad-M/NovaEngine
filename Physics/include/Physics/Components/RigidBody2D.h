@@ -1,10 +1,10 @@
 #pragma once
 
+#include <Core/Utilities/Vector2.h>
+#include <Core/Utilities/Shape2D.h>
 #include <box2d/box2d.h>
 #include <bitset>
 #include <algorithm>
-#include <Core/Utilities/Vector2.h>
-#include <Core/Utilities/Shape2D.h>
 
 static constexpr float PHYSICS_PPM = 64.0f;
 
@@ -102,6 +102,8 @@ public:
         m_layer.set(0);
         m_mask.set(0);
     }
+
+
 
     /**
      * @brief Gets the basic geometric classification type assigned to this body

@@ -1,7 +1,27 @@
 #include <Graphics/Systems/CameraSystem2D.h>
 #include <Core/Components/Transform2D.h>
-#include <Graphics/Components/Camera2D.h>
+#include <Core/EngineDebug.h>
 #include <Platform/Window.h>
+#include <Graphics/Components/Camera2D.h>
+
+CameraSystem2D::CameraSystem2D(EngineContext* ctx) 
+    : m_ctx(ctx) 
+{
+    if (!m_ctx) 
+    {
+        EngineDebug::LogErrorAndExit("CameraSystem2D -> EngineContext is NULL!");
+    }
+ 
+    if (!m_ctx->Get<Window>())
+    {
+        EngineDebug::LogErrorAndExit("CameraSystem2D -> Window is NULL!");
+    }
+
+    if (!m_ctx->Get<ECS>())
+    {
+        EngineDebug::LogErrorAndExit("CameraSystem2D -> ECS is NULL!");
+    }
+}
 
 void CameraSystem2D::Update(float dt)
 {
@@ -11,7 +31,7 @@ void CameraSystem2D::Update(float dt)
     int windowWidth, windowHeight;
     window->GetSize(&windowWidth, &windowHeight);
 
-    EntityID mainCamEntity = NULL_INDEX;
+    EntityID mainCamEntity = INVALID_ENTITY;
 
     // Find the first camera flagged as main
     for (EntityID e : entities)
@@ -24,11 +44,11 @@ void CameraSystem2D::Update(float dt)
             break;
         }
     }
-    if (mainCamEntity == NULL_INDEX && !entities.empty())
+    if (mainCamEntity == INVALID_ENTITY && !entities.empty())
         mainCamEntity = *entities.begin();
 
     // Update and register / unregister
-    if (mainCamEntity != NULL_INDEX)
+    if (mainCamEntity != INVALID_ENTITY)
     {
         Camera2D* camera = ecs->GetComponent<Camera2D>(mainCamEntity);
 

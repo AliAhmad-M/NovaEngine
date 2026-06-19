@@ -5,7 +5,7 @@
 
 struct CameraSystem2D : public ISystem
 {
-	CameraSystem2D(EngineContext* ctx) : m_ctx(ctx) {}
+	CameraSystem2D(EngineContext* ctx);
 
 	void Update(float dt) override;
 	void OnEntityAdded(EntityID e) override {}

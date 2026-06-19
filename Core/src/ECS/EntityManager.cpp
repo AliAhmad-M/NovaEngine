@@ -1,8 +1,9 @@
 #include <Core/ECS/EntityManager.h>
+#include <Core/EngineDebug.h>
 #include <numeric>
-#include <cstdio>
 
-void EntityManager::Init() {
+void EntityManager::Init() 
+{
     m_capacity = MAX_PAGE_SIZE;
     m_entityStatus.resize(m_capacity, false);
     m_signatures.resize(m_capacity);
@@ -14,12 +15,14 @@ void EntityManager::Init() {
     std::iota(m_availableEntities.begin(), m_availableEntities.end(), 0);
 }
 
-void EntityManager::grow() {
+void EntityManager::grow() 
+{
     uint32_t oldCapacity = m_capacity;
     m_capacity += MAX_PAGE_SIZE;
 
     // Check against the global limit
-    if (m_capacity > MAX_ENTITIES) {
+    if (m_capacity > MAX_ENTITIES) 
+    {
         m_capacity = MAX_ENTITIES;
     }
 
@@ -28,23 +31,28 @@ void EntityManager::grow() {
     m_signatures.resize(m_capacity);
 
     // Add new IDs the available queue
-    for (EntityID i = oldCapacity; i < m_capacity; ++i) {
+    for (EntityID i = oldCapacity; i < m_capacity; i++) 
+    {
         m_availableEntities.push_back(i);
     }
 }
 
-bool EntityManager::IsActive(EntityID entity) {
+bool EntityManager::IsActive(EntityID entity) 
+{
     return entity < m_capacity && m_entityStatus[entity];
 }
 
-EntityID EntityManager::CreateEntity() {
+EntityID EntityManager::CreateEntity() 
+{
     // Add more IDs if all are used up
-    if (m_availableEntities.empty()) {
+    if (m_availableEntities.empty()) 
+    {
         grow();
     }
 
     // Get the next available entity ID
-    if (!m_availableEntities.empty()) {
+    if (!m_availableEntities.empty()) 
+    {
         EntityID entity = m_availableEntities.front();
         m_availableEntities.pop_front();
         m_entityStatus[entity] = true;
@@ -52,26 +60,28 @@ EntityID EntityManager::CreateEntity() {
         return entity;
     }
 
-    fprintf(stderr, "[ERROR]: Failed to create entity");
-    exit(1);
+    EngineDebug::LogErrorAndExit("Failed to create entity");
 }
 
 
 void EntityManager::DeleteEntity(EntityID entity)
 {
     // Delete entity if is active
-    if (IsActive(entity)) {
+    if (IsActive(entity)) 
+    {
         m_availableEntities.push_back(entity);
         m_entityStatus[entity] = false;
         m_entityCount--;
         m_signatures[entity].reset();
     }
-    else {
-        fprintf(stderr, "[WARN]: Cannot delete non existent entity\n");
+    else 
+    {
+        EngineDebug::LogWarn("Cannot delete inactive entity");
     }
 }
 
-void EntityManager::ClearEntites() {
+void EntityManager::ClearEntites() 
+{
     // Clear all entities
     m_entityStatus.assign(m_capacity, false);
     m_signatures.clear();
@@ -84,26 +94,34 @@ void EntityManager::ClearEntites() {
     m_entityCount = 0;
 }
 
-uint32_t EntityManager::GetEntityCount() {
+uint32_t EntityManager::GetEntityCount() 
+{
     return m_entityCount;
 }
 
-void EntityManager::SetSignature(EntityID entity, Signature signature) {
+void EntityManager::SetSignature(EntityID entity, Signature signature) 
+{
     // Assign the component signature
-    if (IsActive(entity)) {
+    if (IsActive(entity)) 
+    {
         m_signatures[entity] = signature;
     }
-    else {
-        fprintf(stderr, "[WARN]: Cannot set signature on non existent entity\n");
+    else 
+    {
+        EngineDebug::LogWarn("Cannot set signature on inactive entity");
     }
 }
 
-Signature EntityManager::GetSignature(EntityID entity) {
+Signature EntityManager::GetSignature(EntityID entity) 
+{
     // Get component signature of entity
-    if (IsActive(entity)) {
+    if (IsActive(entity)) 
+    {
         return m_signatures[entity];
     }
-
-    fprintf(stderr, "[ERROR]: Cannot get signature on non existent entity\n");
-    exit(1);
+    else 
+    {
+        EngineDebug::LogWarn("Cannot get signature on inactive entity");
+        return Signature(); // Empty signature
+    }
 }

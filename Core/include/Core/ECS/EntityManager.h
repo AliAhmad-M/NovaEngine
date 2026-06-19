@@ -7,7 +7,8 @@
  * @brief Manages entity creation, deletion, and signatures
  * @brief Uses dynamic growth to avoid preallocating MAX_ENTITIES
  */
-class EntityManager {
+class EntityManager 
+{
 public:
     /**
      * @brief Initializes entity manager with initial capacity

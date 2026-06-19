@@ -18,7 +18,6 @@ public:
 
 private:
     std::vector<EntityID> m_spawnedBalls;
-    std::vector<EntityID> m_spawnedBoxes;
     std::vector<EntityID> m_staticBodies;
 
     float m_currentFPS = 0.0f;
@@ -26,6 +25,5 @@ private:
     int   m_frameCount = 0;
 
     void spawnCircle();
-    void spawnBox();
     void createStaticBodies();
 };

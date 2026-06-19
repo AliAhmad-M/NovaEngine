@@ -1,5 +1,6 @@
 #include <Graphics/Systems/SpriteSystem2D.h>
 #include <Core/Utilities/Matrix4x4.h>
+#include <Core/EngineDebug.h>
 #include <Graphics/Renderer.h>
 #include <Platform/Window.h>
 
@@ -72,12 +73,10 @@ float SpriteSystem2D::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* spr
 
 void SpriteSystem2D::Update(float dt) 
 {
-
     // Get dependencies from context
-    if (m_ctx == nullptr) 
+    if (!m_ctx) 
     {
-        fprintf(stderr, "[ERROR]: SpriteSystem -> EngineContext is NULL!\n");
-        exit(1);
+        EngineDebug::LogErrorAndExit("SpriteSystem -> EngineContext is NULL");
     }
 
     Camera2D* camera2D  = m_ctx->Get<Camera2D>();
@@ -85,26 +84,23 @@ void SpriteSystem2D::Update(float dt)
     Renderer* renderer  = m_ctx->Get<Renderer>();
     ECS* ecs            = m_ctx->Get<ECS>();
 
-    if (camera2D == nullptr) 
+    if (!camera2D) 
     {
-        fprintf(stderr, "[WARN]: SpriteSystem -> Main camera is NULL!\n");
+        EngineDebug::LogWarn("SpriteSystem2D -> Main camera is NULL!");
     }
-    if (window == nullptr) 
+    if (!window) 
     {
-        fprintf(stderr, "[ERROR]: SpriteSystem -> Window is NULL!\n");
-        exit(1);
+        EngineDebug::LogErrorAndExit("SpriteSystem2D -> Window is NULL!");
     }
-    if (renderer == nullptr) 
+    if (!renderer) 
     {
-        fprintf(stderr, "[ERROR]: SpriteSystem -> Renderer is NULL!\n");
-        exit(1);
-    }
-    if (ecs == nullptr) 
-    {
-        fprintf(stderr, "[ERROR]: SpriteSystem -> ECS is NULL!\n");
-        exit(1);
-    }
+        EngineDebug::LogErrorAndExit("SpriteSystem2D -> Renderer is NULL!");
 
+    }
+    if (!ecs)
+    {
+        EngineDebug::LogErrorAndExit("SpriteSystem2D -> ECS is NULL!");
+    }
 
     // Get window size
     int windowWidth, windowHeight;

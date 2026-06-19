@@ -1,9 +1,11 @@
 #include <Platform/Window.h>
-#include <cstdio>
+#include <Core/EngineDebug.h>
 
-bool Window::Init(int w, int h, const char* title) {
-    if (!glfwInit()) {
-        fprintf(stderr, "[ERROR]: Failed to initialize GLFW");
+bool Window::Init(int w, int h, const char* title) 
+{
+    if (!glfwInit()) 
+    {
+        EngineDebug::LogError("Failed to initialize GLFW");
         return false;
     }
 
@@ -13,46 +15,53 @@ bool Window::Init(int w, int h, const char* title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
     m_window = glfwCreateWindow(w, h, title, nullptr, nullptr);
-    if (!m_window) {
-        fprintf(stderr, "[ERROR]: Failed to create GLFW window\n");
+    if (!m_window) 
+    {
+        EngineDebug::LogError("Failed to create GLFW window");
         glfwTerminate();
         return false;
     }
 
     glfwMakeContextCurrent(m_window);
-    printf("[INFO]: GLFW window created\n");
+    EngineDebug::LogInfo("GLFW window created");
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        fprintf(stderr, "[ERROR]: Failed to initialize GLAD\n");
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) 
+    {
+        EngineDebug::LogError("Failed to initialize GLAD");
         return false;
     }
 
-    printf("[INFO]: GLAD initialized\n");
-
+    EngineDebug::LogInfo("GLAD initialized");
     return true;
 }
 
-void Window::Exit() {
-    if (m_window) {
+void Window::Exit() 
+{
+    if (m_window) 
+    {
         glfwDestroyWindow(m_window);
         m_window = nullptr;
     }
     glfwTerminate();
-    printf("[INFO]: Window destroyed\n");
+    EngineDebug::LogInfo("Window destroyed");
 }
 
-void Window::PollEvents() {
+void Window::PollEvents() 
+{
     glfwPollEvents();
 }
 
-bool Window::ShouldClose() {
+bool Window::ShouldClose() 
+{
     return glfwWindowShouldClose(m_window);
 }
 
-void Window::SwapBuffers() {
+void Window::SwapBuffers() 
+{
     glfwSwapBuffers(m_window);
 }
 
-void Window::GetSize(int* w, int* h) {
+void Window::GetSize(int* w, int* h) 
+{
     glfwGetWindowSize(m_window, w, h);
 }

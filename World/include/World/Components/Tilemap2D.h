@@ -1,10 +1,11 @@
 #pragma once
 #include <Core/Utilities/Vector2.h>
+#include <Core/ECS/Types.h>
+#include <Core/EngineDebug.h>
 #include <Graphics/Texture.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <sstream>
-#include <iostream>
 #include <cmath>
 #include <vector>
 #include <climits>
@@ -69,12 +70,12 @@ struct Tilemap2D
 
 	void LoadTilemap(const std::string& mapPath)
 	{
-		printf("[INFO]: Loading tilemap file: %s\n", mapPath.c_str());
+		EngineDebug::LogInfo("Loading tilemap file: %s", mapPath.c_str());
 		std::ifstream mapfile(mapPath);
 
 		if (!mapfile.is_open())
 		{
-			fprintf(stderr, "[ERROR]: Failed to open tilemap\n");
+			EngineDebug::LogError("Failed to open tilemap");
 			return;
 		}
 
@@ -85,7 +86,7 @@ struct Tilemap2D
 		}
 		catch (const nlohmann::json::parse_error& e)
 		{
-			fprintf(stderr, "[ERROR]: Unable to load tilemap - %s\n", e.what());
+			EngineDebug::LogWarn("Unable to load tilemap: %s", e.what());
 			return;
 		}
 
@@ -93,18 +94,18 @@ struct Tilemap2D
 
 		if (isInfinite)
 		{
-			printf("[INFO]: Processing infinite tilemap\n");
+			EngineDebug::LogInfo("Processing infinite tilemap");
 			loadInfiniteTilemap(mapfilejson);
 		}
 		else
 		{
-			printf("[INFO]: Processing finite tilemap\n");
+			EngineDebug::LogInfo("Processing finite tilemap");
 			loadFiniteTilemap(mapfilejson);
 		}
 
 		m_sourceMapPath = mapPath;
 
-		printf("[INFO]: Tilemap '%s' loaded successfully\n", mapPath.c_str());
+		EngineDebug::LogInfo("Tilemap '%s' loaded successfully", mapPath.c_str());
 	}
 
 	void GenerateCollisionData(int layer, const std::vector<int>& tiles)
@@ -113,7 +114,7 @@ struct Tilemap2D
 
 		if (layer >= (int)m_layers.size() || m_mapH == 0 || m_mapW == 0)
 		{
-			fprintf(stderr, "[ERROR]: Failed to generate tilemap collision data\n");
+			EngineDebug::LogError("Failed to generate tilemap collision data");
 			return;
 		}
 
@@ -232,10 +233,10 @@ struct Tilemap2D
 private:
 	int addTilesetInternal(const Texture* tileset, int firstgid)
 	{
-		printf("[INFO]: Loading tileset\n");
+		EngineDebug::LogInfo("Loading tileset");
 		if (!tileset)
 		{
-			fprintf(stderr, "[ERROR]: Tileset texture cannot be NULL\n");
+			EngineDebug::LogError("Tileset texture cannot be NULL");
 			return firstgid;
 		}
 
@@ -273,7 +274,7 @@ private:
 			}
 		}
 
-		printf("[INFO]: Tileset loaded\n");
+		EngineDebug::LogInfo("Tileset loaded");
 		return firstgid;
 	}
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <Core/EngineContext.h>
+#include <Core/EngineDebug.h>
 #include "ISystem.h"
 #include <memory>
 #include <unordered_map>
@@ -9,7 +10,8 @@
  * @brief Manages registration, storage, and retrieval of systems
  * @brief Systems are stored as shared pointers and keyed by type
  */
-class SystemManager {
+class SystemManager 
+{
 public:
     /**
      * @brief Registers a new system
@@ -19,22 +21,23 @@ public:
      * @return Shared pointer to the newly created system
      */
     template <typename T>
-    std::shared_ptr<T> RegisterSystem(EngineContext* ctx) {
+    std::shared_ptr<T> RegisterSystem(EngineContext* ctx) 
+    {
         const std::type_index typeIndex(typeid(T));
         const char* systemType = typeIndex.name();
         
-        printf("[INFO]: Registering system: %s...\n", systemType);
+        EngineDebug::LogInfo("Registering system: %s", systemType);
 
         // Check if system is already registered
         if (isRegistered(typeIndex)) {
-            fprintf(stderr, "[WARN]: System '%s' is already registered, skipping\n", systemType);
+            EngineDebug::LogWarn("System '%s' is already registered, skipping", systemType);
             return nullptr;
 
         }
 
         auto system = std::make_shared<T>(ctx);
         m_systems[typeIndex] = system;
-        printf("[INFO]: Registered system: %s successfully\n", systemType);
+        EngineDebug::LogInfo("Registered system '%s' successfully", systemType);
         return system;
     }
 
@@ -44,13 +47,15 @@ public:
      * @return Shared pointer to the system
      */
     template <typename T>
-    std::shared_ptr<T> GetSystem() {
+    std::shared_ptr<T> GetSystem() 
+    {
         const std::type_index typeIndex = typeid(T);
-        if (isRegistered(typeIndex)) {
+        if (isRegistered(typeIndex)) 
+        {
             return std::static_pointer_cast<T>(m_systems[typeIndex]);
         }
-        fprintf(stderr, "[ERROR]: Cannot get unregistered system\n");
-        exit(1);
+
+        EngineDebug::LogErrorAndExit("Cannot get unregistered system: %s", typeIndex.name());
     }
 
     /**
@@ -59,13 +64,14 @@ public:
      * @return Signature bitset of components the system uses
      */
     template <typename T>
-    Signature GetSignature() {
+    Signature GetSignature() 
+    {
         const std::type_index typeIndex = typeid(T);
-        if (isRegistered(typeIndex)) {
+        if (isRegistered(typeIndex)) 
+        {
             return m_signatures[typeIndex];
         }
-        fprintf(stderr, "[ERROR]: Cannot get signature on unregistered system\n");
-        exit(1);
+        EngineDebug::LogErrorAndExit("Cannot get signature on unregistered system: %s", typeIndex.name());
     }
 
     /**
@@ -74,13 +80,16 @@ public:
      * @param signature Signature bitset of components the system uses
      */
     template <typename T>
-    void SetSignature(Signature signature) {
+    void SetSignature(Signature signature) 
+    {
         const std::type_index typeIndex = typeid(T);
-        if (isRegistered(typeIndex)) {
+        if (isRegistered(typeIndex)) 
+        {
             m_signatures[typeIndex] = signature;
         }
-        else {
-            fprintf(stderr, "[WARN]: Cannot set signature on unregistered system\n");
+        else 
+        {
+            EngineDebug::LogWarn("Cannot set signature on unregistered system");
         }
     }
 
@@ -108,7 +117,8 @@ private:
      * @param typeIndex Type index of the system
      * @return True if system is registered
      */
-    bool isRegistered(std::type_index typeIndex) {
+    bool isRegistered(std::type_index typeIndex) 
+    {
         return m_systems.find(typeIndex) != m_systems.end();
     }
 

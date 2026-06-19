@@ -2,7 +2,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-class Window {
+class Window 
+{
 public:
     /**
      * @brief Initializes GLFW and creates a window

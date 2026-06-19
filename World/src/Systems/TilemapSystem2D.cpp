@@ -38,7 +38,7 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 		Texture* layerTexture = new Texture();
 		if (!layerTexture->CreateRenderTexture(pixelW, pixelH))
 		{
-			fprintf(stderr, "[ERROR]: Failed to create render texture for layer %zu\n", layerIdx);
+			EngineDebug::LogError("Failed to create render texture for layer %zu", layerIdx);
 			delete layerTexture;
 			continue;
 		}

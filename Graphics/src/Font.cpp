@@ -1,23 +1,25 @@
 #include <Graphics/Font.h>
+#include <Core/EngineDebug.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <algorithm>
 #include <vector>
-#include <cstdio>
 
-bool Font::LoadFromFile(const std::string& path, float fontSize) {
+bool Font::LoadFromFile(const std::string& path, float fontSize) 
+{
     FT_Library ft;
     if (FT_Init_FreeType(&ft)) 
     {
-        fprintf(stderr, "[WARN]: Cannot load font: %s, failed to initialze text library\n", path.c_str());
+        EngineDebug::LogWarn("Cannot load font: %s", path.c_str());
         return false;
     
     } 
 
     FT_Face face;
-    if (FT_New_Face(ft, path.c_str(), 0, &face)) {
+    if (FT_New_Face(ft, path.c_str(), 0, &face)) 
+    {
         FT_Done_FreeType(ft);
-        fprintf(stderr, "[WARN]: Failed to load font: %s", path.c_str());
+        EngineDebug::LogWarn("Cannot load font: %s", path.c_str());
         return false;
     }
 
@@ -89,7 +91,8 @@ const GlyphInfo* Font::GetGlyph(char c) const
     return it != m_glyphs.end() ? &it->second : nullptr;
 }
 
-void Font::Destroy() {
+void Font::Destroy() 
+{
     if (m_atlasTexture != 0) {
         glDeleteTextures(1, &m_atlasTexture);
         m_atlasTexture = 0;

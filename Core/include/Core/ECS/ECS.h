@@ -1,5 +1,6 @@
 #pragma once
 #include <Core/EngineContext.h>
+#include <Core/EngineDebug.h>
 #include "Types.h"
 #include "SparseSet.h"
 #include "EntityManager.h"
@@ -18,13 +19,13 @@ public:
      */
     void Init() 
     {
-        printf("[INFO]: Initializing ECS...\n");
+        EngineDebug::LogInfo("Initializing ECS...");
 
         m_entityManager = std::make_unique<EntityManager>();
         m_systemManager = std::make_unique<SystemManager>();
         m_entityManager->Init();
-
-        printf("[INFO]: ECS initialized\n");
+        
+        EngineDebug::LogInfo("ECS initialized");
     }
 
     /**
@@ -84,12 +85,13 @@ public:
     {
         const std::type_index typeIndex(typeid(T));
         const char* componentType = typeIndex.name();
-        printf("[INFO]: Registering component: %s...\n", typeIndex.name());
+
+        EngineDebug::LogInfo("Registering component: %s...", typeIndex.name());
 
         // Check if component already registered
         if (m_componentRegistry.count(typeIndex)) 
         {
-            printf("[WARN]: Component '%s' already registered, skipping\n", typeIndex.name());
+            EngineDebug::LogWarn("Component '%s' already registered, skipping", typeIndex.name());
             return;
         }
 
@@ -100,7 +102,7 @@ public:
         m_componentRegistry[typeIndex] = m_nextComponentId;
         m_nextComponentId++;
 
-        printf("[INFO]: Registered component: %s successfully\n", typeIndex.name());
+        EngineDebug::LogInfo("Registered component: %s successfully", typeIndex.name());
     }
 
     /**
@@ -114,7 +116,7 @@ public:
     {
         if (!m_entityManager->IsActive(entity)) 
         {
-            fprintf(stderr, "[WARN]: Cannot add component on non existing entity\n");
+            EngineDebug::LogWarn("Cannot add component on inactive entity");
             return;
         }
 
@@ -132,7 +134,7 @@ public:
     {
         if (!m_entityManager->IsActive(entity)) 
         {
-            fprintf(stderr, "[WARN]: Cannot remove component on non existing entity\n");
+            EngineDebug::LogWarn("Cannot remove component on inavtive entity");
             return;
         }
 
@@ -174,11 +176,12 @@ public:
     {
         std::type_index typeIndex = typeid(T);
         auto it = m_componentRegistry.find(typeIndex);
-        if (it != m_componentRegistry.end()) {
+        if (it != m_componentRegistry.end()) 
+        {
             return it->second;
         }
-        fprintf(stderr, "[ERROR]: Cannot get ID on unregistered component");
-        exit(1);
+
+        EngineDebug::LogErrorAndExit("Cannot get ID on unregistered component: %s", typeIndex.name());
     }
 
     /**
@@ -234,8 +237,7 @@ private:
             return static_cast<SparseSet<T>*>(it->second.get());
         }
 
-        fprintf(stderr, "[ERROR]: Component map for type not registered");
-        exit(1);
+        EngineDebug::LogErrorAndExit("Cannot get sparse set for unregistered component: %s", typeIndex.name());
     }
 
     /**

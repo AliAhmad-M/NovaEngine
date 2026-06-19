@@ -59,7 +59,7 @@ public:
      */
     bool HasData(EntityID e) 
     {
-        return getDenseIndex(e) != NULL_INDEX;
+        return getDenseIndex(e) != INVALID_ENTITY;
     }
 
     /**
@@ -70,7 +70,7 @@ public:
     T* GetData(EntityID e) 
     {
         uint32_t index = getDenseIndex(e);
-        if (index == NULL_INDEX) 
+        if (index == INVALID_ENTITY) 
         {
             return nullptr;
         }
@@ -85,9 +85,9 @@ public:
     void RemoveData(EntityID e) 
     {
         uint32_t index = getDenseIndex(e);
-        if (index == NULL_INDEX) 
+        if (index == INVALID_ENTITY) 
         {
-            fprintf(stderr, "[WARN]: Entity %u does not have component of type: %s\n", e, typeid(T).name());
+            EngineDebug::LogWarn("Entity %u does not have component of type: %s", e, typeid(T).name());
             return;
         }
 
@@ -100,7 +100,7 @@ public:
 
         // Update the index for swapped entity
         setDenseIndex(lastEntity, index);
-        setDenseIndex(e, NULL_INDEX);
+        setDenseIndex(e, INVALID_ENTITY);
 
         // Remove the last component and its corresponding entity ID
         m_dense.pop_back();
@@ -146,7 +146,7 @@ private:
         if (page >= m_sparsePages.size()) 
         {
             m_sparsePages.resize(page + 1);
-            m_sparsePages[page].resize(MAX_PAGE_SIZE, NULL_INDEX);
+            m_sparsePages[page].resize(MAX_PAGE_SIZE, INVALID_ENTITY);
         }
 
         m_sparsePages[page][pageIndex] = index;
@@ -166,7 +166,7 @@ private:
         {
             return m_sparsePages[page][pageIndex];
         }
-        return NULL_INDEX;
+        return INVALID_ENTITY;
     }
 
     std::vector<std::vector<uint32_t>> m_sparsePages; // Paged sparse array mapping entity -> dense index

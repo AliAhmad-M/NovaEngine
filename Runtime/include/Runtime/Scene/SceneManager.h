@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Core/EngineDebug.h>
 #include <unordered_map>
 #include <memory>
 #include <string>
@@ -18,7 +19,7 @@ public:
     {
         if (m_scenes.find(name) != m_scenes.end())
         {
-            fprintf(stderr, "[WARN]: Scene '%s' has already been added\n", name.c_str());
+            EngineDebug::LogWarn("Scene '%s' has already been added", name.c_str());
             return;
         }
 

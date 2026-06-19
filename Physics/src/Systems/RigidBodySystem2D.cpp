@@ -28,6 +28,11 @@ static b2Filter MakeFilter(const RigidBody2D* rb)
 RigidBodySystem2D::RigidBodySystem2D(EngineContext* ctx, Vector2 gravity)
     : m_ctx(ctx)
 {
+    if (m_ctx == nullptr) 
+    {
+    
+    }
+
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = PointToB2(gravity.x, gravity.y);
     m_worldId = b2CreateWorld(&worldDef);
@@ -45,64 +50,12 @@ Vector2 RigidBodySystem2D::GetGravity() const
     return { g.x * PHYSICS_PPM, g.y * PHYSICS_PPM };
 }
 
-void RigidBodySystem2D::SetGravity(const Vector2& pixelsPerSecSq)
+void RigidBodySystem2D::SetGravity(const Vector2& meterPerSecSq)
 {
-    b2World_SetGravity(m_worldId, PointToB2(pixelsPerSecSq.x, pixelsPerSecSq.y));
-}
-
-void RigidBodySystem2D::BuildBody(EntityID e, const Transform2D* transform, RigidBody2D* rb)
-{
-	b2BodyDef bodyDef = b2DefaultBodyDef();
-	bodyDef.type = rb->IsStatic() ? b2_staticBody : b2_dynamicBody;
-	bodyDef.position = WorldCenterToB2(transform);
-	bodyDef.rotation = b2MakeRot(transform->rotation * (B2_PI / 180.0f));
-	bodyDef.fixedRotation = rb->LockRotation();
-	bodyDef.userData = reinterpret_cast<void*>(static_cast<uintptr_t>(e));
-
-	rb->body = b2CreateBody(m_worldId, &bodyDef);
-
-	// Shape properties
-	b2ShapeDef shapeDef = b2DefaultShapeDef();
-	shapeDef.density = rb->GetDensity();
-	shapeDef.isSensor = rb->IsSensor();
-	shapeDef.filter = MakeFilter(rb);
-	shapeDef.enableContactEvents = !rb->IsSensor();
-	shapeDef.enableSensorEvents = rb->IsSensor();
-
-	// Material properties
-	b2SurfaceMaterial material = b2DefaultSurfaceMaterial();
-	material.restitution = rb->GetRestitution();
-	material.friction = rb->GetFriction();
-	shapeDef.material = material;
-
-	b2Vec2 localOffsetMeters =
-	{
-		(rb->centerOffset.x * transform->scale.x) / PHYSICS_PPM,
-		(rb->centerOffset.y * transform->scale.y) / PHYSICS_PPM
-	};
-
-	if (rb->GetShape() == Shape2D::CIRCLE)
-	{
-		float uniformScale = std::max(transform->scale.x, transform->scale.y);
-
-		b2Circle circle;
-		circle.center = localOffsetMeters;
-		circle.radius = (rb->GetRadius() * uniformScale) / PHYSICS_PPM;
-
-		rb->fixture = b2CreateCircleShape(rb->body, &shapeDef, &circle);
-	}
-	else
-	{
-		float scaledHalfW = (rb->GetHalfWidth() * transform->scale.x) / PHYSICS_PPM;
-		float scaledHalfH = (rb->GetHalfHeight() * transform->scale.y) / PHYSICS_PPM;
-
-		b2Polygon polygon = b2MakeOffsetBox(scaledHalfW, scaledHalfH, localOffsetMeters, b2Rot_identity);
-		rb->fixture = b2CreatePolygonShape(rb->body, &shapeDef, &polygon);
-	}
-
-	// Apply damping properties
-	b2Body_SetLinearDamping(rb->body, rb->GetLinearDamping());
-	b2Body_SetAngularDamping(rb->body, rb->GetAngularDamping());
+    b2World_SetGravity(m_worldId, PointToB2(
+        meterPerSecSq.x * PHYSICS_PPM, 
+        meterPerSecSq.y * PHYSICS_PPM)
+    );
 }
 
 void RigidBodySystem2D::OnEntityAdded(EntityID e)
@@ -111,7 +64,63 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     auto* transform = ecs->GetComponent<Transform2D>(e);
     auto* rb = ecs->GetComponent<RigidBody2D>(e);
 
-    BuildBody(e, transform, rb);
+    // Create body definition
+    b2BodyDef bodyDef = b2DefaultBodyDef();
+    bodyDef.type = rb->IsStatic() ? b2_staticBody : b2_dynamicBody;
+    bodyDef.position = WorldCenterToB2(transform);
+    bodyDef.rotation = b2MakeRot(transform->rotation * (B2_PI / 180.0f));
+    bodyDef.fixedRotation = rb->LockRotation();
+    bodyDef.userData = reinterpret_cast<void*>(static_cast<uintptr_t>(e));
+
+    // Initialize rigidbody ID
+    rb->body = b2CreateBody(m_worldId, &bodyDef);
+
+    // Setup shape properties
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.density = rb->GetDensity();
+    shapeDef.isSensor = rb->IsSensor();
+    shapeDef.filter = MakeFilter(rb);
+    shapeDef.enableContactEvents = !rb->IsSensor();
+    shapeDef.enableSensorEvents = rb->IsSensor();
+
+    // Setup material properties
+    b2SurfaceMaterial material = b2DefaultSurfaceMaterial();
+    material.restitution = rb->GetRestitution();
+    material.friction = rb->GetFriction();
+    shapeDef.material = material;
+
+    // Offset from transform in meters
+    b2Vec2 localOffsetMeters =
+    {
+        (rb->centerOffset.x * transform->scale.x) / PHYSICS_PPM,
+        (rb->centerOffset.y * transform->scale.y) / PHYSICS_PPM
+    };
+
+    // Circle
+    if (rb->GetShape() == Shape2D::CIRCLE)
+    {
+        float uniformScale = std::max(transform->scale.x, transform->scale.y);
+
+        b2Circle circle;
+        circle.center = localOffsetMeters;
+        circle.radius = (rb->GetRadius() * uniformScale) / PHYSICS_PPM;
+
+        rb->fixture = b2CreateCircleShape(rb->body, &shapeDef, &circle);
+    }
+
+    // Box
+    else
+    {
+        float scaledHalfW = (rb->GetHalfWidth() * transform->scale.x) / PHYSICS_PPM;
+        float scaledHalfH = (rb->GetHalfHeight() * transform->scale.y) / PHYSICS_PPM;
+
+        b2Polygon polygon = b2MakeOffsetBox(scaledHalfW, scaledHalfH, localOffsetMeters, b2Rot_identity);
+        rb->fixture = b2CreatePolygonShape(rb->body, &shapeDef, &polygon);
+    }
+
+    // Apply damping properties
+    b2Body_SetLinearDamping(rb->body, rb->GetLinearDamping());
+    b2Body_SetAngularDamping(rb->body, rb->GetAngularDamping());
 }
 
 void RigidBodySystem2D::OnEntityRemoved(EntityID e)
@@ -133,6 +142,7 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
 
     for (EntityID e : entities)
     {
+        // Clear ID and fixture
         auto* rb = ecs->GetComponent<RigidBody2D>(e);
         if (rb)
         {
@@ -141,6 +151,7 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
         }
     }
 
+    // Reset physics world
     Vector2 g = GetGravity();
     b2DestroyWorld(m_worldId);
 
@@ -157,6 +168,7 @@ void RigidBodySystem2D::TeleportEntity(EntityID e)
 
     if (!rb || B2_IS_NULL(rb->body)) return;
 
+    // Teleport body to the transform position
     b2Body_SetTransform(
         rb->body,
         WorldCenterToB2(transform),
@@ -171,11 +183,11 @@ void RigidBodySystem2D::Update(float dt)
 
     b2World_Step(m_worldId, dt, 4);
 
-    SyncFromBox2D();
-    ProcessContacts();
+    syncFromBox2D();
+    processContacts();
 }
 
-void RigidBodySystem2D::SyncFromBox2D()
+void RigidBodySystem2D::syncFromBox2D()
 {
     ECS* ecs = m_ctx->Get<ECS>();
 
@@ -186,12 +198,13 @@ void RigidBodySystem2D::SyncFromBox2D()
 
         if (!rb || B2_IS_NULL(rb->body)) continue;
 
+        // Get position and rotation from box2D
         transform->position = B2PosToEnginePos(b2Body_GetPosition(rb->body));
         transform->rotation = b2Rot_GetAngle(b2Body_GetRotation(rb->body)) * (180.0f / B2_PI);
     }
 }
 
-void RigidBodySystem2D::ProcessContacts()
+void RigidBodySystem2D::processContacts()
 {
     ECS* ecs = m_ctx->Get<ECS>();
 
@@ -207,18 +220,17 @@ void RigidBodySystem2D::ProcessContacts()
     // Solid body contacts
     b2ContactEvents contacts = b2World_GetContactEvents(m_worldId);
 
-    for (int i = 0; i < contacts.beginCount; ++i)
+    for (int i = 0; i < contacts.beginCount; i++)
     {
         const b2ContactBeginTouchEvent& ev = contacts.beginEvents[i];
 
-        // v3: shape IDs come from the event; bodies are retrieved via b2Shape_GetBody().
         b2BodyId bodyIdA = b2Shape_GetBody(ev.shapeIdA);
         b2BodyId bodyIdB = b2Shape_GetBody(ev.shapeIdB);
 
         EntityID eA = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(bodyIdA)));
         EntityID eB = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(bodyIdB)));
 
-        // ev.manifold.normal points from A toward B — same convention as before.
+        // ev.manifold.normal points from A toward B
         Vector2 n = { ev.manifold.normal.x, ev.manifold.normal.y };
 
         auto* rbA = ecs->GetComponent<RigidBody2D>(eA);
@@ -228,7 +240,7 @@ void RigidBodySystem2D::ProcessContacts()
         if (rbB) { rbB->isColliding = true; rbB->normal = n; }
     }
 
-    for (int i = 0; i < contacts.endCount; ++i)
+    for (int i = 0; i < contacts.endCount; i++)
     {
         const b2ContactEndTouchEvent& ev = contacts.endEvents[i];
 

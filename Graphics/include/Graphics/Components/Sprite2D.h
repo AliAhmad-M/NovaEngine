@@ -1,11 +1,11 @@
 #pragma once
 #include <Graphics/Texture.h>
+#include <Core/EngineDebug.h>
 #include <Core/Utilities/Rectangle.h>
 #include <unordered_map>
 #include <vector>
 #include <string>
 #include <cstdint>
-#include <cstdio>
 
 /**
  * @brief Animation data containing frame sequence and playback speed.
@@ -75,13 +75,8 @@ struct Sprite2D
     {
         if (frames.empty()) 
         {
-            fprintf(stderr, "[WARN]: Animation '%s' cannot have empty frame list\n", name.c_str());
+            EngineDebug::LogWarn("Animation '%s' cannot have empty frame list", name.c_str());
             return;
-        }
-
-        if (animations.find(name) != animations.end()) 
-        {
-            printf("[INFO]: Animation '%s' already added, overriding\n", name.c_str());
         }
 
         animations[name] = Sprite2DAnimationData(frames, speed);
@@ -95,7 +90,7 @@ struct Sprite2D
     {
         if (animations.find(name) == animations.end()) 
         {
-            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", name.c_str());
+            EngineDebug::LogWarn("Animation '%s' does not exist", name.c_str());
             return;
         }
         m_animation = name;
@@ -108,7 +103,7 @@ struct Sprite2D
     void DelAnimation(const std::string& name) {
         if (animations.find(name) == animations.end())
         {
-            fprintf(stderr, "[WARN]: Animation '%s' does not exist\n", name.c_str());
+            EngineDebug::LogWarn("Animation '%s' does not exist", name.c_str());
             return;
         }
         animations.erase(name);
