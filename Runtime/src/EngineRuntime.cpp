@@ -1,4 +1,5 @@
 #include <Runtime/EngineRuntime.h>
+#include <Core/Services.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Graphics/Systems.h>
@@ -13,11 +14,6 @@
 
 #include <thread>
 
-EngineContext* EngineRuntime::GetContext()
-{
-    return &m_context;
-}
-
 bool EngineRuntime::Init(bool isEditor)
 {
     if (isEditor) 
@@ -27,8 +23,9 @@ bool EngineRuntime::Init(bool isEditor)
         registerComponents();
         initializeSystems();
 
-        m_context.Register(&m_ecs);
-        m_context.Register(&m_contentLoader);
+        Services::Init();
+        Services::Register(&m_ecs);
+        Services::Register(&m_contentLoader);
 
         return true;
     }
@@ -42,18 +39,19 @@ bool EngineRuntime::Init(bool isEditor)
     // Init renderer
     m_renderer.Init();
 
-    // Register engine context
-    m_context.Register(&m_ecs);
-    m_context.Register(&m_window);
-    m_context.Register(&m_inputMap);
-    m_context.Register(&m_renderer);
-    m_context.Register(&m_contentLoader);
-    m_context.Register(&m_sceneManager);
-
     // Setup ECS
     m_ecs.Init();
     registerComponents();
     initializeSystems();
+
+    // Register services
+    Services::Init();
+    Services::Register(&m_ecs);
+    Services::Register(&m_window);
+    Services::Register(&m_renderer);
+    Services::Register(&m_contentLoader);
+    Services::Register(&m_inputMap);
+    Services::Register(&m_sceneManager);
 
     // Initialize Jolt physics
     JPH::RegisterDefaultAllocator();
@@ -68,7 +66,8 @@ void EngineRuntime::Update()
     const double targetFrameTime = 1.0 / 60.0;
     double lastTime = glfwGetTime();
 
-    while (m_running) {
+    while (m_running) 
+    {
         double currentTime = glfwGetTime();
         double frameStartTime = currentTime;
         m_deltaTime = currentTime - lastTime;
@@ -107,6 +106,7 @@ void EngineRuntime::Close()
     JPH::UnregisterTypes();
 
     // Clear the engine context
+    Services::Shutdown();
     m_ecs.DeleteAllEntities();
     m_contentLoader.Cleanup();
     m_window.Exit();
@@ -124,21 +124,21 @@ void EngineRuntime::registerComponents()
 void EngineRuntime::initializeSystems() 
 {
     // Initialize sprite system (2D)
-    m_ecs.RegisterSystem<SpriteSystem2D>(&m_context);
+    m_ecs.RegisterSystem<SpriteSystem2D>();
     m_ecs.AddComponentToSystem<Transform2D, SpriteSystem2D>();
     m_ecs.AddComponentToSystem<Sprite2D, SpriteSystem2D>();
 
 	// Initialize camera system (2D)
-	m_ecs.RegisterSystem<CameraSystem2D>(&m_context);
+	m_ecs.RegisterSystem<CameraSystem2D>();
 	m_ecs.AddComponentToSystem<Camera2D, CameraSystem2D>();
 
     // Initialize physics system (2D)
-    m_ecs.RegisterSystem<RigidBodySystem2D>(&m_context);
+    m_ecs.RegisterSystem<RigidBodySystem2D>();
     m_ecs.AddComponentToSystem<Transform2D, RigidBodySystem2D>();
     m_ecs.AddComponentToSystem<RigidBody2D, RigidBodySystem2D>();
 
 	// Initialize tilemap system (2D)
-	m_ecs.RegisterSystem<TilemapSystem2D>(&m_context);
+	m_ecs.RegisterSystem<TilemapSystem2D>();
 	m_ecs.AddComponentToSystem<Transform2D, TilemapSystem2D>();
 	m_ecs.AddComponentToSystem<Tilemap2D, TilemapSystem2D>();
 }

@@ -1,6 +1,7 @@
 #include <Editor/Scene/SceneSerializer.h>
 
 #include <Core/ECS/ECS.h>
+#include <Core/Services.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
@@ -171,21 +172,15 @@ namespace
     }
 }
 
-SceneSerializer::SceneSerializer(EngineContext* engineContext)
-    : m_engineContext(engineContext)
+SceneSerializer::SceneSerializer()
 {
-    s_contentLoader = m_engineContext->Get<ContentLoader>();
+    s_contentLoader = Services::Fetch<ContentLoader>();
 }
 
 bool SceneSerializer::Save(const EditorScene& scene, const std::filesystem::path& filePath)
 {
-    if (!m_engineContext)
-    {
-        fprintf(stderr, "[SceneSerializer] No EngineContext bound\n");
-        return false;
-    }
 
-    ECS* ecs = m_engineContext->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
     if (!ecs)
     {
         fprintf(stderr, "[SceneSerializer] EngineContext has no registered ECS\n");

@@ -101,7 +101,7 @@
     <ClInclude Include="include\Core\Utilities\Shape2D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Core\EngineContext.h">
+    <ClInclude Include="include\Core\Services.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Core\EngineDebug.h">

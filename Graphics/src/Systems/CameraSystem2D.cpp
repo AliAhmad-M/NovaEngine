@@ -1,32 +1,14 @@
 #include <Graphics/Systems/CameraSystem2D.h>
-#include <Core/Components/Transform2D.h>
+#include <Core/Services.h>
 #include <Core/EngineDebug.h>
+#include <Core/Components/Transform2D.h>
 #include <Platform/Window.h>
 #include <Graphics/Components/Camera2D.h>
 
-CameraSystem2D::CameraSystem2D(EngineContext* ctx) 
-    : m_ctx(ctx) 
-{
-    if (!m_ctx) 
-    {
-        EngineDebug::LogErrorAndExit("CameraSystem2D -> EngineContext is NULL!");
-    }
- 
-    if (!m_ctx->Get<Window>())
-    {
-        EngineDebug::LogErrorAndExit("CameraSystem2D -> Window is NULL!");
-    }
-
-    if (!m_ctx->Get<ECS>())
-    {
-        EngineDebug::LogErrorAndExit("CameraSystem2D -> ECS is NULL!");
-    }
-}
-
 void CameraSystem2D::Update(float dt)
 {
-    Window* window = m_ctx->Get<Window>();
-    ECS* ecs = m_ctx->Get<ECS>();
+    Window* window  = Services::Fetch<Window>();
+    ECS* ecs        = Services::Fetch<ECS>();
 
     int windowWidth, windowHeight;
     window->GetSize(&windowWidth, &windowHeight);
@@ -55,12 +37,12 @@ void CameraSystem2D::Update(float dt)
         // Update camera state
         camera->SetViewportSize(windowWidth, windowHeight);
 
-        // Register this camera component as the active context camera
-        m_ctx->Register<Camera2D>(camera);
+        // Register this as main camera
+        Services::Register<Camera2D>(camera);
     }
     else
     {
-        // No camera entity at all
-        m_ctx->Unregister<Camera2D>();
+        // No main camera entity at all
+        Services::Unregister<Camera2D>();
     }
 }

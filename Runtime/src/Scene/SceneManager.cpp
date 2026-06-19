@@ -33,7 +33,7 @@ void SceneManager::ChangeScene(const std::string& name)
 		return;
 	}
 
-	Scene* nextScene = m_scenes[name].get();
+	IScene* nextScene = m_scenes[name].get();
 	if (m_currentScene) 
 	{
 		m_currentScene->Leave();

@@ -15,7 +15,7 @@ public:
      * @param name The unique identifier name for the scene
      */
     template <typename T>
-    void CreateScene(const std::string& name, EngineContext* context)
+    void CreateScene(const std::string& name)
     {
         if (m_scenes.find(name) != m_scenes.end())
         {
@@ -23,7 +23,7 @@ public:
             return;
         }
 
-        std::shared_ptr<Scene> scene = std::make_shared<T>(context);
+        std::shared_ptr<IScene> scene = std::make_shared<T>();
         m_scenes[name] = std::move(scene);
     }
 
@@ -47,8 +47,8 @@ public:
 
 private:
     // Map from scene name to scene itself
-    std::unordered_map<std::string, std::shared_ptr<Scene>> m_scenes{};
+    std::unordered_map<std::string, std::shared_ptr<IScene>> m_scenes{};
 
     // The current scene that is loaded in
-    Scene* m_currentScene = nullptr;
+    IScene* m_currentScene = nullptr;
 };

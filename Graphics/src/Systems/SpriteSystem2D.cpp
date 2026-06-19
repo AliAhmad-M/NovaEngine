@@ -1,4 +1,5 @@
 #include <Graphics/Systems/SpriteSystem2D.h>
+#include <Core/Services.h>
 #include <Core/Utilities/Matrix4x4.h>
 #include <Core/EngineDebug.h>
 #include <Graphics/Renderer.h>
@@ -11,7 +12,7 @@ static const float CAMERA_MARGIN = 32.0f;
 
 void SpriteSystem2D::sortRenderingOrder()
 {
-	ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
 
     // Insertion sort entities based on Z indexes and Y sort origins
     for (size_t i = 1; i < m_entities.size(); i++)
@@ -73,34 +74,10 @@ float SpriteSystem2D::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* spr
 
 void SpriteSystem2D::Update(float dt) 
 {
-    // Get dependencies from context
-    if (!m_ctx) 
-    {
-        EngineDebug::LogErrorAndExit("SpriteSystem -> EngineContext is NULL");
-    }
-
-    Camera2D* camera2D  = m_ctx->Get<Camera2D>();
-    Window* window      = m_ctx->Get<Window>();
-    Renderer* renderer  = m_ctx->Get<Renderer>();
-    ECS* ecs            = m_ctx->Get<ECS>();
-
-    if (!camera2D) 
-    {
-        EngineDebug::LogWarn("SpriteSystem2D -> Main camera is NULL!");
-    }
-    if (!window) 
-    {
-        EngineDebug::LogErrorAndExit("SpriteSystem2D -> Window is NULL!");
-    }
-    if (!renderer) 
-    {
-        EngineDebug::LogErrorAndExit("SpriteSystem2D -> Renderer is NULL!");
-
-    }
-    if (!ecs)
-    {
-        EngineDebug::LogErrorAndExit("SpriteSystem2D -> ECS is NULL!");
-    }
+    Camera2D* camera2D  = Services::Fetch<Camera2D>();
+    Window* window      = Services::Fetch<Window>();
+    Renderer* renderer  = Services::Fetch<Renderer>();
+    ECS* ecs            = Services::Fetch<ECS>();
 
     // Get window size
     int windowWidth, windowHeight;

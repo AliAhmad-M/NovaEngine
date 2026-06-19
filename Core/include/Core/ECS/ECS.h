@@ -1,5 +1,4 @@
 #pragma once
-#include <Core/EngineContext.h>
 #include <Core/EngineDebug.h>
 #include "Types.h"
 #include "SparseSet.h"
@@ -192,9 +191,9 @@ public:
      * @return Shared pointer to registered system
      */
     template <typename T>
-    std::shared_ptr<T> RegisterSystem(EngineContext* ctx) 
+    std::shared_ptr<T> RegisterSystem() 
     {
-        return m_systemManager->RegisterSystem<T>(ctx);
+        return m_systemManager->RegisterSystem<T>();
     }
 
     /**

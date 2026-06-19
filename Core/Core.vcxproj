@@ -159,7 +159,7 @@
     <ClInclude Include="include\Core\ECS\SparseSet.h" />
     <ClInclude Include="include\Core\ECS\SystemManager.h" />
     <ClInclude Include="include\Core\ECS\Types.h" />
-    <ClInclude Include="include\Core\EngineContext.h" />
+    <ClInclude Include="include\Core\Services.h" />
     <ClInclude Include="include\Core\Utilities\Color.h" />
     <ClInclude Include="include\Core\Utilities\Matrix3x2.h" />
     <ClInclude Include="include\Core\Utilities\Matrix3x3.h" />

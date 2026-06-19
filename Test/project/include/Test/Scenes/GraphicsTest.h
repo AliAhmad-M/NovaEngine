@@ -1,14 +1,11 @@
 #pragma once
-#include <Core/EngineContext.h>
 #include <Core/ECS/ECS.h>
 #include <Graphics/Texture.h>
 #include <Runtime/Scene/SceneManager.h>
 
-class GraphicsTest : public Scene
+class GraphicsTest : public IScene
 {
 public:
-    GraphicsTest(EngineContext* context) : Scene(context) {}
-    
     void Ready() override;
     void Update(float dt) override;
     void Leave() override;

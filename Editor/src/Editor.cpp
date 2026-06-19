@@ -165,7 +165,6 @@ bool Editor::Init()
 
 	// Init runtime
 	m_runtime.Init(true);
-	m_ctx.engineContext = m_runtime.GetContext();
 
 	// Load panels
 	m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
@@ -174,7 +173,7 @@ bool Editor::Init()
 	m_scenePanel = std::make_unique<ScenePanel>(&m_ctx);
 
 	// Initialize scene serializer
-	m_sceneSerializer = std::make_unique<SceneSerializer>(m_ctx.engineContext);
+	m_sceneSerializer = std::make_unique<SceneSerializer>();
 
 	// Set scene panel reference in context for dirty marking
 	m_ctx.scenePanel = m_scenePanel.get();

@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <Test/Scenes/DynamicsTest.h>
+#include <Core/Services.h>
 #include <Core/Components.h>
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
@@ -27,11 +28,11 @@ static const Vector2 SPAWN_ORIGIN = Vector2(100.0f, 100.0f);
 
 void DynamicsTest::Ready()
 {
-    s_contentLoader = m_context->Get<ContentLoader>();
-    s_ecs = m_context->Get<ECS>();
-    s_window = m_context->Get<Window>();
-    s_inputMap = m_context->Get<InputMap>();
-    s_renderer = m_context->Get<Renderer>();
+    s_contentLoader = Services::Fetch<ContentLoader>();
+    s_ecs = Services::Fetch<ECS>();
+    s_window = Services::Fetch<Window>();
+    s_inputMap = Services::Fetch<InputMap>();
+    s_renderer = Services::Fetch<Renderer>();
     s_font = s_contentLoader->LoadFont("project/assets/boldpixels.ttf", 24.0f);
 
     s_inputMap->Bind("spawn_circle", GLFW_MOUSE_BUTTON_LEFT);

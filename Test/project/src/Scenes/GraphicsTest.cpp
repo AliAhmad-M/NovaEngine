@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <Test/Scenes/GraphicsTest.h>
+#include <Core/Services.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Graphics/Systems.h>
@@ -25,11 +26,11 @@ static Font* s_font;
 void GraphicsTest::Ready()
 {
     // Load engine context
-    s_contentLoader = m_context->Get<ContentLoader>();
-    s_ecs = m_context->Get<ECS>();
-    s_window = m_context->Get<Window>();
-    s_inputMap = m_context->Get<InputMap>();
-    s_renderer = m_context->Get<Renderer>();
+    s_contentLoader = Services::Fetch<ContentLoader>();
+    s_ecs = Services::Fetch<ECS>();
+    s_window = Services::Fetch<Window>();
+    s_inputMap = Services::Fetch<InputMap>();
+    s_renderer = Services::Fetch<Renderer>();
     s_font = s_contentLoader->LoadFont("project/assets/boldpixels.ttf", 24.0f);
 
     // Create camera entity

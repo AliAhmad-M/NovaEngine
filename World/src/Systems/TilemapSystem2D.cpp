@@ -1,13 +1,14 @@
 #include <World/Systems/TilemapSystem2D.h>
-#include <Core/Components.h>
-#include <Graphics/Components.h>
-#include <Physics/Components.h>
+#include <Core/Services.h>
+#include <Core/Components/Transform2D.h>
+#include <Graphics/Components/Sprite2D.h>
+#include <Physics/Components/RigidBody2D.h>
 #include <Graphics/Renderer.h>
 #include <Core/Utilities/Matrix4x4.h>
 
 void TilemapSystem2D::OnEntityAdded(EntityID e)
 {
-	ECS* ecs = m_ctx->Get<ECS>();
+	ECS* ecs = Services::Fetch<ECS>();
 
 	Transform2D* transform = ecs->GetComponent<Transform2D>(e);
 	Tilemap2D* tilemap = ecs->GetComponent<Tilemap2D>(e);
@@ -29,7 +30,7 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 	float orthoOffsetX = -(pixelW / 2.0f);
 	float orthoOffsetY = -(pixelH / 2.0f);
 
-	Renderer* renderer = m_ctx->Get<Renderer>();
+	Renderer* renderer = Services::Fetch<Renderer>();
 
 	for (size_t layerIdx = 0; layerIdx < layers.size(); layerIdx++)
 	{
@@ -103,7 +104,7 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 
 void TilemapSystem2D::OnEntityRemoved(EntityID e)
 {
-	ECS* ecs = m_ctx->Get<ECS>();
+	ECS* ecs = Services::Fetch<ECS>();
 
 	Tilemap2D* tilemap = ecs->GetComponent<Tilemap2D>(e);
 	if (!tilemap) return;

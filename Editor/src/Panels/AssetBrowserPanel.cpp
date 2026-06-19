@@ -1,4 +1,5 @@
 #include <Editor/Panels/AssetBrowserPanel.h>
+#include <Core/Services.h>
 #include <imgui.h>
 #include <algorithm>
 #include <cstring>
@@ -7,7 +8,7 @@
 AssetBrowserPanel::AssetBrowserPanel(EditorContext* ctx)
     : m_ctx(ctx)
 {
-    ContentLoader* contentLoader = ctx->engineContext ? ctx->engineContext->Get<ContentLoader>() : nullptr;
+    ContentLoader* contentLoader = Services::Fetch<ContentLoader>();
 
     m_iconFolder = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_folder.png") : nullptr;
     m_iconTexture = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_texture.png") : nullptr;

@@ -1,5 +1,6 @@
 #include <Editor/Panels/InspectorPanel.h>
 #include <Core/ECS/ECS.h>
+#include <Core/Services.h>
 #include <Graphics/Texture.h>
 #include <imgui.h>
 #include <cstring>
@@ -130,7 +131,7 @@ void InspectorPanel::Draw()
         return;
     }
 
-    ECS* ecs = m_ctx->engineContext ? m_ctx->engineContext->Get<ECS>() : nullptr;
+    ECS* ecs = Services::Fetch<ECS>();
     if (!ecs)
     {
         ImGui::TextDisabled("No ECS available");
@@ -185,7 +186,7 @@ void InspectorPanel::drawTransform2D(Transform2D& t)
 
     if (removeRequested)
     {
-        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ECS* ecs = Services::Fetch<ECS>();
         ecs->RemoveComponent<Transform2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
@@ -316,7 +317,7 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
 
     if (removeRequested)
     {
-        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ECS* ecs = Services::Fetch<ECS>();
         ecs->RemoveComponent<Camera2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
@@ -325,7 +326,7 @@ void InspectorPanel::drawTexturePathField(Sprite2D& s)
 {
     // Get path to the texture
     static char pathBuf[256];
-    std::string currentPath = m_ctx->engineContext->Get<ContentLoader>()->GetTexturePath(s.texture);
+    std::string currentPath = Services::Fetch<ContentLoader>()->GetTexturePath(s.texture);
     std::snprintf(pathBuf, sizeof(pathBuf), "%s", currentPath.c_str());
 
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Texture");
@@ -334,7 +335,7 @@ void InspectorPanel::drawTexturePathField(Sprite2D& s)
 
     if (ImGui::InputText("##texPath", pathBuf, sizeof(pathBuf), ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        Texture* loaded = m_ctx->engineContext->Get<ContentLoader>()->LoadTexture(pathBuf);
+        Texture* loaded = Services::Fetch<ContentLoader>()->LoadTexture(pathBuf);
         if (loaded) s.texture = loaded;
     }
 
@@ -375,7 +376,7 @@ void InspectorPanel::drawSprite2D(Sprite2D& s)
 
     if (removeRequested)
     {
-        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ECS* ecs = Services::Fetch<ECS>();
         ecs->RemoveComponent<Sprite2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
@@ -477,7 +478,7 @@ void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
 
     if (removeRequested)
     {
-        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ECS* ecs = Services::Fetch<ECS>();
         ecs->RemoveComponent<RigidBody2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
@@ -536,14 +537,14 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 
     if (removeRequested)
     {
-        ECS* ecs = m_ctx->engineContext->Get<ECS>();
+        ECS* ecs = Services::Fetch<ECS>();
         ecs->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
 
 void InspectorPanel::drawAddComponentMenu()
 {
-    ECS* ecs = m_ctx->engineContext->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
     EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
 
     float btnW = 200.0f;

@@ -2,6 +2,7 @@
 #include <Editor/Panels/HierarchyPanel.h>
 #include <Editor/Panels/ScenePanel.h>
 #include <Core/ECS/ECS.h>
+#include <Core/Services.h>
 #include <imgui.h>
 #include <cstring>
 #include <cstdio>
@@ -9,7 +10,7 @@
 
 HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctx(ctx)
 {
-	ContentLoader* contentLoader = ctx->engineContext ? ctx->engineContext->Get<ContentLoader>() : nullptr;
+	ContentLoader* contentLoader = Services::Fetch<ContentLoader>();
     m_iconEntity = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_entity.png") : nullptr;
     m_iconCamera = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_camera.png") : nullptr;
     m_iconLight = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_light.png") : nullptr;
@@ -37,9 +38,9 @@ void HierarchyPanel::Draw()
 
 void HierarchyPanel::createEntity()
 {
-    if (!m_ctx->activeScene || !m_ctx->engineContext) return;
+    if (!m_ctx->activeScene) return;
 
-    ECS* ecs = m_ctx->engineContext->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
     if (!ecs) return;
 
     EntityID newEntity = ecs->CreateEntity();
@@ -57,7 +58,7 @@ void HierarchyPanel::createEntity()
 
 void HierarchyPanel::drawCreateButton()
 {
-    if (!m_ctx->activeScene || !m_ctx->engineContext) return;
+    if (!m_ctx->activeScene) return;
 
     if (ImGui::Button("+ Add Entity"))
         createEntity();
@@ -115,7 +116,7 @@ void HierarchyPanel::drawEntityList()
             {
                 EntityID idToRemove = node.id;
 
-                if (ECS* ecs = m_ctx->engineContext ? m_ctx->engineContext->Get<ECS>() : nullptr)
+                if (ECS* ecs = Services::Fetch<ECS>())
                     ecs->DeleteEntity(idToRemove);
 
                 m_ctx->activeScene->RemoveEntity(idToRemove);

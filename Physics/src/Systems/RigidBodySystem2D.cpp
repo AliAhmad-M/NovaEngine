@@ -1,4 +1,5 @@
 #include <Physics/Systems/RigidBodySystem2D.h>
+#include <Core/Services.h>
 #include <Core/Components/Transform2D.h>
 #include <Physics/Components/RigidBody2D.h>
 
@@ -25,16 +26,10 @@ static b2Filter MakeFilter(const RigidBody2D* rb)
     return f;
 }
 
-RigidBodySystem2D::RigidBodySystem2D(EngineContext* ctx, Vector2 gravity)
-    : m_ctx(ctx)
+RigidBodySystem2D::RigidBodySystem2D()
 {
-    if (m_ctx == nullptr) 
-    {
-    
-    }
-
     b2WorldDef worldDef = b2DefaultWorldDef();
-    worldDef.gravity = PointToB2(gravity.x, gravity.y);
+    worldDef.gravity = PointToB2(0.0f, 9.81f * PHYSICS_PPM);
     m_worldId = b2CreateWorld(&worldDef);
 }
 
@@ -60,7 +55,7 @@ void RigidBodySystem2D::SetGravity(const Vector2& meterPerSecSq)
 
 void RigidBodySystem2D::OnEntityAdded(EntityID e)
 {
-    ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
     auto* transform = ecs->GetComponent<Transform2D>(e);
     auto* rb = ecs->GetComponent<RigidBody2D>(e);
 
@@ -125,7 +120,7 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
 
 void RigidBodySystem2D::OnEntityRemoved(EntityID e)
 {
-    ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
     auto* rb = ecs->GetComponent<RigidBody2D>(e);
 
     if (rb && B2_IS_NON_NULL(rb->body))
@@ -138,7 +133,7 @@ void RigidBodySystem2D::OnEntityRemoved(EntityID e)
 
 void RigidBodySystem2D::OnAllEntitiesRemoved()
 {
-    ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
 
     for (EntityID e : entities)
     {
@@ -162,7 +157,7 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
 
 void RigidBodySystem2D::TeleportEntity(EntityID e)
 {
-    ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
     auto* transform = ecs->GetComponent<Transform2D>(e);
     auto* rb = ecs->GetComponent<RigidBody2D>(e);
 
@@ -189,7 +184,7 @@ void RigidBodySystem2D::Update(float dt)
 
 void RigidBodySystem2D::syncFromBox2D()
 {
-    ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
 
     for (EntityID e : entities)
     {
@@ -206,7 +201,7 @@ void RigidBodySystem2D::syncFromBox2D()
 
 void RigidBodySystem2D::processContacts()
 {
-    ECS* ecs = m_ctx->Get<ECS>();
+    ECS* ecs = Services::Fetch<ECS>();
 
     // Reset per-frame collision state
     for (EntityID e : entities)

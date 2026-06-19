@@ -2,7 +2,6 @@
 
 #include <string>
 #include <filesystem>
-#include <Core/EngineContext.h>
 #include <Editor/Scene/EditorScene.h>
 
 /**
@@ -13,9 +12,8 @@ class SceneSerializer
 public:
     /**
      * @brief Construct a serializer bound to the engine's service locator.
-	 * @param engineContext Pointer to the engine context for accessing ECS
      */
-    explicit SceneSerializer(EngineContext* engineContext);
+    explicit SceneSerializer();
 
     /**
      * @brief Save a scene to disk as JSON
@@ -26,5 +24,4 @@ public:
     bool Save(const EditorScene& scene, const std::filesystem::path& filePath);
 
 private:
-    EngineContext* m_engineContext = nullptr;
 };

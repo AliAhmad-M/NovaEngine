@@ -1,6 +1,5 @@
 #pragma once
 #include <Runtime/ContentLoader.h>
-#include <Core/EngineContext.h>
 #include <Editor/Scene/EditorScene.h>
 #include <string>
 
@@ -11,9 +10,6 @@ struct EditorContext
 {
 	int selectedEntity = -1;
 	std::string activeScenePath;
-
-	// Engine-side context pointer for services
-	EngineContext* engineContext = nullptr;
 
 	// The scene currently focused in the editor
 	EditorScene* activeScene = nullptr;

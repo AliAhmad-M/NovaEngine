@@ -1,5 +1,4 @@
 #pragma once
-#include <Core/EngineContext.h>
 #include <Core/EngineDebug.h>
 #include "ISystem.h"
 #include <memory>
@@ -21,7 +20,7 @@ public:
      * @return Shared pointer to the newly created system
      */
     template <typename T>
-    std::shared_ptr<T> RegisterSystem(EngineContext* ctx) 
+    std::shared_ptr<T> RegisterSystem() 
     {
         const std::type_index typeIndex(typeid(T));
         const char* systemType = typeIndex.name();
@@ -35,7 +34,7 @@ public:
 
         }
 
-        auto system = std::make_shared<T>(ctx);
+        auto system = std::make_shared<T>();
         m_systems[typeIndex] = system;
         EngineDebug::LogInfo("Registered system '%s' successfully", systemType);
         return system;

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Core/EngineContext.h>
 #include <Core/ECS/ECS.h>
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
@@ -11,15 +10,9 @@
 class EngineRuntime 
 {
 public:
-	EngineContext* GetContext();
-
 	bool Init(bool isEditor=false);
 	void Update();
 	void Close();
-
-protected:
-	// Global engine context
-	EngineContext m_context;
 
 private:
 	void registerComponents();

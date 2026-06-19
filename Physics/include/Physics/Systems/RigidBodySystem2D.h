@@ -9,7 +9,7 @@ class RigidBodySystem2D : public ISystem
 {
 public:
    
-    RigidBodySystem2D(EngineContext* ctx, Vector2 gravity = { 0.0f, 9.81f * PHYSICS_PPM });
+    RigidBodySystem2D();
     ~RigidBodySystem2D();
 
     RigidBodySystem2D(const RigidBodySystem2D&) = delete;
@@ -34,6 +34,5 @@ private:
     void syncFromBox2D();
     void processContacts();
 
-    EngineContext* m_ctx;
     b2WorldId m_worldId = b2_nullWorldId;
 };
