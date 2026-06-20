@@ -18,10 +18,10 @@
     <ClInclude Include="include\Runtime\Scene\SceneManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Runtime\Scene\Scene.h">
+    <ClInclude Include="include\Runtime\Scene\IScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Runtime\EngineRuntime.h">
+    <ClInclude Include="include\Runtime\Engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Runtime\ContentLoader.h">
@@ -32,7 +32,7 @@
     <ClCompile Include="src\Scene\SceneManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\EngineRuntime.cpp">
+    <ClCompile Include="src\Engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ContentLoader.cpp">

@@ -8,7 +8,9 @@
 #include <cstdio>
 #include <algorithm>
 
-HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctx(ctx)
+using namespace Nova::Editor;
+
+HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctx(ctx)
 {
 	ContentLoader* contentLoader = Services::Fetch<ContentLoader>();
     m_iconEntity = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_entity.png") : nullptr;

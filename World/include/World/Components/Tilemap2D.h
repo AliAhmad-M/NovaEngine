@@ -1,7 +1,7 @@
 #pragma once
 #include <Core/Utilities/Vector2.h>
 #include <Core/ECS/Types.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
 #include <Graphics/Texture.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -11,401 +11,404 @@
 #include <climits>
 #include <algorithm>
 
-struct Tile2D
+namespace Nova 
 {
-	const Texture* tileset = nullptr;
-	float tx = 0.0f, ty = 0.0f, tw = 0.0f, th = 0.0f;
-};
-
-struct TilemapLayer2D
-{
-	std::string name;
-	std::vector<std::vector<int>> grid;
-};
-
-struct TilemapRegion2D
-{
-	size_t startRow, startCol;
-	size_t endRow, endCol;
-};
-
-struct TilesetSource2D
-{
-	std::string texturePath;
-	int firstgid = -1;
-};
-
-enum class TilemapChildType2D
-{
-	LayerSprite,
-	RectCollider
-};
-
-struct Tilemap2D
-{
-	Tilemap2D() = default;
-
-	Tilemap2D(int tileW, int tileH)
+	struct Tile2D
 	{
-		m_tileW = std::max(1, tileW);
-		m_tileH = std::max(1, tileH);
-	}
+		const Texture* tileset = nullptr;
+		float tx = 0.0f, ty = 0.0f, tw = 0.0f, th = 0.0f;
+	};
 
-	// Note: this overload does not know the texture's source path (Tilemap2D
-	// has no ContentLoader reference). Path-aware callers should use
-	// AddTileset(tileset, path, firstgid) below, or call
-	// AddTilesetSourceRecord() manually afterward.
-	void AddTileset(const Texture* tileset, int firstgid = -1)
+	struct TilemapLayer2D
 	{
-		addTilesetInternal(tileset, firstgid);
-	}
+		std::string name;
+		std::vector<std::vector<int>> grid;
+	};
 
-	// Preferred overload: records the source path alongside the tileset so
-	// the map can be serialized and reloaded without re-baking grids.
-	void AddTileset(const Texture* tileset, const std::string& texturePath, int firstgid = -1)
+	struct TilemapRegion2D
 	{
-		int resolvedFirstgid = addTilesetInternal(tileset, firstgid);
-		m_tilesetSources.push_back({ texturePath, resolvedFirstgid });
-	}
+		size_t startRow, startCol;
+		size_t endRow, endCol;
+	};
 
-	void LoadTilemap(const std::string& mapPath)
+	struct TilesetSource2D
 	{
-		EngineDebug::LogInfo("Loading tilemap file: %s", mapPath.c_str());
-		std::ifstream mapfile(mapPath);
+		std::string texturePath;
+		int firstgid = -1;
+	};
 
-		if (!mapfile.is_open())
-		{
-			EngineDebug::LogError("Failed to open tilemap");
-			return;
-		}
-
-		nlohmann::json mapfilejson;
-		try
-		{
-			mapfilejson = nlohmann::json::parse(mapfile);
-		}
-		catch (const nlohmann::json::parse_error& e)
-		{
-			EngineDebug::LogWarn("Unable to load tilemap: %s", e.what());
-			return;
-		}
-
-		bool isInfinite = mapfilejson.value("infinite", false);
-
-		if (isInfinite)
-		{
-			EngineDebug::LogInfo("Processing infinite tilemap");
-			loadInfiniteTilemap(mapfilejson);
-		}
-		else
-		{
-			EngineDebug::LogInfo("Processing finite tilemap");
-			loadFiniteTilemap(mapfilejson);
-		}
-
-		m_sourceMapPath = mapPath;
-
-		EngineDebug::LogInfo("Tilemap '%s' loaded successfully", mapPath.c_str());
-	}
-
-	void GenerateCollisionData(int layer, const std::vector<int>& tiles)
+	enum class TilemapChildType2D
 	{
-		layer = std::max(0, layer);
+		LayerSprite,
+		RectCollider
+	};
 
-		if (layer >= (int)m_layers.size() || m_mapH == 0 || m_mapW == 0)
+	struct Tilemap2D
+	{
+		Tilemap2D() = default;
+
+		Tilemap2D(int tileW, int tileH)
 		{
-			EngineDebug::LogError("Failed to generate tilemap collision data");
-			return;
+			m_tileW = std::max(1, tileW);
+			m_tileH = std::max(1, tileH);
 		}
 
-		// Collision flags
-		std::vector<std::vector<bool>> collision(m_mapH, std::vector<bool>(m_mapW, false));
-
-		for (int row = 0; row < m_mapH; row++)
+		// Note: this overload does not know the texture's source path (Tilemap2D
+		// has no ContentLoader reference). Path-aware callers should use
+		// AddTileset(tileset, path, firstgid) below, or call
+		// AddTilesetSourceRecord() manually afterward.
+		void AddTileset(const Texture* tileset, int firstgid = -1)
 		{
-			for (int col = 0; col < m_mapW; col++)
+			addTilesetInternal(tileset, firstgid);
+		}
+
+		// Preferred overload: records the source path alongside the tileset so
+		// the map can be serialized and reloaded without re-baking grids.
+		void AddTileset(const Texture* tileset, const std::string& texturePath, int firstgid = -1)
+		{
+			int resolvedFirstgid = addTilesetInternal(tileset, firstgid);
+			m_tilesetSources.push_back({ texturePath, resolvedFirstgid });
+		}
+
+		void LoadTilemap(const std::string& mapPath)
+		{
+			Debug::LogInfo("Loading tilemap file: %s", mapPath.c_str());
+			std::ifstream mapfile(mapPath);
+
+			if (!mapfile.is_open())
 			{
-				int tileIndex = m_layers[layer].grid[row][col];
-				collision[row][col] = std::find(tiles.begin(), tiles.end(), tileIndex) != tiles.end();
+				Debug::LogError("Failed to open tilemap");
+				return;
 			}
+
+			nlohmann::json mapfilejson;
+			try
+			{
+				mapfilejson = nlohmann::json::parse(mapfile);
+			}
+			catch (const nlohmann::json::parse_error& e)
+			{
+				Debug::LogWarn("Unable to load tilemap: %s", e.what());
+				return;
+			}
+
+			bool isInfinite = mapfilejson.value("infinite", false);
+
+			if (isInfinite)
+			{
+				Debug::LogInfo("Processing infinite tilemap");
+				loadInfiniteTilemap(mapfilejson);
+			}
+			else
+			{
+				Debug::LogInfo("Processing finite tilemap");
+				loadFiniteTilemap(mapfilejson);
+			}
+
+			m_sourceMapPath = mapPath;
+
+			Debug::LogInfo("Tilemap '%s' loaded successfully", mapPath.c_str());
 		}
 
-		for (size_t row = 0; row < (size_t)m_mapH; row++)
+		void GenerateCollisionData(int layer, const std::vector<int>& tiles)
 		{
-			size_t col = 0;
-			while (col < (size_t)m_mapW)
+			layer = std::max(0, layer);
+
+			if (layer >= (int)m_layers.size() || m_mapH == 0 || m_mapW == 0)
 			{
-				if (collision[row][col])
+				Debug::LogError("Failed to generate tilemap collision data");
+				return;
+			}
+
+			// Collision flags
+			std::vector<std::vector<bool>> collision(m_mapH, std::vector<bool>(m_mapW, false));
+
+			for (int row = 0; row < m_mapH; row++)
+			{
+				for (int col = 0; col < m_mapW; col++)
 				{
-					size_t startCol = col;
-					while (col < (size_t)m_mapW && collision[row][col])
+					int tileIndex = m_layers[layer].grid[row][col];
+					collision[row][col] = std::find(tiles.begin(), tiles.end(), tileIndex) != tiles.end();
+				}
+			}
+
+			for (size_t row = 0; row < (size_t)m_mapH; row++)
+			{
+				size_t col = 0;
+				while (col < (size_t)m_mapW)
+				{
+					if (collision[row][col])
+					{
+						size_t startCol = col;
+						while (col < (size_t)m_mapW && collision[row][col])
+						{
+							col++;
+						}
+						size_t endCol = col;
+
+						size_t endRow = row;
+						bool isCollidable = true;
+
+						while (isCollidable && endRow + 1 < (size_t)m_mapH)
+						{
+							for (size_t currentCol = startCol; currentCol < endCol; currentCol++)
+							{
+								if (!collision[endRow + 1][currentCol])
+								{
+									isCollidable = false;
+									break;
+								}
+							}
+							if (isCollidable)
+							{
+								endRow++;
+							}
+						}
+
+						// Flag processed cells as resolved
+						for (size_t r = row; r <= endRow; r++) {
+							for (size_t c = startCol; c < endCol; c++) {
+								collision[r][c] = false;
+							}
+						}
+
+						m_collisionRegions.push_back({ row, startCol, endRow + 1, endCol });
+					}
+					else
 					{
 						col++;
 					}
-					size_t endCol = col;
-
-					size_t endRow = row;
-					bool isCollidable = true;
-
-					while (isCollidable && endRow + 1 < (size_t)m_mapH)
-					{
-						for (size_t currentCol = startCol; currentCol < endCol; currentCol++)
-						{
-							if (!collision[endRow + 1][currentCol])
-							{
-								isCollidable = false;
-								break;
-							}
-						}
-						if (isCollidable)
-						{
-							endRow++;
-						}
-					}
-
-					// Flag processed cells as resolved
-					for (size_t r = row; r <= endRow; r++) {
-						for (size_t c = startCol; c < endCol; c++) {
-							collision[r][c] = false;
-						}
-					}
-
-					m_collisionRegions.push_back({ row, startCol, endRow + 1, endCol });
-				}
-				else
-				{
-					col++;
 				}
 			}
 		}
-	}
 
-	int GetMapWidth() const { return m_mapW; }
-	int GetMapHeight() const { return m_mapH; }
-	int GetTileWidth() const { return m_tileW; }
-	int GetTileHeight() const { return m_tileH; }
-	const Vector2& GetOffset() const { return m_offset; }
+		int GetMapWidth() const { return m_mapW; }
+		int GetMapHeight() const { return m_mapH; }
+		int GetTileWidth() const { return m_tileW; }
+		int GetTileHeight() const { return m_tileH; }
+		const Vector2& GetOffset() const { return m_offset; }
 
-	const std::vector<Tile2D>& GetTileset() const
-	{
-		return m_tileset;
-	}
-
-	const std::vector<TilemapLayer2D>& GetLayers() const
-	{
-		return m_layers;
-	}
-
-	const std::vector<TilemapRegion2D>& GetCollisionRegions() const
-	{
-		return m_collisionRegions;
-	}
-
-	void AddChildEntity(EntityID entity, TilemapChildType2D type)
-	{
-		m_childEntities.push_back({ entity, type });
-	}
-
-	const std::vector<std::pair<EntityID, TilemapChildType2D>>& GetChildEntities() const
-	{
-		return m_childEntities;
-	}
-
-	void ClearChildEntities()
-	{
-		m_childEntities.clear();
-	}
-
-	// Source-path tracking, used by SceneSerializer to reload from JSON
-	// rather than serializing the full baked grid.
-	const std::string& GetSourceMapPath() const { return m_sourceMapPath; }
-	void SetSourceMapPath(const std::string& path) { m_sourceMapPath = path; }
-
-	const std::vector<TilesetSource2D>& GetTilesetSources() const { return m_tilesetSources; }
-
-	// Used by the deserializer to restore tileset source records when
-	// AddTileset() is called with a texture loaded from a known path.
-	void AddTilesetSourceRecord(const std::string& texturePath, int firstgid)
-	{
-		m_tilesetSources.push_back({ texturePath, firstgid });
-	}
-
-private:
-	int addTilesetInternal(const Texture* tileset, int firstgid)
-	{
-		EngineDebug::LogInfo("Loading tileset");
-		if (!tileset)
+		const std::vector<Tile2D>& GetTileset() const
 		{
-			EngineDebug::LogError("Tileset texture cannot be NULL");
+			return m_tileset;
+		}
+
+		const std::vector<TilemapLayer2D>& GetLayers() const
+		{
+			return m_layers;
+		}
+
+		const std::vector<TilemapRegion2D>& GetCollisionRegions() const
+		{
+			return m_collisionRegions;
+		}
+
+		void AddChildEntity(EntityID entity, TilemapChildType2D type)
+		{
+			m_childEntities.push_back({ entity, type });
+		}
+
+		const std::vector<std::pair<EntityID, TilemapChildType2D>>& GetChildEntities() const
+		{
+			return m_childEntities;
+		}
+
+		void ClearChildEntities()
+		{
+			m_childEntities.clear();
+		}
+
+		// Source-path tracking, used by SceneSerializer to reload from JSON
+		// rather than serializing the full baked grid.
+		const std::string& GetSourceMapPath() const { return m_sourceMapPath; }
+		void SetSourceMapPath(const std::string& path) { m_sourceMapPath = path; }
+
+		const std::vector<TilesetSource2D>& GetTilesetSources() const { return m_tilesetSources; }
+
+		// Used by the deserializer to restore tileset source records when
+		// AddTileset() is called with a texture loaded from a known path.
+		void AddTilesetSourceRecord(const std::string& texturePath, int firstgid)
+		{
+			m_tilesetSources.push_back({ texturePath, firstgid });
+		}
+
+	private:
+		int addTilesetInternal(const Texture* tileset, int firstgid)
+		{
+			Debug::LogInfo("Loading tileset");
+			if (!tileset)
+			{
+				Debug::LogError("Tileset texture cannot be NULL");
+				return firstgid;
+			}
+
+			int width = tileset->GetWidth();
+			int height = tileset->GetHeight();
+
+			int rows = height / m_tileH;
+			int cols = width / m_tileW;
+
+			// If no firstgid provided, auto‑calculate (continuous after previous tileset)
+			if (firstgid < 0)
+				firstgid = (int)m_tileset.size() + 1;
+
+			int totalTiles = rows * cols;
+			int requiredSize = firstgid + totalTiles - 1;
+
+			if ((int)m_tileset.size() < requiredSize)
+			{
+				m_tileset.resize(requiredSize, Tile2D());
+			}
+
+			for (int i = 0; i < rows; i++)
+			{
+				for (int j = 0; j < cols; j++)
+				{
+					size_t tileIndex = firstgid - 1 + (i * cols + j);
+
+					m_tileset[tileIndex] = {
+						tileset,
+						(float)(j * m_tileW) / width,
+						(float)(i * m_tileH) / height,
+						(float)m_tileW / width,
+						(float)m_tileH / height
+					};
+				}
+			}
+
+			Debug::LogInfo("Tileset loaded");
 			return firstgid;
 		}
 
-		int width = tileset->GetWidth();
-		int height = tileset->GetHeight();
-
-		int rows = height / m_tileH;
-		int cols = width / m_tileW;
-
-		// If no firstgid provided, auto‑calculate (continuous after previous tileset)
-		if (firstgid < 0)
-			firstgid = (int)m_tileset.size() + 1;
-
-		int totalTiles = rows * cols;
-		int requiredSize = firstgid + totalTiles - 1;
-
-		if ((int)m_tileset.size() < requiredSize)
+		void initTextureMap(int layers, int rows, int cols)
 		{
-			m_tileset.resize(requiredSize, Tile2D());
-		}
+			layers = std::max(1, layers);
+			rows = std::max(1, rows);
+			cols = std::max(1, cols);
 
-		for (int i = 0; i < rows; i++)
-		{
-			for (int j = 0; j < cols; j++)
+			m_layers.resize(layers);
+			for (size_t layer = 0; layer < (size_t)layers; layer++)
 			{
-				size_t tileIndex = firstgid - 1 + (i * cols + j);
-
-				m_tileset[tileIndex] = {
-					tileset,
-					(float)(j * m_tileW) / width,
-					(float)(i * m_tileH) / height,
-					(float)m_tileW / width,
-					(float)m_tileH / height
-				};
+				m_layers[layer].grid.resize(rows);
+				for (size_t row = 0; row < (size_t)rows; row++)
+				{
+					m_layers[layer].grid[row].resize(cols, -1);
+				}
 			}
 		}
 
-		EngineDebug::LogInfo("Tileset loaded");
-		return firstgid;
-	}
-
-	void initTextureMap(int layers, int rows, int cols)
-	{
-		layers = std::max(1, layers);
-		rows = std::max(1, rows);
-		cols = std::max(1, cols);
-
-		m_layers.resize(layers);
-		for (size_t layer = 0; layer < (size_t)layers; layer++)
+		void loadFiniteTilemap(const nlohmann::json& mapfilejson)
 		{
-			m_layers[layer].grid.resize(rows);
-			for (size_t row = 0; row < (size_t)rows; row++)
+			m_mapW = mapfilejson["width"];
+			m_mapH = mapfilejson["height"];
+
+			initTextureMap((int)mapfilejson["layers"].size(), m_mapH, m_mapW);
+
+			for (size_t i = 0; i < mapfilejson["layers"].size(); i++)
 			{
-				m_layers[layer].grid[row].resize(cols, -1);
+				auto layout = mapfilejson["layers"][i]["data"];
+				if (mapfilejson["layers"][i].contains("name"))
+					m_layers[i].name = mapfilejson["layers"][i]["name"];
+
+				for (size_t j = 0; j < layout.size(); j++)
+				{
+					size_t row = j / m_mapW;
+					size_t col = j % m_mapW;
+
+					int rawGid = layout[j];
+					m_layers[i].grid[row][col] = rawGid - 1;
+				}
 			}
 		}
-	}
 
-	void loadFiniteTilemap(const nlohmann::json& mapfilejson)
-	{
-		m_mapW = mapfilejson["width"];
-		m_mapH = mapfilejson["height"];
-
-		initTextureMap((int)mapfilejson["layers"].size(), m_mapH, m_mapW);
-
-		for (size_t i = 0; i < mapfilejson["layers"].size(); i++)
+		void loadInfiniteTilemap(const nlohmann::json& mapfilejson)
 		{
-			auto layout = mapfilejson["layers"][i]["data"];
-			if (mapfilejson["layers"][i].contains("name"))
-				m_layers[i].name = mapfilejson["layers"][i]["name"];
+			int minX = INT_MAX, minY = INT_MAX, maxX = INT_MIN, maxY = INT_MIN;
 
-			for (size_t j = 0; j < layout.size(); j++)
+			for (size_t layerIdx = 0; layerIdx < mapfilejson["layers"].size(); layerIdx++)
 			{
-				size_t row = j / m_mapW;
-				size_t col = j % m_mapW;
+				const auto& layer = mapfilejson["layers"][layerIdx];
+				if (layer.contains("chunks") && !layer["chunks"].empty())
+				{
+					for (const auto& chunk : layer["chunks"])
+					{
+						int chunkX = chunk["x"];
+						int chunkY = chunk["y"];
+						int chunkWidth = chunk["width"];
+						int chunkHeight = chunk["height"];
 
-				int rawGid = layout[j];
-				m_layers[i].grid[row][col] = rawGid - 1;
+						minX = std::min(minX, chunkX);
+						minY = std::min(minY, chunkY);
+						maxX = std::max(maxX, chunkX + chunkWidth);
+						maxY = std::max(maxY, chunkY + chunkHeight);
+					}
+				}
 			}
-		}
-	}
 
-	void loadInfiniteTilemap(const nlohmann::json& mapfilejson)
-	{
-		int minX = INT_MAX, minY = INT_MAX, maxX = INT_MIN, maxY = INT_MIN;
-
-		for (size_t layerIdx = 0; layerIdx < mapfilejson["layers"].size(); layerIdx++)
-		{
-			const auto& layer = mapfilejson["layers"][layerIdx];
-			if (layer.contains("chunks") && !layer["chunks"].empty())
+			if (minX == INT_MAX)
 			{
+				minX = minY = 0;
+				maxX = maxY = 16;
+			}
+
+			m_mapW = maxX - minX;
+			m_mapH = maxY - minY;
+			m_offset.x = (float)minX;
+			m_offset.y = (float)minY;
+
+			initTextureMap((int)mapfilejson["layers"].size(), m_mapH, m_mapW);
+
+			for (size_t layerIdx = 0; layerIdx < mapfilejson["layers"].size(); layerIdx++)
+			{
+				const auto& layer = mapfilejson["layers"][layerIdx];
+				if (layer.contains("name"))
+					m_layers[layerIdx].name = layer["name"];
+
+				if (!layer.contains("chunks") || layer["chunks"].empty()) continue;
+
 				for (const auto& chunk : layer["chunks"])
 				{
 					int chunkX = chunk["x"];
 					int chunkY = chunk["y"];
 					int chunkWidth = chunk["width"];
 					int chunkHeight = chunk["height"];
+					auto chunkData = chunk["data"];
 
-					minX = std::min(minX, chunkX);
-					minY = std::min(minY, chunkY);
-					maxX = std::max(maxX, chunkX + chunkWidth);
-					maxY = std::max(maxY, chunkY + chunkHeight);
-				}
-			}
-		}
-
-		if (minX == INT_MAX)
-		{
-			minX = minY = 0;
-			maxX = maxY = 16;
-		}
-
-		m_mapW = maxX - minX;
-		m_mapH = maxY - minY;
-		m_offset.x = (float)minX;
-		m_offset.y = (float)minY;
-
-		initTextureMap((int)mapfilejson["layers"].size(), m_mapH, m_mapW);
-
-		for (size_t layerIdx = 0; layerIdx < mapfilejson["layers"].size(); layerIdx++)
-		{
-			const auto& layer = mapfilejson["layers"][layerIdx];
-			if (layer.contains("name"))
-				m_layers[layerIdx].name = layer["name"];
-
-			if (!layer.contains("chunks") || layer["chunks"].empty()) continue;
-
-			for (const auto& chunk : layer["chunks"])
-			{
-				int chunkX = chunk["x"];
-				int chunkY = chunk["y"];
-				int chunkWidth = chunk["width"];
-				int chunkHeight = chunk["height"];
-				auto chunkData = chunk["data"];
-
-				for (int chunkTileIdx = 0; chunkTileIdx < (int)chunkData.size(); chunkTileIdx++)
-				{
-					int localCol = chunkTileIdx % chunkWidth;
-					int localRow = chunkTileIdx / chunkWidth;
-
-					int globalCol = chunkX + localCol - (int)m_offset.x;
-					int globalRow = chunkY + localRow - (int)m_offset.y;
-
-					if (globalCol < 0 || globalRow < 0 || globalCol >= m_mapW || globalRow >= m_mapH)
+					for (int chunkTileIdx = 0; chunkTileIdx < (int)chunkData.size(); chunkTileIdx++)
 					{
-						continue;
-					}
+						int localCol = chunkTileIdx % chunkWidth;
+						int localRow = chunkTileIdx / chunkWidth;
 
-					int tileId = chunkData[chunkTileIdx];
-					m_layers[layerIdx].grid[globalRow][globalCol] = tileId - 1;
+						int globalCol = chunkX + localCol - (int)m_offset.x;
+						int globalRow = chunkY + localRow - (int)m_offset.y;
+
+						if (globalCol < 0 || globalRow < 0 || globalCol >= m_mapW || globalRow >= m_mapH)
+						{
+							continue;
+						}
+
+						int tileId = chunkData[chunkTileIdx];
+						m_layers[layerIdx].grid[globalRow][globalCol] = tileId - 1;
+					}
 				}
 			}
 		}
-	}
 
-	int m_mapW = 0;
-	int m_mapH = 0;
+		int m_mapW = 0;
+		int m_mapH = 0;
 
-	int m_tileW = 16;
-	int m_tileH = 16;
+		int m_tileW = 16;
+		int m_tileH = 16;
 
-	Vector2 m_offset = Vector2::ZERO;
+		Vector2 m_offset = Vector2::ZERO;
 
-	std::vector<Tile2D>  m_tileset;
-	std::vector<TilemapLayer2D> m_layers;
-	std::vector<TilemapRegion2D> m_collisionRegions;
+		std::vector<Tile2D>  m_tileset;
+		std::vector<TilemapLayer2D> m_layers;
+		std::vector<TilemapRegion2D> m_collisionRegions;
 
-	std::vector<std::pair<EntityID, TilemapChildType2D>> m_childEntities;
+		std::vector<std::pair<EntityID, TilemapChildType2D>> m_childEntities;
 
-	std::string m_sourceMapPath;
-	std::vector<TilesetSource2D> m_tilesetSources;
-};
+		std::string m_sourceMapPath;
+		std::vector<TilesetSource2D> m_tilesetSources;
+	};
+}

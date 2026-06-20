@@ -5,16 +5,17 @@
 
 #include <vector>
 
-class DynamicsTest : public IScene
+class DynamicsTest : public Nova::IScene
 {
 public:
     void Ready() override;
+    void Render() override;
     void Update(float dt) override;
     void Leave() override;
 
 private:
-    std::vector<EntityID> m_spawnedBalls;
-    std::vector<EntityID> m_staticBodies;
+    std::vector<Nova::EntityID> m_spawnedBalls;
+    std::vector<Nova::EntityID> m_staticBodies;
 
     float m_currentFPS = 0.0f;
     float m_fpsTimer = 0.0f;

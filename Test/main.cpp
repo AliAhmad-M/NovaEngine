@@ -1,12 +1,14 @@
-#include <Runtime/EngineRuntime.h>
+#include <Runtime/Engine.h>
 #include <Core/Services.h>
 #include <Test/Scenes/DynamicsTest.h>
 #include <Test/Scenes/GraphicsTest.h>
 #include <string>
 
+using namespace Nova;
+
 int main()
 {
-    EngineRuntime runtime;
+    Engine runtime;
 
     // Initialize runtime
     runtime.Init();

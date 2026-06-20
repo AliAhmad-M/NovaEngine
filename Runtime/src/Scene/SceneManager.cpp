@@ -1,6 +1,16 @@
 #include <Runtime/Scene/SceneManager.h>
 
-void SceneManager::UpdateScene(float dt) 
+using namespace Nova;
+
+void SceneManager::Render() 
+{
+	if (m_currentScene) 
+	{
+		m_currentScene->Render();
+	}
+}
+
+void SceneManager::Update(float dt) 
 {
 	if (m_currentScene) 
 	{
@@ -12,7 +22,7 @@ void SceneManager::DeleteScene(const std::string& name)
 {
 	if (m_scenes.find(name) == m_scenes.end()) 
 	{
-		EngineDebug::LogWarn("Cannot delete scene '%s' as it does not exist", name.c_str());
+		Debug::LogWarn("Cannot delete scene '%s' as it does not exist", name.c_str());
 		return;
 	}
 
@@ -22,14 +32,14 @@ void SceneManager::DeleteScene(const std::string& name)
 		m_currentScene = nullptr; // Clear current scene
 	}
 	m_scenes.erase(name);
-	EngineDebug::LogInfo("Successfully deleted scene: %s", name.c_str());
+	Debug::LogInfo("Successfully deleted scene: %s", name.c_str());
 }
 
 void SceneManager::ChangeScene(const std::string& name) 
 {
 	if (m_scenes.find(name) == m_scenes.end()) 
 	{
-		EngineDebug::LogInfo("Cannot change to scene '%s' as it does not exist", name.c_str());
+		Debug::LogInfo("Cannot change to scene '%s' as it does not exist", name.c_str());
 		return;
 	}
 
@@ -40,5 +50,5 @@ void SceneManager::ChangeScene(const std::string& name)
 	}
 	m_currentScene = nextScene;
 	m_currentScene->Ready();
-	EngineDebug::LogInfo("Successfully changed scene to: %s", name.c_str());
+	Debug::LogInfo("Successfully changed scene to: %s", name.c_str());
 }

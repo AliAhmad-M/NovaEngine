@@ -15,6 +15,9 @@
 #include <cmath>
 #include <array>
 
+using namespace Nova;
+using namespace Nova::Editor;
+
 static ContentLoader* s_contentLoader;
 
 namespace

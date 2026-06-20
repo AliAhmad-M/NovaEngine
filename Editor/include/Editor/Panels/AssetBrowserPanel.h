@@ -3,57 +3,60 @@
 #include <string>
 #include <vector>
 #include <filesystem>
-#include <Editor/EditorContext.h>
+#include <Editor/Context.h>
 #include <Graphics/Texture.h>
 #include <imgui.h>
 
-enum class AssetType { Unknown, Texture, Scene, Font, Audio };
-
-struct AssetEntry
+namespace Nova::Editor 
 {
-    std::string path;
-    std::string filename;
+    enum class AssetType { Unknown, Texture, Scene, Font, Audio };
 
-    AssetType type = AssetType::Unknown;
-    bool isDirectory = false;
-};
+    struct AssetEntry
+    {
+        std::string path;
+        std::string filename;
 
-class AssetBrowserPanel
-{
-public:
-    explicit AssetBrowserPanel(EditorContext* ctx);
+        AssetType type = AssetType::Unknown;
+        bool isDirectory = false;
+    };
 
-    void Draw();
-    void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
+    class AssetBrowserPanel
+    {
+    public:
+        explicit AssetBrowserPanel(Context* ctx);
 
-    const std::string& GetLastSelectedPath() const { return m_lastSelectedPath; }
+        void Draw();
+        void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
-private:
-    void Refresh();
-    void DrawToolbar();
-    void DrawDirectoryTree(const std::filesystem::path& root);
-    void DrawContentGrid();
+        const std::string& GetLastSelectedPath() const { return m_lastSelectedPath; }
 
-    AssetType   ClassifyExtension(const std::string& ext) const;
-    const char* AssetTypeIcon(AssetType t) const;
-    GLuint      GetEntryIcon(const AssetEntry& entry) const;  
+    private:
+        void Refresh();
+        void DrawToolbar();
+        void DrawDirectoryTree(const std::filesystem::path& root);
+        void DrawContentGrid();
 
-    EditorContext* m_ctx = nullptr;
-    ImGuiWindowFlags         m_windowFlags = 0;
-    std::filesystem::path    m_rootPath;
-    std::filesystem::path    m_currentPath;
-    std::vector<AssetEntry>  m_entries;
-    std::string              m_lastSelectedPath;
-    std::string              m_selectedFile;
+        AssetType   ClassifyExtension(const std::string& ext) const;
+        const char* AssetTypeIcon(AssetType t) const;
+        GLuint      GetEntryIcon(const AssetEntry& entry) const;
 
-    // Icons
-    Texture* m_iconFolder;
-    Texture* m_iconTexture;
-    Texture* m_iconScene;
-    Texture* m_iconAudio;
-    Texture* m_iconScript;
-    Texture* m_iconFont;
+        Context* m_ctx = nullptr;
+        ImGuiWindowFlags         m_windowFlags = 0;
+        std::filesystem::path    m_rootPath;
+        std::filesystem::path    m_currentPath;
+        std::vector<AssetEntry>  m_entries;
+        std::string              m_lastSelectedPath;
+        std::string              m_selectedFile;
 
-    float  m_iconSize = 64.0f;
-    char   m_filter[128] = {};
-};
+        // Icons
+        Texture* m_iconFolder;
+        Texture* m_iconTexture;
+        Texture* m_iconScene;
+        Texture* m_iconAudio;
+        Texture* m_iconScript;
+        Texture* m_iconFont;
+
+        float  m_iconSize = 64.0f;
+        char   m_filter[128] = {};
+    };
+}

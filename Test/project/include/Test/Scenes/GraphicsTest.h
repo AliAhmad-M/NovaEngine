@@ -3,17 +3,18 @@
 #include <Graphics/Texture.h>
 #include <Runtime/Scene/SceneManager.h>
 
-class GraphicsTest : public IScene
+class GraphicsTest : public Nova::IScene
 {
 public:
     void Ready() override;
+    void Render() override;
     void Update(float dt) override;
     void Leave() override;
 
 private:
-    Texture* m_ninjaTexture = nullptr;
-    EntityID m_ninjaEntity  = 0;
-    EntityID m_cameraEntity = 0;
+    Nova::Texture * m_ninjaTexture = nullptr;
+    Nova::EntityID m_ninjaEntity  = 0;
+    Nova::EntityID m_cameraEntity = 0;
 
     std::string m_lastDirection = "idle_down";
 

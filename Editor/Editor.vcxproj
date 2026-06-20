@@ -143,7 +143,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="src\Editor.cpp" />
+    <ClCompile Include="src\EditorApp.cpp" />
     <ClCompile Include="src\Panels\AssetBrowserPanel.cpp" />
     <ClCompile Include="src\Panels\HierarchyPanel.cpp" />
     <ClCompile Include="src\Panels\InspectorPanel.cpp" />
@@ -151,13 +151,13 @@
     <ClCompile Include="src\Scene\SceneSerializer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Editor\Editor.h" />
+    <ClInclude Include="include\Editor\EditorApp.h" />
     <ClInclude Include="include\Editor\Panels\AssetBrowserPanel.h" />
-    <ClInclude Include="include\Editor\EditorContext.h" />
+    <ClInclude Include="include\Editor\Context.h" />
     <ClInclude Include="include\Editor\Panels\HierarchyPanel.h" />
     <ClInclude Include="include\Editor\Panels\InspectorPanel.h" />
     <ClInclude Include="include\Editor\Panels\ScenePanel.h" />
-    <ClInclude Include="include\Editor\Scene\EditorScene.h" />
+    <ClInclude Include="include\Editor\Scene\Scene.h" />
     <ClInclude Include="include\Editor\Scene\SceneSerializer.h" />
   </ItemGroup>
   <ItemGroup>

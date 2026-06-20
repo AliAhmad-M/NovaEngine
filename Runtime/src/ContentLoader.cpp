@@ -1,6 +1,8 @@
 #include <Runtime/ContentLoader.h>
 #include <glad/glad.h>
 
+using namespace Nova;
+
 Texture* ContentLoader::LoadTexture(const std::string& path) 
 {
     // Return texture if already loaded

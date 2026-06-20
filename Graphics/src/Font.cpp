@@ -1,16 +1,18 @@
 #include <Graphics/Font.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <algorithm>
 #include <vector>
+
+using namespace Nova;
 
 bool Font::LoadFromFile(const std::string& path, float fontSize) 
 {
     FT_Library ft;
     if (FT_Init_FreeType(&ft)) 
     {
-        EngineDebug::LogWarn("Cannot load font: %s", path.c_str());
+        Debug::LogWarn("Cannot load font: %s", path.c_str());
         return false;
     
     } 
@@ -19,7 +21,7 @@ bool Font::LoadFromFile(const std::string& path, float fontSize)
     if (FT_New_Face(ft, path.c_str(), 0, &face)) 
     {
         FT_Done_FreeType(ft);
-        EngineDebug::LogWarn("Cannot load font: %s", path.c_str());
+        Debug::LogWarn("Cannot load font: %s", path.c_str());
         return false;
     }
 

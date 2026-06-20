@@ -1,9 +1,11 @@
 #include <Graphics/Systems/CameraSystem2D.h>
 #include <Core/Services.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
 #include <Core/Components/Transform2D.h>
 #include <Platform/Window.h>
 #include <Graphics/Components/Camera2D.h>
+
+using namespace Nova;
 
 void CameraSystem2D::Update(float dt)
 {

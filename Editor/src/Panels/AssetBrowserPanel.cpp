@@ -5,7 +5,9 @@
 #include <cstring>
 #include <cstdio>
 
-AssetBrowserPanel::AssetBrowserPanel(EditorContext* ctx)
+using namespace Nova::Editor;
+
+AssetBrowserPanel::AssetBrowserPanel(Context* ctx)
     : m_ctx(ctx)
 {
     ContentLoader* contentLoader = Services::Fetch<ContentLoader>();

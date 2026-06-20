@@ -1,76 +1,79 @@
 #pragma once
-#include "EngineDebug.h"
+#include "Debug.h"
 #include <unordered_map>
 #include <typeindex>
 #include <any>
 #include <cassert>
 
-class Services
+namespace Nova 
 {
-public:
-    static void Init()
+    class Services
     {
-        if (s_instance)
-            EngineDebug::LogWarn("Services already initialized");
-
-        s_instance = new Services();
-    }
-
-    static void Shutdown()
-    {
-        delete s_instance;
-        s_instance = nullptr;
-    }
-
-    static Services& Get()
-    {
-        if (!s_instance) 
+    public:
+        static void Init()
         {
-            EngineDebug::LogErrorAndExit("Services not initialized");
+            if (s_instance)
+                Debug::LogWarn("Services already initialized");
+
+            s_instance = new Services();
         }
 
-        return *s_instance;
-    }
+        static void Shutdown()
+        {
+            delete s_instance;
+            s_instance = nullptr;
+        }
 
-    template<typename T>
-    static bool Has()
-    {
-        return Get().m_services.find(typeid(T)) != Get().m_services.end();
-    }
+        static Services& Get()
+        {
+            if (!s_instance)
+            {
+                Debug::LogErrorAndExit("Services not initialized");
+            }
 
-    template<typename T>
-    static T* Fetch()
-    {
-        auto it = Get().m_services.find(typeid(T));
-        if (it != Get().m_services.end())
-            return std::any_cast<T*>(it->second);
+            return *s_instance;
+        }
 
-        EngineDebug::LogError("Service '%s' has not been registered yet", typeid(T).name());
-        return nullptr;
-    }
+        template<typename T>
+        static bool Has()
+        {
+            return Get().m_services.find(typeid(T)) != Get().m_services.end();
+        }
 
-    template<typename T>
-    static void Register(T* service)
-    {
-        if (!service) return;
-        Get().m_services[typeid(T)] = service;
-    }
+        template<typename T>
+        static T* Fetch()
+        {
+            auto it = Get().m_services.find(typeid(T));
+            if (it != Get().m_services.end())
+                return std::any_cast<T*>(it->second);
 
-    template<typename T>
-    static void Unregister()
-    {
-        auto& m = Get().m_services;
-        auto it = m.find(typeid(T));
-        if (it != m.end()) m.erase(it);
-    }
+            Debug::LogError("Service '%s' has not been registered yet", typeid(T).name());
+            return nullptr;
+        }
 
-private:
-    Services() = default;
-    ~Services() = default;
+        template<typename T>
+        static void Register(T* service)
+        {
+            if (!service) return;
+            Get().m_services[typeid(T)] = service;
+        }
 
-    Services(const Services&) = delete;
-    Services& operator=(const Services&) = delete;
+        template<typename T>
+        static void Unregister()
+        {
+            auto& m = Get().m_services;
+            auto it = m.find(typeid(T));
+            if (it != m.end()) m.erase(it);
+        }
 
-    std::unordered_map<std::type_index, std::any> m_services;
-    inline static Services* s_instance = nullptr;
-};
+    private:
+        Services() = default;
+        ~Services() = default;
+
+        Services(const Services&) = delete;
+        Services& operator=(const Services&) = delete;
+
+        std::unordered_map<std::type_index, std::any> m_services;
+        inline static Services* s_instance = nullptr;
+    };
+}

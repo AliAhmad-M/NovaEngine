@@ -1,4 +1,4 @@
-#include <Runtime/EngineRuntime.h>
+#include <Runtime/Engine.h>
 #include <Core/Services.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
@@ -14,22 +14,10 @@
 
 #include <thread>
 
-bool EngineRuntime::Init(bool isEditor)
+using namespace Nova;
+
+bool Engine::Init()
 {
-    if (isEditor) 
-    {
-        // Setup ECS
-        m_ecs.Init();
-        registerComponents();
-        initializeSystems();
-
-        Services::Init();
-        Services::Register(&m_ecs);
-        Services::Register(&m_contentLoader);
-
-        return true;
-    }
-
     // Create window
     if (!m_window.Init(1280, 720, "Star Platinum Engine")) 
     {
@@ -61,7 +49,18 @@ bool EngineRuntime::Init(bool isEditor)
     return true;
 }
 
-void EngineRuntime::Update()
+void Engine::render() 
+{
+    Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
+        0, (float)m_window.GetWidth(), (float)m_window.GetHeight(), 0, -100.0f, 100.0f);
+
+    m_renderer.Begin(projection);
+        m_ecs.GetSystem<SpriteSystem2D>()->Update();
+        m_sceneManager.Render();
+    m_renderer.Flush();
+}
+
+void Engine::Update()
 {
     const double targetFrameTime = 1.0 / 60.0;
     double lastTime = glfwGetTime();
@@ -83,13 +82,12 @@ void EngineRuntime::Update()
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        // Update systems
 		m_ecs.GetSystem<CameraSystem2D>()->Update((float)m_deltaTime);
 		m_ecs.GetSystem<RigidBodySystem2D>()->Update((float)m_deltaTime);
 		m_ecs.GetSystem<TilemapSystem2D>()->Update((float)m_deltaTime); 
 
         // Update the active scene
-        m_sceneManager.UpdateScene((float)m_deltaTime);
+        m_sceneManager.Update((float)m_deltaTime);
 
         m_window.SwapBuffers();
 
@@ -98,7 +96,7 @@ void EngineRuntime::Update()
     }
 }
 
-void EngineRuntime::Close() 
+void Engine::Close() 
 {
     // Clear Jolt instance
     delete JPH::Factory::sInstance;
@@ -112,7 +110,7 @@ void EngineRuntime::Close()
     m_window.Exit();
 }
 
-void EngineRuntime::registerComponents() 
+void Engine::registerComponents() 
 {
     m_ecs.RegisterComponent<Transform2D>();
     m_ecs.RegisterComponent<Sprite2D>();
@@ -121,7 +119,7 @@ void EngineRuntime::registerComponents()
 	m_ecs.RegisterComponent<Camera2D>();
 }
 
-void EngineRuntime::initializeSystems() 
+void Engine::initializeSystems() 
 {
     // Initialize sprite system (2D)
     m_ecs.RegisterSystem<SpriteSystem2D>();

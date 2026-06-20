@@ -7,6 +7,8 @@
 #include <cmath>
 #include <array>
 
+using namespace Nova::Editor;
+
 static void FieldVec2(const char* label, float* v, float speed = 0.1f)
 {
     ImGui::PushID(label);
@@ -118,7 +120,7 @@ static void EndPropertyTable()
 
 static void NextRow() { ImGui::TableNextRow(); }
 
-InspectorPanel::InspectorPanel(EditorContext* ctx) : m_ctx(ctx) {}
+InspectorPanel::InspectorPanel(Context* ctx) : m_ctx(ctx) {}
 
 void InspectorPanel::Draw()
 {

@@ -1,12 +1,15 @@
 #include <Graphics/Systems/SpriteSystem2D.h>
 #include <Core/Services.h>
 #include <Core/Utilities/Matrix4x4.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
+#include <Graphics/Components/Camera2D.h>
 #include <Graphics/Renderer.h>
 #include <Platform/Window.h>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+using namespace Nova;
 
 static const float CAMERA_MARGIN = 32.0f;
 

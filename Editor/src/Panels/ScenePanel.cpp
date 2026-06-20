@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <filesystem>
 
-ScenePanel::ScenePanel(EditorContext* ctx)
+using namespace Nova::Editor;
+
+ScenePanel::ScenePanel(Context* ctx)
     : m_ctx(ctx)
 {
     // Open a default untitled scene on startup

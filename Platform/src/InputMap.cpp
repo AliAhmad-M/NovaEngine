@@ -1,9 +1,12 @@
 #include <Platform/InputMap.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
+
+using namespace Nova;
+
 void InputMap::Bind(const std::string& action, int glfwKey) 
 {
     if (m_bindings.count(action))
-        EngineDebug::LogWarn("Action '%s' already bound, overriding", action.c_str());
+        Debug::LogWarn("Action '%s' already bound, overriding", action.c_str());
 
     m_bindings[action] = glfwKey;
     m_states[action] = KeyState{};
@@ -41,26 +44,26 @@ void InputMap::Update(GLFWwindow* window)
 bool InputMap::IsButtonDown(const std::string& action) const 
 {
     
-    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
+    if (!m_states.count(action)) { Debug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     return m_states.at(action).current;
 }
 
 bool InputMap::IsButtonUp(const std::string& action) const 
 {
-    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
+    if (!m_states.count(action)) { Debug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     return !m_states.at(action).current;
 }
 
 bool InputMap::IsButtonPressed(const std::string& action) const 
 {
-    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
+    if (!m_states.count(action)) { Debug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     auto& s = m_states.at(action);
     return s.current && !s.previous;
 }
 
 bool InputMap::IsButtonReleased(const std::string& action) const 
 {
-    if (!m_states.count(action)) { EngineDebug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
+    if (!m_states.count(action)) { Debug::LogWarn("Action '%s' not bound", action.c_str()); return false; }
     auto& s = m_states.at(action);
     return !s.current && s.previous;
 }

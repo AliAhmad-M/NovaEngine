@@ -3,22 +3,24 @@
 #include <Core/Components/Transform2D.h>
 #include <Physics/Components/RigidBody2D.h>
 
-static inline b2Vec2 PointToB2(float xPx, float yPx)
+using namespace Nova;
+
+static inline b2Vec2 pointToMeters(float xPx, float yPx)
 {
     return { xPx / PHYSICS_PPM, yPx / PHYSICS_PPM };
 }
 
-static b2Vec2 WorldCenterToB2(const Transform2D* t)
+static b2Vec2 worldCenterToMeters(const Transform2D* t)
 {
     return { t->position.x / PHYSICS_PPM, t->position.y / PHYSICS_PPM };
 }
 
-static Vector2 B2PosToEnginePos(const b2Vec2& bodyMeters)
+static Vector2 metersToPoint(const b2Vec2& meters)
 {
-    return { bodyMeters.x * PHYSICS_PPM, bodyMeters.y * PHYSICS_PPM };
+    return { meters.x * PHYSICS_PPM, meters.y * PHYSICS_PPM };
 }
 
-static b2Filter MakeFilter(const RigidBody2D* rb)
+static b2Filter makeFilter(const RigidBody2D* rb)
 {
     b2Filter f = b2DefaultFilter();
     f.categoryBits = static_cast<uint64_t>(rb->GetCollisionLayerRaw());
@@ -26,10 +28,11 @@ static b2Filter MakeFilter(const RigidBody2D* rb)
     return f;
 }
 
+
 RigidBodySystem2D::RigidBodySystem2D()
 {
     b2WorldDef worldDef = b2DefaultWorldDef();
-    worldDef.gravity = PointToB2(0.0f, 9.81f * PHYSICS_PPM);
+    worldDef.gravity = pointToMeters(0.0f, 9.81f * PHYSICS_PPM);
     m_worldId = b2CreateWorld(&worldDef);
 }
 
@@ -47,7 +50,7 @@ Vector2 RigidBodySystem2D::GetGravity() const
 
 void RigidBodySystem2D::SetGravity(const Vector2& meterPerSecSq)
 {
-    b2World_SetGravity(m_worldId, PointToB2(
+    b2World_SetGravity(m_worldId, pointToMeters(
         meterPerSecSq.x * PHYSICS_PPM, 
         meterPerSecSq.y * PHYSICS_PPM)
     );
@@ -62,7 +65,7 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     // Create body definition
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = rb->IsStatic() ? b2_staticBody : b2_dynamicBody;
-    bodyDef.position = WorldCenterToB2(transform);
+    bodyDef.position = worldCenterToMeters(transform);
     bodyDef.rotation = b2MakeRot(transform->rotation * (B2_PI / 180.0f));
     bodyDef.fixedRotation = rb->LockRotation();
     bodyDef.userData = reinterpret_cast<void*>(static_cast<uintptr_t>(e));
@@ -74,7 +77,7 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     b2ShapeDef shapeDef = b2DefaultShapeDef();
     shapeDef.density = rb->GetDensity();
     shapeDef.isSensor = rb->IsSensor();
-    shapeDef.filter = MakeFilter(rb);
+    shapeDef.filter = makeFilter(rb);
     shapeDef.enableContactEvents = !rb->IsSensor();
     shapeDef.enableSensorEvents = rb->IsSensor();
 
@@ -151,7 +154,7 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
     b2DestroyWorld(m_worldId);
 
     b2WorldDef worldDef = b2DefaultWorldDef();
-    worldDef.gravity = PointToB2(g.x, g.y);
+    worldDef.gravity = pointToMeters(g.x, g.y);
     m_worldId = b2CreateWorld(&worldDef);
 }
 
@@ -166,7 +169,7 @@ void RigidBodySystem2D::TeleportEntity(EntityID e)
     // Teleport body to the transform position
     b2Body_SetTransform(
         rb->body,
-        WorldCenterToB2(transform),
+        worldCenterToMeters(transform),
         b2MakeRot(transform->rotation * (B2_PI / 180.0f))
     );
     b2Body_SetAwake(rb->body, true);
@@ -194,7 +197,7 @@ void RigidBodySystem2D::syncFromBox2D()
         if (!rb || B2_IS_NULL(rb->body)) continue;
 
         // Get position and rotation from box2D
-        transform->position = B2PosToEnginePos(b2Body_GetPosition(rb->body));
+        transform->position = metersToPoint(b2Body_GetPosition(rb->body));
         transform->rotation = b2Rot_GetAngle(b2Body_GetRotation(rb->body)) * (180.0f / B2_PI);
     }
 }

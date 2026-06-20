@@ -2,26 +2,30 @@
 
 #include <string>
 #include <filesystem>
-#include <Editor/Scene/EditorScene.h>
+#include <Editor/Scene/Scene.h>
 
-/**
- * @brief Saves a Scene to a json file on the disk
- */
-class SceneSerializer
+namespace Nova::Editor 
 {
-public:
-    /**
-     * @brief Construct a serializer bound to the engine's service locator.
-     */
-    explicit SceneSerializer();
 
     /**
-     * @brief Save a scene to disk as JSON
-     * @param scene     Scene to serialize
-     * @param filePath  Absolute or relative path, inside the project
-     * @return true on success, false on failure
+     * @brief Saves a Scene to a json file on the disk
      */
-    bool Save(const EditorScene& scene, const std::filesystem::path& filePath);
+    class SceneSerializer
+    {
+    public:
+        /**
+         * @brief Construct a serializer bound to the engine's service locator.
+         */
+        explicit SceneSerializer();
 
-private:
-};
+        /**
+         * @brief Save a scene to disk as JSON
+         * @param scene     Scene to serialize
+         * @param filePath  Absolute or relative path, inside the project
+         * @return true on success, false on failure
+         */
+        bool Save(const EditorScene& scene, const std::filesystem::path& filePath);
+
+    private:
+    };
+}

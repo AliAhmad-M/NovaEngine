@@ -6,6 +6,8 @@
 #include <Graphics/Renderer.h>
 #include <Core/Utilities/Matrix4x4.h>
 
+using namespace Nova;
+
 void TilemapSystem2D::OnEntityAdded(EntityID e)
 {
 	ECS* ecs = Services::Fetch<ECS>();
@@ -39,7 +41,7 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 		Texture* layerTexture = new Texture();
 		if (!layerTexture->CreateRenderTexture(pixelW, pixelH))
 		{
-			EngineDebug::LogError("Failed to create render texture for layer %zu", layerIdx);
+			Debug::LogError("Failed to create render texture for layer %zu", layerIdx);
 			delete layerTexture;
 			continue;
 		}

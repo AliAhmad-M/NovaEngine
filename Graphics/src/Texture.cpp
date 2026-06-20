@@ -1,10 +1,10 @@
 #include <Graphics/Texture.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
 
-Texture::Texture() = default;
+using namespace Nova;
 
 bool Texture::LoadFromFile(const std::string& path) 
 {
@@ -15,7 +15,7 @@ bool Texture::LoadFromFile(const std::string& path)
     m_pixels = stbi_load(path.c_str(), &m_width, &m_height, &channels, 4);
     if (!m_pixels) 
     {
-        EngineDebug::LogWarn("Failed to load texture: %s", path.c_str());
+        Debug::LogWarn("Failed to load texture: %s", path.c_str());
         return false;
     }
 

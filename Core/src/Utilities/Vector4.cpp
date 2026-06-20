@@ -1,5 +1,7 @@
 #include <Core/Utilities/Vector4.h>
 
+using namespace Nova;
+
 const Vector4 Vector4::ZERO   = { 0, 0, 0, 0 };
 const Vector4 Vector4::ONE    = { 1, 1, 1, 1 };
 const Vector4 Vector4::UNIT_X = { 1, 0, 0, 0 };

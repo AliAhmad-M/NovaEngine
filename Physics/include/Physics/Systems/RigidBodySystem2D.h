@@ -5,34 +5,37 @@
 #include <Core/Components/Transform2D.h>
 #include <Physics/Components/RigidBody2D.h>
 
-class RigidBodySystem2D : public ISystem
+namespace Nova 
 {
-public:
-   
-    RigidBodySystem2D();
-    ~RigidBodySystem2D();
+    class RigidBodySystem2D : public ISystem
+    {
+    public:
 
-    RigidBodySystem2D(const RigidBodySystem2D&) = delete;
-    RigidBodySystem2D& operator=(const RigidBodySystem2D&) = delete;
+        RigidBodySystem2D();
+        ~RigidBodySystem2D();
 
-    void Update(float dt);
+        RigidBodySystem2D(const RigidBodySystem2D&) = delete;
+        RigidBodySystem2D& operator=(const RigidBodySystem2D&) = delete;
 
-    void OnEntityAdded(EntityID e);
-    void OnEntityRemoved(EntityID e);
-    void OnAllEntitiesRemoved();
+        void Update(float dt);
 
-    Vector2 GetGravity() const;
-    void SetGravity(const Vector2& pixelsPerSecSq);
+        void OnEntityAdded(EntityID e);
+        void OnEntityRemoved(EntityID e);
+        void OnAllEntitiesRemoved();
 
-    void TeleportEntity(EntityID e);
+        Vector2 GetGravity() const;
+        void SetGravity(const Vector2& pixelsPerSecSq);
 
-    b2WorldId GetWorldId() const { return m_worldId; }
+        void TeleportEntity(EntityID e);
 
-private:
-    void buildBody(EntityID e, const Transform2D* transform, RigidBody2D* rb);
+        b2WorldId GetWorldId() const { return m_worldId; }
 
-    void syncFromBox2D();
-    void processContacts();
+    private:
+        void buildBody(EntityID e, const Transform2D* transform, RigidBody2D* rb);
 
-    b2WorldId m_worldId = b2_nullWorldId;
-};
+        void syncFromBox2D();
+        void processContacts();
+
+        b2WorldId m_worldId = b2_nullWorldId;
+    };
+}

@@ -1,9 +1,10 @@
-﻿#include <Editor/Editor.h>
+﻿#include <Editor/EditorApp.h>
 #include <Editor/Panels/HierarchyPanel.h>
 #include <Editor/Panels/InspectorPanel.h>
 #include <Editor/Panels/AssetBrowserPanel.h>
 #include <Editor/Panels/ScenePanel.h>
-#include <Runtime/EngineRuntime.h>
+#include <Runtime/Engine.h>
+#include <Core/Services.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -14,7 +15,10 @@
 #include <cstdio>
 #include <filesystem>
 
-static void applyUnityTheme()
+using namespace Nova;
+using namespace Nova::Editor;
+
+static void applyTheme()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -115,38 +119,14 @@ static void applyUnityTheme()
     c[ImGuiCol_NavHighlight] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
 }
 
-Editor::Editor() = default;
-Editor::~Editor() = default;
+EditorApp::EditorApp() = default;
+EditorApp::~EditorApp() = default;
 
-bool Editor::Init()
+bool EditorApp::Init()
 {
-    // Initialize OpenGL
-    if (!glfwInit())
-    {
-        fprintf(stderr, "[Editor] glfwInit failed\n");
-        return false;
-    }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    m_window = glfwCreateWindow(1600, 900, "Star Platinum Editor", nullptr, nullptr);
-    if (!m_window)
-    {
-        fprintf(stderr, "[Editor] Failed to create GLFW window\n");
-        glfwTerminate();
-        return false;
-    }
-
-    glfwMakeContextCurrent(m_window);
-    glfwSwapInterval(1);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        fprintf(stderr, "[Editor] Failed to initialize GLAD\n");
-        return false;
-    }
+	// Init runtime
+	m_runtime.Init();
+    m_window = Services::Fetch<Window>()->GetNativeWindow();
 
     // Initialize ImGui
     IMGUI_CHECKVERSION();
@@ -159,12 +139,9 @@ bool Editor::Init()
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-	applyUnityTheme();
+	applyTheme();
 
 	io.Fonts->AddFontFromFileTTF("../Test/project/assets/Inter_18pt-Regular.ttf", 18.0f);
-
-	// Init runtime
-	m_runtime.Init(true);
 
 	// Load panels
 	m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
@@ -181,7 +158,7 @@ bool Editor::Init()
 	return true;
 }
 
-void Editor::Run()
+void EditorApp::Run()
 {
     while (m_running && !glfwWindowShouldClose(m_window))
     {
@@ -208,24 +185,23 @@ void Editor::Run()
     }
 }
 
-void Editor::Shutdown()
+void EditorApp::Shutdown()
 {
     m_runtime.Close();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    if (m_window) glfwDestroyWindow(m_window);
     glfwTerminate();
 }
 
-void Editor::beginFrame()
+void EditorApp::beginFrame()
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void Editor::endFrame()
+void EditorApp::endFrame()
 {
     ImGui::Render();
 
@@ -240,7 +216,7 @@ void Editor::endFrame()
     glfwSwapBuffers(m_window);
 }
 
-void Editor::buildLayout()
+void EditorApp::buildLayout()
 {
     // Fullscreen host window
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -302,7 +278,7 @@ void Editor::buildLayout()
     ImGui::End();
 }
 
-void Editor::drawMenuBar()
+void EditorApp::drawMenuBar()
 {
     if (ImGui::BeginMainMenuBar())
     {
@@ -351,7 +327,7 @@ void Editor::drawMenuBar()
     }
 }
 
-void Editor::saveActiveScene()
+void EditorApp::saveActiveScene()
 {
     if (!m_ctx.activeScene || !m_sceneSerializer)
     {
@@ -379,7 +355,7 @@ void Editor::saveActiveScene()
     }
 }
 
-void Editor::markSceneDirty()
+void EditorApp::markSceneDirty()
 {
     if (m_ctx.scenePanel)
     {

@@ -42,7 +42,7 @@
     <ClCompile Include="src\Utilities\Matrix4x4.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\EngineDebug.cpp">
+    <ClCompile Include="src\Debug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -104,7 +104,7 @@
     <ClInclude Include="include\Core\Services.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Core\EngineDebug.h">
+    <ClInclude Include="include\Core\Debug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

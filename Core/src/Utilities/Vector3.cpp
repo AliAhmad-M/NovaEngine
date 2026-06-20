@@ -1,5 +1,7 @@
 #include <Core/Utilities/Vector3.h>
 
+using namespace Nova;
+
 const Vector3 Vector3::ZERO    = { 0,  0,  0 };
 const Vector3 Vector3::ONE     = { 1,  1,  1 };
 const Vector3 Vector3::UP      = { 0,  1,  0 };

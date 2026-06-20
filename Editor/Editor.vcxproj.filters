@@ -18,7 +18,7 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Editor.cpp">
+    <ClCompile Include="src\EditorApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Panels\AssetBrowserPanel.cpp">
@@ -38,7 +38,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Editor\Editor.h">
+    <ClInclude Include="include\Editor\EditorApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Editor\Panels\HierarchyPanel.h">
@@ -53,10 +53,10 @@
     <ClInclude Include="include\Editor\Panels\ScenePanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Editor\EditorContext.h">
+    <ClInclude Include="include\Editor\Context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Editor\Scene\EditorScene.h">
+    <ClInclude Include="include\Editor\Scene\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Editor\Scene\SceneSerializer.h">

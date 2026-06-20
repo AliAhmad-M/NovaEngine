@@ -1,5 +1,59 @@
 #include <Graphics/Renderer.h>
 
+using namespace Nova;
+
+void Renderer::pushQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
+    float tx, float ty, float tw, float th, const Color& color)
+{
+    if (texture != m_currentTexture || m_vertexBatch.size() + 4 > MAX_QUADS * 4) {
+        Flush();
+        m_currentTexture = texture;
+    }
+
+    // Normalize color bytes to 0.0 - 1.0
+    float r = color.r / 255.0f;
+    float g = color.g / 255.0f;
+    float b = color.b / 255.0f;
+    float a = color.a / 255.0f;
+
+    float rad = rotation * (3.14159f / 180.0f);
+    float cosR = cosf(rad);
+    float sinR = sinf(rad);
+    Vector2 halfSize = { size.x * 0.5f, size.y * 0.5f };
+
+    auto getRot = [&](float x, float y) {
+        float rx = x * cosR - y * sinR;
+        float ry = x * sinR + y * cosR;
+        return Vector2{ rx + pos.x + halfSize.x, ry + pos.y + halfSize.y };
+        };
+
+    m_vertexBatch.push_back({ getRot(-halfSize.x, -halfSize.y), { tx,      ty      }, r, g, b, a });
+    m_vertexBatch.push_back({ getRot(halfSize.x, -halfSize.y), { tx + tw, ty      }, r, g, b, a });
+    m_vertexBatch.push_back({ getRot(halfSize.x,  halfSize.y), { tx + tw, ty + th }, r, g, b, a });
+    m_vertexBatch.push_back({ getRot(-halfSize.x,  halfSize.y), { tx,      ty + th }, r, g, b, a });
+}
+
+GLuint Renderer::createShaderProgram(const char* vertexSrc, const char* fragmentSrc)
+{
+    auto compile = [](GLenum type, const char* source) {
+        GLuint shader = glCreateShader(type);
+        glShaderSource(shader, 1, &source, nullptr);
+        glCompileShader(shader);
+        return shader;
+        };
+
+    GLuint vs = compile(GL_VERTEX_SHADER, vertexSrc);
+    GLuint fs = compile(GL_FRAGMENT_SHADER, fragmentSrc);
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    return program;
+}
+
 void Renderer::Init() {
     const char* vs = 
         R"(#version 330 core

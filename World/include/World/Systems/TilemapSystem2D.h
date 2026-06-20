@@ -3,13 +3,14 @@
 #include <Core/ECS/ECS.h>
 #include <World/Components/Tilemap2D.h>
 
-class TilemapSystem2D : public ISystem
+namespace Nova 
 {
-public:
-	void Update(float dt) override {}
-	void OnEntityAdded(EntityID e) override;
-	void OnEntityRemoved(EntityID e) override;
-	void OnAllEntitiesRemoved() override {}
-
-private:
-};
+	class TilemapSystem2D : public ISystem
+	{
+	public:
+		void Update(float dt) override {}
+		void OnEntityAdded(EntityID e) override;
+		void OnEntityRemoved(EntityID e) override;
+		void OnAllEntitiesRemoved() override {}
+	};
+}

@@ -5,12 +5,14 @@
 #include <Core/Components.h>
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
-#include <Runtime/EngineRuntime.h>
+#include <Runtime/Engine.h>
 #include <Graphics/Components.h>
 #include <Graphics/Renderer.h>
 #include <Graphics/Font.h>
 #include <Physics/Components.h>
 #include <Physics/Systems.h>
+
+using namespace Nova;
 
 static ContentLoader* s_contentLoader;
 
@@ -42,6 +44,37 @@ void DynamicsTest::Ready()
     createStaticBodies();
 }
 
+void DynamicsTest::Render() 
+{
+    // Draw static bodies
+    for (EntityID id : m_staticBodies)
+    {
+        auto* trans = s_ecs->GetComponent<Transform2D>(id);
+        auto* rb = s_ecs->GetComponent<RigidBody2D>(id);
+        if (trans && rb)
+        {
+            Vector2 size = Vector2(rb->GetHalfWidth() * 2.0f, rb->GetHalfHeight() * 2.0f);
+            Vector2 topLeftPos = trans->position - Vector2(rb->GetHalfWidth(), rb->GetHalfHeight());
+            s_renderer->DrawRect(topLeftPos, size, trans->rotation, Color::WHITE, true);
+        }
+    }
+
+    // Draw circles
+    for (EntityID id : m_spawnedBalls)
+    {
+        auto* trans = s_ecs->GetComponent<Transform2D>(id);
+        auto* rb = s_ecs->GetComponent<RigidBody2D>(id);
+        if (trans && rb)
+            s_renderer->DrawCircle(trans->position, rb->GetRadius(), Color::CYAN, true);
+    }
+
+    // HUD
+    s_renderer->DrawText(*s_font, "Physics Test Sandbox", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
+    char buf[64];
+    sprintf(buf, "Entities: %zu | FPS: %.1f", m_spawnedBalls.size(), m_currentFPS);
+    s_renderer->DrawText(*s_font, buf, Vector2((float)s_window->GetWidth() - 280.0f, 40.0f), 1.0f, Color::WHITE);
+}
+
 void DynamicsTest::Update(float dt)
 {
     // FPS counter
@@ -64,48 +97,14 @@ void DynamicsTest::Update(float dt)
     }
 
     // Continuous fire check with added interval restrictions
-    if (s_spawnTimer <= 0.0f) {
+    if (s_spawnTimer <= 0.0f) 
+    {
         if (s_inputMap->IsButtonDown("spawn_circle")) 
         {
             spawnCircle();
             s_spawnTimer = SPAWN_COOLDOWN; // Reset the clock sequence
         }
     }
-
-    Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
-        0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
-
-    s_renderer->Begin(projection);
-
-    // Draw static bodies
-    for (EntityID id : m_staticBodies) 
-    {
-        auto* trans = s_ecs->GetComponent<Transform2D>(id);
-        auto* rb = s_ecs->GetComponent<RigidBody2D>(id);
-        if (trans && rb) 
-        {
-            Vector2 size = Vector2(rb->GetHalfWidth() * 2.0f, rb->GetHalfHeight() * 2.0f);
-            Vector2 topLeftPos = trans->position - Vector2(rb->GetHalfWidth(), rb->GetHalfHeight());
-            s_renderer->DrawRect(topLeftPos, size, trans->rotation, Color::WHITE, true);
-        }
-    }
-
-    // Draw circles
-    for (EntityID id : m_spawnedBalls) 
-    {
-        auto* trans = s_ecs->GetComponent<Transform2D>(id);
-        auto* rb = s_ecs->GetComponent<RigidBody2D>(id);
-        if (trans && rb) 
-            s_renderer->DrawCircle(trans->position, rb->GetRadius(), Color::CYAN, true);
-    }
-
-    // HUD
-    s_renderer->DrawText(*s_font, "Physics Test Sandbox", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
-    char buf[64];
-    sprintf(buf, "Entities: %zu | FPS: %.1f", m_spawnedBalls.size(), m_currentFPS);
-    s_renderer->DrawText(*s_font, buf, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
-
-    s_renderer->Flush();
 }
 
 void DynamicsTest::Leave()

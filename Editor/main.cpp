@@ -1,8 +1,10 @@
-#include <Editor/Editor.h>
+#include <Editor/EditorApp.h>
+
+using namespace Nova::Editor;
 
 int main()
 {
-    Editor editor;
+    EditorApp editor;
     if (!editor.Init())
         return -1;
 

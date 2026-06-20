@@ -4,76 +4,79 @@
 #include <string>
 #include <Core/Utilities/Vector2.h>
 
-/**
- * @brief Layout sizing and positioning metadata for a single font character glyph
- */
-struct GlyphInfo {
-    Vector2 uvMin;    // Top-left texture coordinate on the font atlas sheet
-    Vector2 uvMax;    // Bottom-right texture coordinate on the font atlas sheet
-    Vector2 size;     // Absolute width and height of the glyph bounding box in pixels
-    Vector2 bearing;  // Horizontal and vertical offset relative to the baseline
-    float advance;    // Horizontal step distance required to move to the next character
-};
-
-/**
- * @brief Resource container holding the GPU texture atlas and character spacing metrics
- */
-class Font {
-public:
+namespace Nova 
+{
     /**
-     * @brief Instantiates a blank font asset context configuration
+     * @brief Layout sizing and positioning metadata for a single font character glyph
      */
-    Font() = default;
+    struct GlyphInfo {
+        Vector2 uvMin;    // Top-left texture coordinate on the font atlas sheet
+        Vector2 uvMax;    // Bottom-right texture coordinate on the font atlas sheet
+        Vector2 size;     // Absolute width and height of the glyph bounding box in pixels
+        Vector2 bearing;  // Horizontal and vertical offset relative to the baseline
+        float advance;    // Horizontal step distance required to move to the next character
+    };
 
-    Font(Font&& other) noexcept
-        : m_atlasTexture(other.m_atlasTexture), m_glyphs(std::move(other.m_glyphs))
-    {
-        other.m_atlasTexture = 0;
-    }
+    /**
+     * @brief Resource container holding the GPU texture atlas and character spacing metrics
+     */
+    class Font {
+    public:
+        /**
+         * @brief Instantiates a blank font asset context configuration
+         */
+        Font() = default;
 
-    Font& operator=(Font&& other) noexcept
-    {
-        if (this != &other)
+        Font(Font&& other) noexcept
+            : m_atlasTexture(other.m_atlasTexture), m_glyphs(std::move(other.m_glyphs))
         {
-            std::swap(m_atlasTexture, other.m_atlasTexture);
-            std::swap(m_glyphs, other.m_glyphs);
+            other.m_atlasTexture = 0;
         }
-        return *this;
-    }
 
-    ~Font()
-    {
-        if (m_atlasTexture != 0)
-            glDeleteTextures(1, &m_atlasTexture);
-    }
+        Font& operator=(Font&& other) noexcept
+        {
+            if (this != &other)
+            {
+                std::swap(m_atlasTexture, other.m_atlasTexture);
+                std::swap(m_glyphs, other.m_glyphs);
+            }
+            return *this;
+        }
 
-    /**
-     * @brief Parses a TrueType/OpenType font file from disk and builds a packed OpenGL texture atlas
-     * @param path System route leading to the font file (.ttf or .otf)
-     * @param fontSize Target vertical pixel size for rasterization
-     * @return true if the font successfully loaded and cached, false otherwise
-     */
-    bool LoadFromFile(const std::string& path, float fontSize);
+        ~Font()
+        {
+            if (m_atlasTexture != 0)
+                glDeleteTextures(1, &m_atlasTexture);
+        }
 
-    /**
-     * @brief Retrieves the raw OpenGL texture handle identifier
-     * @return Hardware texture ID bound to the atlas sheet
-     */
-    GLuint GetTextureHandle() const { return m_atlasTexture; }
+        /**
+         * @brief Parses a TrueType/OpenType font file from disk and builds a packed OpenGL texture atlas
+         * @param path System route leading to the font file (.ttf or .otf)
+         * @param fontSize Target vertical pixel size for rasterization
+         * @return true if the font successfully loaded and cached, false otherwise
+         */
+        bool LoadFromFile(const std::string& path, float fontSize);
 
-    /**
-     * @brief Queries metrics for a given ASCII symbol
-     * @param c Target character to look up
-     * @return Pointer to glyph metrics record, or nullptr if the character layout is missing
-     */
-    const GlyphInfo* GetGlyph(char c) const;
+        /**
+         * @brief Retrieves the raw OpenGL texture handle identifier
+         * @return Hardware texture ID bound to the atlas sheet
+         */
+        GLuint GetTextureHandle() const { return m_atlasTexture; }
 
-    /**
-     * @brief Frees allocated GPU resources and clears glyph metrics
-     */
-    void Destroy();
+        /**
+         * @brief Queries metrics for a given ASCII symbol
+         * @param c Target character to look up
+         * @return Pointer to glyph metrics record, or nullptr if the character layout is missing
+         */
+        const GlyphInfo* GetGlyph(char c) const;
 
-private:
-    GLuint m_atlasTexture = 0;                     // OpenGL hardware texture object handle
-    std::unordered_map<char, GlyphInfo> m_glyphs;  // Dictionary translating characters to font metrics
-};
+        /**
+         * @brief Frees allocated GPU resources and clears glyph metrics
+         */
+        void Destroy();
+
+    private:
+        GLuint m_atlasTexture = 0;                     // OpenGL hardware texture object handle
+        std::unordered_map<char, GlyphInfo> m_glyphs;  // Dictionary translating characters to font metrics
+    };
+}

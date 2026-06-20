@@ -1,31 +1,34 @@
 #pragma once
 
-#include <Editor/EditorContext.h>
+#include <Editor/Context.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
 #include <World/Components.h>
 #include <imgui.h>
 
-class InspectorPanel
+namespace Nova::Editor 
 {
-public:
-    explicit InspectorPanel(EditorContext* ctx);
+    class InspectorPanel
+    {
+    public:
+        explicit InspectorPanel(Context* ctx);
 
-    void Draw();
-    void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
+        void Draw();
+        void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
-private:
-    void drawTransform2D(Transform2D& t);
-    void drawCamera2D(Camera2D& c);
-    void drawSprite2D(Sprite2D& s);
-    void drawRigidBody2D(RigidBody2D& rb);
-    void drawTilemap2D(Tilemap2D& tm);
+    private:
+        void drawTransform2D(Transform2D& t);
+        void drawCamera2D(Camera2D& c);
+        void drawSprite2D(Sprite2D& s);
+        void drawRigidBody2D(RigidBody2D& rb);
+        void drawTilemap2D(Tilemap2D& tm);
 
-    void drawAddComponentMenu();
+        void drawAddComponentMenu();
 
-    void drawTexturePathField(Sprite2D& s);
+        void drawTexturePathField(Sprite2D& s);
 
-    EditorContext* m_ctx = nullptr;
-    ImGuiWindowFlags m_windowFlags = 0;
-};
+        Context* m_ctx = nullptr;
+        ImGuiWindowFlags m_windowFlags = 0;
+    };
+}

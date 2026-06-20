@@ -1,5 +1,6 @@
 #pragma once
 
-enum Shape2D {
-	CIRCLE, BOX, POLYGON, CAPSULE 
-};
+namespace Nova 
+{
+	enum Shape2D { CIRCLE, BOX, POLYGON, CAPSULE };
+}

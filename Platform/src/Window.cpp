@@ -1,11 +1,13 @@
 #include <Platform/Window.h>
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
+
+using namespace Nova;
 
 bool Window::Init(int w, int h, const char* title) 
 {
     if (!glfwInit()) 
     {
-        EngineDebug::LogError("Failed to initialize GLFW");
+        Debug::LogError("Failed to initialize GLFW");
         return false;
     }
 
@@ -17,21 +19,21 @@ bool Window::Init(int w, int h, const char* title)
     m_window = glfwCreateWindow(w, h, title, nullptr, nullptr);
     if (!m_window) 
     {
-        EngineDebug::LogError("Failed to create GLFW window");
+        Debug::LogError("Failed to create GLFW window");
         glfwTerminate();
         return false;
     }
 
     glfwMakeContextCurrent(m_window);
-    EngineDebug::LogInfo("GLFW window created");
+    Debug::LogInfo("GLFW window created");
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) 
     {
-        EngineDebug::LogError("Failed to initialize GLAD");
+        Debug::LogError("Failed to initialize GLAD");
         return false;
     }
 
-    EngineDebug::LogInfo("GLAD initialized");
+    Debug::LogInfo("GLAD initialized");
     return true;
 }
 
@@ -43,7 +45,7 @@ void Window::Exit()
         m_window = nullptr;
     }
     glfwTerminate();
-    EngineDebug::LogInfo("Window destroyed");
+    Debug::LogInfo("Window destroyed");
 }
 
 void Window::PollEvents() 
@@ -59,6 +61,20 @@ bool Window::ShouldClose()
 void Window::SwapBuffers() 
 {
     glfwSwapBuffers(m_window);
+}
+
+int Window::GetWidth() 
+{
+    int w = 0;
+    glfwGetWindowSize(m_window, &w, NULL);
+    return w;
+}
+
+int Window::GetHeight() 
+{
+    int h = 0;
+    glfwGetWindowSize(m_window, NULL, &h);
+    return h;
 }
 
 void Window::GetSize(int* w, int* h) 

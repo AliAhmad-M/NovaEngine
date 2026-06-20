@@ -1,7 +1,10 @@
 #include <Core/ECS/SystemManager.h>
 
+using namespace Nova;
+
 void SystemManager::OnEntityDestroyed(EntityID entity) {
-	for (auto const& pair : m_systems) {
+	for (auto const& pair : m_systems) 
+	{
 		// Remove deleted entity from all systems
 		auto const& system = pair.second;
 		if (system->entities.count(entity)) 
@@ -14,7 +17,8 @@ void SystemManager::OnEntityDestroyed(EntityID entity) {
 
 void SystemManager::OnAllEntitesDestroyed() 
 {
-	for (auto const& pair : m_systems) {
+	for (auto const& pair : m_systems) 
+	{
 		auto const& system = pair.second;
 
 		system->entities.clear();
@@ -22,8 +26,10 @@ void SystemManager::OnAllEntitesDestroyed()
 	}
 }
 
-void SystemManager::OnEntitySignatureChanged(EntityID entity, Signature entitySignature) {
-	for (auto const& pair : m_systems) {
+void SystemManager::OnEntitySignatureChanged(EntityID entity, Signature entitySignature) 
+{
+	for (auto const& pair : m_systems) 
+	{
 		auto const& type = pair.first;
 		auto const& system = pair.second;
 

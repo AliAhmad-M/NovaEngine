@@ -1,9 +1,11 @@
-#include <Core/EngineDebug.h>
+#include <Core/Debug.h>
 #include <cstdio>
 #include <cstdarg>
 #include <cstdlib>
 
-void EngineDebug::Log(const char* format, ...) 
+using namespace Nova;
+
+void Debug::Log(const char* format, ...) 
 {
 	va_list args;
 	va_start(args, format);
@@ -12,7 +14,7 @@ void EngineDebug::Log(const char* format, ...)
 	fprintf(stdout, "\n");
 }
 
-void EngineDebug::LogInfo(const char* format, ...)
+void Debug::LogInfo(const char* format, ...)
 {
 	fprintf(stdout, "[INFO]: ");
 	va_list args;
@@ -22,7 +24,7 @@ void EngineDebug::LogInfo(const char* format, ...)
 	fprintf(stdout, "\n");
 }
 
-void EngineDebug::LogWarn(const char* format, ...)
+void Debug::LogWarn(const char* format, ...)
 {
 	fprintf(stderr, "[WARN]: ");
 	va_list args;
@@ -32,7 +34,7 @@ void EngineDebug::LogWarn(const char* format, ...)
 	fprintf(stderr, "\n");
 }
 
-void EngineDebug::LogError(const char* format, ...) 
+void Debug::LogError(const char* format, ...)
 {
 	fprintf(stderr, "[ERROR]: ");
 	va_list args;
@@ -42,7 +44,7 @@ void EngineDebug::LogError(const char* format, ...)
 	fprintf(stderr, "\n");
 }
 
-void EngineDebug::LogErrorAndExit(const char* format, ...) 
+void Debug::LogErrorAndExit(const char* format, ...)
 {
 	fprintf(stderr, "[ERROR]: ");
 	va_list args;

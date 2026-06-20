@@ -13,7 +13,9 @@
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
 #include <World/Components.h>
-#include <Runtime/EngineRuntime.h>
+#include <Runtime/Engine.h>
+
+using namespace Nova;
 
 static ContentLoader* s_contentLoader;
 
@@ -96,6 +98,13 @@ void GraphicsTest::Ready()
 	s_ecs->AddComponent<Tilemap2D>(tilemapEntity, tilemap);
 }
 
+void GraphicsTest::Render() 
+{
+    s_renderer->DrawText(*s_font, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
+    char statsBuffer[64]; sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", s_ecs->GetEntityCount(), m_currentFPS);
+    s_renderer->DrawText(*s_font, statsBuffer, Vector2((float)s_window->GetWidth() - 280.0f, 40.0f), 1.0f, Color::WHITE);
+}
+
 void GraphicsTest::Update(float dt)
 {
     // FPS counter tracking
@@ -163,18 +172,6 @@ void GraphicsTest::Update(float dt)
 
     if (!isMoving) targetAnimation = m_lastDirection;
     sprite->SetAnimation(targetAnimation);
-
-    Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
-        0, (float)windowWidth, (float)windowHeight, 0, -100.0f, 100.0f);
-
-    // Rendering
-    s_renderer->Begin(projection);
-    s_ecs->GetSystem<SpriteSystem2D>()->Update(dt);
-
-    s_renderer->DrawText(*s_font, "Graphics Animation Test", Vector2(20.0f, 40.0f), 1.0f, Color::WHITE);
-    char statsBuffer[64]; sprintf(statsBuffer, "Entities: %zu | FPS: %.1f", s_ecs->GetEntityCount(), m_currentFPS);
-    s_renderer->DrawText(*s_font, statsBuffer, Vector2((float)windowWidth - 280.0f, 40.0f), 1.0f, Color::WHITE);
-    s_renderer->Flush();
 }
 
 void GraphicsTest::Leave()
