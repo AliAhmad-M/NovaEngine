@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/InspectorPanel.h>
 #include <Core/ECS/ECS.h>
 #include <Core/Services.h>
@@ -211,24 +212,32 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     if (zoom != c.GetZoom())
         c.SetZoom(zoom);
 
-    // Boundaries: left, right, up, down. Infinite values are edited as
-    // large finite numbers in the UI and converted back to INFINITY on commit.
+    // Boundaries: left, right, up, down
     std::array<float, 4> boundaries = c.GetBoundaries();
     bool boundsChanged = false;
 
     NextRow();
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Left");
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
     {
+        ImGui::PushID("BoundLeft");
         bool unbounded = std::isinf(boundaries[0]);
         float v = unbounded ? 0.0f : boundaries[0];
-        ImGui::PushID("BoundLeft");
-        if (unbounded) ImGui::BeginDisabled();
-        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[0] = v; boundsChanged = true; }
-        if (unbounded) ImGui::EndDisabled();
+
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f))
+        {
+            boundaries[0] = v;
+            boundsChanged = true;
+        }
+        if (unbounded)
+        {
+            ImGui::BeginDisabled();
+            ImGui::DragFloat("##v", &v, 1.0f);
+            ImGui::EndDisabled();
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##leftInf", &unbounded))
+        if (ImGui::Checkbox("∞##inf", &unbounded))
         {
             boundaries[0] = unbounded ? -INFINITY : 0.0f;
             boundsChanged = true;
@@ -239,19 +248,27 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     NextRow();
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Right");
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
     {
+        ImGui::PushID("BoundRight");
         bool unbounded = std::isinf(boundaries[1]);
         float v = unbounded ? 0.0f : boundaries[1];
-        ImGui::PushID("BoundRight");
-        if (unbounded) ImGui::BeginDisabled();
-        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[1] = v; boundsChanged = true; }
-        if (unbounded) ImGui::EndDisabled();
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) 
+        { 
+            boundaries[1] = v; 
+            boundsChanged = true; 
+        }
+        if (unbounded) 
+        { 
+            ImGui::BeginDisabled(); 
+            ImGui::DragFloat("##v", &v, 1.0f); 
+            ImGui::EndDisabled(); 
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##rightInf", &unbounded))
-        {
-            boundaries[1] = unbounded ? INFINITY : 0.0f;
-            boundsChanged = true;
+        if (ImGui::Checkbox("∞##inf", &unbounded)) 
+        { 
+            boundaries[1] = unbounded ? INFINITY : 0.0f; 
+            boundsChanged = true; 
         }
         ImGui::PopID();
     }
@@ -259,19 +276,27 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     NextRow();
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Up");
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
     {
+        ImGui::PushID("BoundUp");
         bool unbounded = std::isinf(boundaries[2]);
         float v = unbounded ? 0.0f : boundaries[2];
-        ImGui::PushID("BoundUp");
-        if (unbounded) ImGui::BeginDisabled();
-        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[2] = v; boundsChanged = true; }
-        if (unbounded) ImGui::EndDisabled();
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) 
+        { 
+            boundaries[2] = v; 
+            boundsChanged = true; 
+        }
+        if (unbounded) 
+        { 
+            ImGui::BeginDisabled(); 
+            ImGui::DragFloat("##v", &v, 1.0f); 
+            ImGui::EndDisabled(); 
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##upInf", &unbounded))
-        {
-            boundaries[2] = unbounded ? -INFINITY : 0.0f;
-            boundsChanged = true;
+        if (ImGui::Checkbox("∞##inf", &unbounded)) 
+        { 
+            boundaries[2] = unbounded ? -INFINITY : 0.0f; 
+            boundsChanged = true; 
         }
         ImGui::PopID();
     }
@@ -279,19 +304,27 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     NextRow();
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Bound Down");
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
     {
+        ImGui::PushID("BoundDown");
         bool unbounded = std::isinf(boundaries[3]);
         float v = unbounded ? 0.0f : boundaries[3];
-        ImGui::PushID("BoundDown");
-        if (unbounded) ImGui::BeginDisabled();
-        if (ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[3] = v; boundsChanged = true; }
-        if (unbounded) ImGui::EndDisabled();
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) 
+        { 
+            boundaries[3] = v; 
+            boundsChanged = true; 
+        }
+        if (unbounded) 
+        { 
+            ImGui::BeginDisabled(); 
+            ImGui::DragFloat("##v", &v, 1.0f); 
+            ImGui::EndDisabled(); 
+        }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##downInf", &unbounded))
-        {
-            boundaries[3] = unbounded ? INFINITY : 0.0f;
-            boundsChanged = true;
+        if (ImGui::Checkbox("∞##inf", &unbounded)) 
+        { 
+            boundaries[3] = unbounded ? INFINITY : 0.0f; 
+            boundsChanged = true; 
         }
         ImGui::PopID();
     }
@@ -309,10 +342,11 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     if (ImGui::DragInt2("##viewport", viewport, 1.0f, 1, 0))
         c.SetViewportSize(viewport[0], viewport[1]);
 
-    const Vector2& offset = c.GetOffset();
-    char offsetBuf[64];
-    std::snprintf(offsetBuf, sizeof(offsetBuf), "(%.2f, %.2f)", offset.x, offset.y);
-    NextRow(); FieldReadOnly("Offset", offsetBuf);
+    Vector2 offset = c.GetOffset();
+    float offsetArr[2] = { offset.x, offset.y };
+    NextRow(); FieldVec2("Offset", offsetArr, 1.0f);
+    if (offsetArr[0] != offset.x || offsetArr[1] != offset.y)
+        c.SetOffset({ offsetArr[0], offsetArr[1] });
 
     EndPropertyTable();
     EndComponent();
@@ -490,30 +524,84 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
     bool removeRequested = false;
     if (!BeginComponent("Tilemap2D", &removeRequested)) return;
 
-    // Tilemap2D is populated via LoadTilemap()/AddTileset() rather than
-    // per-field setters, so this is primarily a read-only diagnostic view.
+    // Persistent inspector state
+    static char s_mapPathBuf[512] = {};
+    static char s_tileGidsBuf[256] = {};
+    static int  s_tileW = 16;
+    static int  s_tileH = 16;
+    static int  s_collisionLayer = 0;
+
+    // Tileset list
+    static std::vector<TilesetSource2D> s_tilesets;
+
+    // "Add tileset" staging fields
+    static char s_pendingPath[512] = {};
+    static int  s_pendingFirstgid = -1;
+
+    // Seed from live component
+    static std::string s_seededFor;
+    const std::string& srcPath = tm.GetSourceMapPath();
+    if (s_seededFor != srcPath && !srcPath.empty())
+    {
+        std::strncpy(s_mapPathBuf, srcPath.c_str(), sizeof(s_mapPathBuf) - 1);
+        s_tileW = tm.GetTileWidth();
+        s_tileH = tm.GetTileHeight();
+        s_tilesets = std::vector<TilesetSource2D>(tm.GetTilesetSources().begin(),
+            tm.GetTilesetSources().end());
+        s_seededFor = srcPath;
+    }
+
+    // Rebuild
+    auto tryRebuild = [&]()
+        {
+            if (s_tilesets.empty() || s_mapPathBuf[0] == '\0') return;
+
+            ContentLoader* loader = Services::Fetch<ContentLoader>();
+            if (!loader) return;
+
+            Tilemap2D fresh(s_tileW, s_tileH);
+
+            for (const auto& src : s_tilesets)
+            {
+                const Texture* tex = loader->LoadTexture(src.texturePath);
+                if (!tex)
+                {
+                    Debug::LogError("[Tilemap] Failed to load tileset: %s", src.texturePath.c_str());
+                    return;
+                }
+                fresh.AddTileset(tex, src.texturePath, src.firstgid);
+            }
+
+            fresh.LoadTilemap(std::string(s_mapPathBuf));
+
+            if (s_tileGidsBuf[0] != '\0')
+            {
+                std::vector<int> tileIds;
+                std::istringstream ss(s_tileGidsBuf);
+                std::string token;
+                while (std::getline(ss, token, ','))
+                {
+                    try { tileIds.push_back(std::stoi(token)); }
+                    catch (...) {}
+                }
+                if (!tileIds.empty())
+                    fresh.GenerateCollisionData(s_collisionLayer, tileIds);
+            }
+
+            EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+            ECS* ecs = Services::Fetch<ECS>();
+            ecs->RemoveComponent<Tilemap2D>(entity);
+            ecs->AddComponent<Tilemap2D>(entity, std::move(fresh));
+
+            s_seededFor = std::string(s_mapPathBuf);
+        };
+
+    // Stats
     BeginPropertyTable();
 
     char dimsBuf[64];
-    std::snprintf(dimsBuf, sizeof(dimsBuf), "%d x %d tiles", tm.GetMapWidth(), tm.GetMapHeight());
-    NextRow(); FieldReadOnly("Map Size", dimsBuf);
-
-    char tileSizeBuf[64];
-    std::snprintf(tileSizeBuf, sizeof(tileSizeBuf), "%d x %d px", tm.GetTileWidth(), tm.GetTileHeight());
-    NextRow(); FieldReadOnly("Tile Size", tileSizeBuf);
-
-    const Vector2& offset = tm.GetOffset();
-    char offsetBuf[64];
-    std::snprintf(offsetBuf, sizeof(offsetBuf), "(%.2f, %.2f)", offset.x, offset.y);
-    NextRow(); FieldReadOnly("Offset", offsetBuf);
-
-    char tilesetBuf[32];
-    std::snprintf(tilesetBuf, sizeof(tilesetBuf), "%zu tiles", tm.GetTileset().size());
-    NextRow(); FieldReadOnly("Tileset", tilesetBuf);
-
-    char layersBuf[32];
-    std::snprintf(layersBuf, sizeof(layersBuf), "%zu", tm.GetLayers().size());
-    NextRow(); FieldReadOnly("Layers", layersBuf);
+    std::snprintf(dimsBuf, sizeof(dimsBuf), "%d x %d", tm.GetMapWidth(), tm.GetMapHeight());
+    NextRow(); FieldReadOnly("Map size", dimsBuf);
 
     char collisionBuf[32];
     std::snprintf(collisionBuf, sizeof(collisionBuf), "%zu regions", tm.GetCollisionRegions().size());
@@ -525,7 +613,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 
     EndPropertyTable();
 
-    if (!tm.GetLayers().empty() && ImGui::TreeNode("Layer Names"))
+    if (!tm.GetLayers().empty() && ImGui::TreeNode("Layers"))
     {
         for (size_t i = 0; i < tm.GetLayers().size(); i++)
         {
@@ -535,12 +623,114 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::TreePop();
     }
 
+    // Map
+    if (ImGui::TreeNodeEx("Map", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        bool changed = false;
+
+        BeginPropertyTable();
+        NextRow();
+        ImGui::PushID("mappath");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Path");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputText("##v", s_mapPathBuf, sizeof(s_mapPathBuf),
+            ImGuiInputTextFlags_EnterReturnsTrue))
+            changed = true;
+        ImGui::PopID();
+
+        NextRow(); FieldInt("Tile W", &s_tileW, 1, 1, 0);
+        if (ImGui::IsItemDeactivatedAfterEdit()) changed = true;
+
+        NextRow(); FieldInt("Tile H", &s_tileH, 1, 1, 0);
+        if (ImGui::IsItemDeactivatedAfterEdit()) changed = true;
+
+        EndPropertyTable();
+
+        if (changed) tryRebuild();
+
+        ImGui::TreePop();
+    }
+
+    // Tilesets
+    if (ImGui::TreeNodeEx("Tilesets", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        // Existing tilesets
+        int removeIdx = -1;
+        for (int i = 0; i < (int)s_tilesets.size(); i++)
+        {
+            ImGui::PushID(i);
+            ImGui::BulletText("[gid %d] %s", s_tilesets[i].firstgid,
+                s_tilesets[i].texturePath.c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton("x")) removeIdx = i;
+            ImGui::PopID();
+        }
+
+        if (removeIdx >= 0)
+        {
+            s_tilesets.erase(s_tilesets.begin() + removeIdx);
+            tryRebuild();
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Staging area for a new tileset
+        BeginPropertyTable();
+        NextRow(); FieldString("Texture", s_pendingPath, sizeof(s_pendingPath));
+        NextRow(); FieldInt("First GID", &s_pendingFirstgid, 1, -1, 0);
+        EndPropertyTable();
+        ImGui::TextDisabled("First GID: -1 = auto");
+
+        if (ImGui::Button("Add") && s_pendingPath[0] != '\0')
+        {
+            s_tilesets.push_back({ std::string(s_pendingPath), s_pendingFirstgid });
+            s_pendingPath[0] = '\0';
+            s_pendingFirstgid = -1;
+            tryRebuild();
+        }
+
+        ImGui::TreePop();
+    }
+
+    // Collision
+    if (ImGui::TreeNodeEx("Collision", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        bool changed = false;
+
+        BeginPropertyTable();
+        NextRow(); FieldInt("Layer", &s_collisionLayer, 1, 0, 0);
+        if (ImGui::IsItemDeactivatedAfterEdit()) changed = true;
+
+        NextRow();
+        ImGui::PushID("gids");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("GIDs");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputText("##v", s_tileGidsBuf, sizeof(s_tileGidsBuf),
+            ImGuiInputTextFlags_EnterReturnsTrue))
+            changed = true;
+        ImGui::PopID();
+        EndPropertyTable();
+
+        ImGui::TextDisabled("Comma-separated e.g. 1,2,5");
+
+        if (changed) tryRebuild();
+
+        ImGui::TreePop();
+    }
+
     EndComponent();
 
     if (removeRequested)
     {
         ECS* ecs = Services::Fetch<ECS>();
         ecs->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        s_seededFor.clear();
+        s_tilesets.clear();
+        s_mapPathBuf[0] = '\0';
     }
 }
 
