@@ -49,14 +49,13 @@ bool Engine::Init()
     return true;
 }
 
-void Engine::render() 
+void Engine::renderApplication() 
 {
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
         0, (float)m_window.GetWidth(), (float)m_window.GetHeight(), 0, -100.0f, 100.0f);
 
     m_renderer.Begin(projection);
         m_ecs.GetSystem<SpriteSystem2D>()->Update();
-        m_sceneManager.Render();
     m_renderer.Flush();
 }
 
@@ -86,8 +85,7 @@ void Engine::Update()
 		m_ecs.GetSystem<RigidBodySystem2D>()->Update((float)m_deltaTime);
 		m_ecs.GetSystem<TilemapSystem2D>()->Update((float)m_deltaTime); 
 
-        // Update the active scene
-        m_sceneManager.Update((float)m_deltaTime);
+        renderApplication();
 
         m_window.SwapBuffers();
 

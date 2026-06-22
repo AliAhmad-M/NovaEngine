@@ -104,18 +104,3 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 		tilemap->AddChildEntity(colliderEntity, TilemapChildType2D::RectCollider);
 	}
 }
-
-void TilemapSystem2D::OnEntityRemoved(EntityID e)
-{
-	//ECS* ecs = Services::Fetch<ECS>();
-	//Tilemap2D* tilemap = ecs->GetComponent<Tilemap2D>(e);
-
-	//if (!tilemap) return;
-
-	//for (const auto& [childEntity, type] : tilemap->GetChildEntities())
-	//{
-	//	ecs->DeleteEntity(childEntity);
-	//}
-
-	//tilemap->ClearChildEntities();
-}

@@ -18,7 +18,7 @@ namespace Nova
 		void Close();
 
 	private:
-		void render();
+		void renderApplication();
 		void registerComponents();
 		void initializeSystems();
 

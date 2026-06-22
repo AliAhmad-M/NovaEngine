@@ -1,7 +1,5 @@
 #include <Runtime/Engine.h>
 #include <Core/Services.h>
-#include <Test/Scenes/DynamicsTest.h>
-#include <Test/Scenes/GraphicsTest.h>
 #include <string>
 
 using namespace Nova;
@@ -14,10 +12,8 @@ int main()
     runtime.Init();
     
     // Setup scenes
-    std::string defaultScene = "Physics";
+    std::string defaultScene = "project/scenes/Untitled_0.json";
     SceneManager* sceneManager = Services::Fetch<SceneManager>();
-    sceneManager->CreateScene<DynamicsTest>("Physics");
-    sceneManager->CreateScene<GraphicsTest>("Graphics");
     sceneManager->ChangeScene(defaultScene);
 
     // Update runtime

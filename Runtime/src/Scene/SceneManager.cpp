@@ -2,53 +2,13 @@
 
 using namespace Nova;
 
-void SceneManager::Render() 
+void SceneManager::ChangeScene(const std::string& path) 
 {
-	if (m_currentScene) 
-	{
-		m_currentScene->Render();
-	}
-}
-
-void SceneManager::Update(float dt) 
-{
-	if (m_currentScene) 
-	{
-		m_currentScene->Update(dt);
-	} 
-}
-
-void SceneManager::DeleteScene(const std::string& name) 
-{
-	if (m_scenes.find(name) == m_scenes.end()) 
-	{
-		Debug::LogWarn("Cannot delete scene '%s' as it does not exist", name.c_str());
-		return;
-	}
-
-	// If the scene to delete is current scene
-	if (m_currentScene == m_scenes[name].get())
-	{
-		m_currentScene = nullptr; // Clear current scene
-	}
-	m_scenes.erase(name);
-	Debug::LogInfo("Successfully deleted scene: %s", name.c_str());
-}
-
-void SceneManager::ChangeScene(const std::string& name) 
-{
-	if (m_scenes.find(name) == m_scenes.end()) 
-	{
-		Debug::LogInfo("Cannot change to scene '%s' as it does not exist", name.c_str());
-		return;
-	}
-
-	IScene* nextScene = m_scenes[name].get();
-	if (m_currentScene) 
-	{
-		m_currentScene->Leave();
-	}
-	m_currentScene = nextScene;
-	m_currentScene->Ready();
-	Debug::LogInfo("Successfully changed scene to: %s", name.c_str());
+    SceneLoader loader;
+    if (!loader.Load(path))
+    {
+        Debug::LogError("[SceneManager] Failed to load scene: %s", path.c_str());
+        return;
+    }
+    m_currentScenePath = path;
 }

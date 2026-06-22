@@ -144,8 +144,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="project\src\Scenes\DynamicsTest.cpp" />
-    <ClCompile Include="project\src\Scenes\GraphicsTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\character_preview.png" />
@@ -157,10 +155,6 @@
     <Image Include="project\assets\texture.png" />
     <Image Include="project\assets\tree.png" />
     <Image Include="project\assets\water - spring.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="project\include\Test\Scenes\GraphicsTest.h" />
-    <ClInclude Include="project\include\Test\Scenes\DynamicsTest.h" />
   </ItemGroup>
   <ItemGroup>
     <Font Include="project\assets\boldpixels.ttf" />

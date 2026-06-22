@@ -1,0 +1,41 @@
+{
+    "entities": [
+        {
+            "components": {
+                "Sprite2D": {
+                    "animations": {
+                        "none": {
+                            "frames": [],
+                            "speed": 1
+                        }
+                    },
+                    "applyYSort": false,
+                    "currentAnimation": "none",
+                    "fliph": false,
+                    "flipv": false,
+                    "frame": 0,
+                    "hframes": 4,
+                    "texturePath": "D:\\Programs\\Programming\\Projects\\C++\\TheWorldEngine\\Test\\project\\assets\\ninja.png",
+                    "vframes": 7,
+                    "ySortOrigin": 0.0,
+                    "zIndex": 0
+                },
+                "Transform2D": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "rotation": 0.0,
+                    "scale": {
+                        "x": 3.0,
+                        "y": 3.0
+                    }
+                }
+            },
+            "id": 0,
+            "name": "Entity_0"
+        }
+    ],
+    "name": "Untitled_0",
+    "version": 1
+}
