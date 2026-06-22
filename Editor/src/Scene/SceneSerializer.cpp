@@ -153,7 +153,7 @@ namespace
     {
         nlohmann::json j;
 
-        // Tilemap2D's grid data is baked/derived from a source .tmj/.json file
+        // Tilemap2D's grid data is baked/derived from a source .json file
         // and a set of tileset textures. Rather than dumping the (potentially
         // large) baked grids, we record what's needed to reconstruct it:
         // the source map path and the tileset load parameters.
@@ -184,12 +184,6 @@ bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& file
 {
 
     ECS* ecs = Services::Fetch<ECS>();
-    if (!ecs)
-    {
-        fprintf(stderr, "[SceneSerializer] EngineContext has no registered ECS\n");
-        return false;
-    }
-
     nlohmann::json root;
     root["version"] = 1;
     root["name"] = scene.GetName();
@@ -241,7 +235,7 @@ bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& file
     std::filesystem::create_directories(filePath.parent_path(), ec);
     if (ec)
     {
-        fprintf(stderr, "[SceneSerializer] Failed to create directories for '%s': %s\n",
+        Debug::LogError("Failed to create directories for '%s': %s\n",
             filePath.string().c_str(), ec.message().c_str());
         return false;
     }
@@ -249,7 +243,7 @@ bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& file
     std::ofstream out(filePath);
     if (!out.is_open())
     {
-        fprintf(stderr, "[SceneSerializer] Failed to open '%s' for writing\n", filePath.string().c_str());
+        Debug::LogError("Failed to open '%s' for writing\n", filePath.string().c_str());
         return false;
     }
 

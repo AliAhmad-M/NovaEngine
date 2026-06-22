@@ -139,6 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\Runtime\Components\Behavior.h" />
     <ClInclude Include="include\Runtime\Engine.h" />
     <ClInclude Include="include\Runtime\Scene\SceneLoader.h" />
     <ClInclude Include="include\Runtime\Scene\SceneManager.h" />

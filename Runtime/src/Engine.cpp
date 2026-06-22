@@ -106,7 +106,6 @@ void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight
         0, (float)vpWidth, (float)vpHeight, 0, -100.0f, 100.0f);
 
     m_renderer.Begin(projection);
-    m_ecs.GetSystem<CameraSystem2D>()->Update();
     m_ecs.GetSystem<SpriteSystem2D>()->Update();
     m_renderer.Flush();
 

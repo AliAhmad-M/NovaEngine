@@ -34,7 +34,7 @@ AssetType AssetBrowserPanel::ClassifyExtension(const std::string& ext) const
 {
     if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ||
         ext == ".bmp" || ext == ".tga")  return AssetType::Texture;
-    if (ext == ".json" || ext == ".scene") return AssetType::Scene;
+    if (ext == ".jso" || ext == ".nova") return AssetType::Scene;
     if (ext == ".ttf" || ext == ".otf")  return AssetType::Font;
     if (ext == ".wav" || ext == ".ogg" || ext == ".mp3") return AssetType::Audio;
     return AssetType::Unknown;

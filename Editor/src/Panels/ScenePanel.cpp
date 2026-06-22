@@ -44,9 +44,21 @@ void ScenePanel::resizeFBO(int w, int h)
 
 void ScenePanel::destroyFBO()
 {
-    if (m_depthRbo) { glDeleteRenderbuffers(1, &m_depthRbo); m_depthRbo = 0; }
-    if (m_colorTex) { glDeleteTextures(1, &m_colorTex);      m_colorTex = 0; }
-    if (m_fbo) { glDeleteFramebuffers(1, &m_fbo);        m_fbo = 0; }
+    if (m_depthRbo) 
+    { 
+        glDeleteRenderbuffers(1, &m_depthRbo); 
+        m_depthRbo = 0; 
+    }
+    if (m_colorTex) 
+    { 
+        glDeleteTextures(1, &m_colorTex);      
+        m_colorTex = 0; 
+    }
+    if (m_fbo) 
+    { 
+        glDeleteFramebuffers(1, &m_fbo);            
+        m_fbo = 0; 
+    }
     m_vpWidth = m_vpHeight = 0;
 }
 
@@ -104,7 +116,7 @@ void ScenePanel::drawTabBar()
             {
                 std::filesystem::path dir = std::filesystem::absolute(
                     std::filesystem::current_path() / ".." / "Test" / "project" / "scenes");
-                m_ctx->activeScenePath = (dir / (tab.name + ".json")).string();
+                m_ctx->activeScenePath = (dir / (tab.name + ".nova")).string();
             }
             m_ctx->activeScene = tab.scene.get();
             ImGui::EndTabItem();
@@ -122,6 +134,51 @@ void ScenePanel::drawTabBar()
     ImGui::EndTabBar();
 }
 
+void ScenePanel::drawGrid()
+{
+    ImDrawList* dl      = ImGui::GetWindowDrawList();
+    ImVec2      origin  = ImGui::GetItemRectMin(); 
+    ImVec2      size    = ImGui::GetItemRectSize();
+
+    float zoom  = m_editorCamera.GetZoom();
+    Vector2 off = m_editorCamera.GetOffset();
+
+    // World-space grid step in pixels, scaled by zoom
+    float step = (float)m_gridSize * zoom;
+    if (step < 4.0f) return;
+
+    // How far into the first cell the camera offset is
+    float phaseX = std::fmod(off.x * zoom, step);
+    float phaseY = std::fmod(off.y * zoom, step);
+    if (phaseX < 0.0f) phaseX += step;
+    if (phaseY < 0.0f) phaseY += step;
+
+    ImU32 lineColor = IM_COL32(255, 255, 255, 30);
+    ImU32 axisColor = IM_COL32(255, 255, 255, 80);
+
+    // Vertical lines
+    for (float x = origin.x - phaseX; x <= origin.x + size.x; x += step)
+    {
+        if (x < origin.x) continue;
+        float worldX = off.x + (x - origin.x) / zoom;
+        bool isYAxis = (std::abs(worldX) < 0.5f / zoom);
+        ImU32 col = isYAxis ? IM_COL32(100, 180, 255, 200) : lineColor;
+        float thickness = isYAxis ? 2.0f : 1.0f;
+        dl->AddLine(ImVec2(x, origin.y), ImVec2(x, origin.y + size.y), col, thickness);
+    }
+
+    // Horizontal lines
+    for (float y = origin.y - phaseY; y <= origin.y + size.y; y += step)
+    {
+        if (y < origin.y) continue;
+        float worldY = off.y + (y - origin.y) / zoom;
+        bool isXAxis = (std::abs(worldY) < 0.5f / zoom);
+        ImU32 col = isXAxis ? IM_COL32(255, 100, 100, 200) : lineColor;
+        float thickness = isXAxis ? 2.0f : 1.0f;
+        dl->AddLine(ImVec2(origin.x, y), ImVec2(origin.x + size.x, y), col, thickness);
+    }
+}
+
 void ScenePanel::drawSceneViewport()
 {
     ImVec2 viewSize = ImGui::GetContentRegionAvail();
@@ -129,38 +186,61 @@ void ScenePanel::drawSceneViewport()
     int h = (int)viewSize.y;
     if (w < 1 || h < 1) return;
 
+    // Keep editor camera viewport in sync
+    m_editorCamera.SetViewportSize(w, h);
+
     // Resize FBO if the panel size changed
     if (w != m_vpWidth || h != m_vpHeight)
         resizeFBO(w, h);
 
-    // Display the rendered scene texture.
     ImGui::Image(
         (ImTextureID)(intptr_t)m_colorTex,
         viewSize,
-        ImVec2(0, 1),   // uv0: top-left of image  = bottom of texture
-        ImVec2(1, 0)    // uv1: bottom-right of image = top of texture
+        ImVec2(0, 1),
+        ImVec2(1, 0)
     );
 
-    // Pan (right/middle drag) and zoom (scroll)
-    if (ImGui::IsItemActive())
+    // Pan - right or middle drag
+    if (ImGui::IsItemHovered())
     {
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0f) ||
-            ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0f))
+        ImVec2 delta = ImGui::GetIO().MouseDelta;
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Right) ||
+            ImGui::IsMouseDown(ImGuiMouseButton_Middle))
         {
-            ImVec2 delta = ImGui::GetIO().MouseDelta;
-            m_cameraOffset[0] += delta.x;
-            m_cameraOffset[1] += delta.y;
+            panEditorCamera(-delta.x, -delta.y);
+        }
+
+        // Zoom - scroll wheel
+        float wheel = ImGui::GetIO().MouseWheel;
+        if (wheel != 0.0f)
+        {
+            float oldZoom = m_editorCamera.GetZoom();
+            float newZoom = std::max(0.1f, std::min(oldZoom * (1.0f + wheel * 0.1f), 10.0f));
+            m_editorCamera.SetZoom(newZoom);
         }
     }
+
+    // Zoom - scroll wheel
     if (ImGui::IsItemHovered())
     {
         float wheel = ImGui::GetIO().MouseWheel;
         if (wheel != 0.0f)
         {
-            m_viewportZoom *= (1.0f + wheel * 0.1f);
-            m_viewportZoom = std::max(0.1f, std::min(m_viewportZoom, 10.0f));
+            float oldZoom = m_editorCamera.GetZoom();
+            float newZoom = std::max(0.1f, std::min(oldZoom * (1.0f + wheel * 0.1f), 10.0f));
+            m_editorCamera.SetZoom(newZoom);
         }
     }
+
+    if (m_showGrid && m_vpWidth > 0 && m_vpHeight > 0)
+        drawGrid();
+}
+
+void ScenePanel::panEditorCamera(float dx, float dy)
+{
+    float zoom = m_editorCamera.GetZoom();
+    Vector2 current = m_editorCamera.GetOffset();
+    m_editorCamera.SetOffset({ current.x + dx / zoom, current.y + dy / zoom });
 }
 
 void ScenePanel::onTabChanged(int index)
@@ -197,9 +277,9 @@ void ScenePanel::onTabChanged(int index)
 }
 
 ScenePanel::ScenePanel(Context* ctx)
-    : m_ctx(ctx)
+    : m_ctx(ctx) 
 {
-
+    m_editorCamera.isMainCamera = true;
 }
 
 ScenePanel::~ScenePanel()

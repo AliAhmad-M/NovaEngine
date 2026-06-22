@@ -12,7 +12,7 @@ int main()
     runtime.Init();
     
     // Setup scenes
-    std::string defaultScene = "project/scenes/Untitled_0.json";
+    std::string defaultScene = "project/scenes/SampleScene.nova";
     SceneManager* sceneManager = Services::Fetch<SceneManager>();
     sceneManager->ChangeScene(defaultScene);
 

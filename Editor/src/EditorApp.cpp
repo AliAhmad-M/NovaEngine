@@ -196,7 +196,7 @@ void EditorApp::Run()
         }
 
         std::string unused;
-        DrawFilePicker("##OpenScenePicker", unused, ".json",
+        DrawFilePicker("##OpenScenePicker", unused, ".nova",
             [this](const std::string& path)
             {
                 m_scenePanel->OpenSceneTab(path);
@@ -205,8 +205,11 @@ void EditorApp::Run()
         // Render scene into FBO
         int vpW = m_scenePanel->GetViewportWidth();
         int vpH = m_scenePanel->GetViewportHeight();
-        if (vpW > 0 && vpH > 0)
+        if (vpW > 0 && vpH > 0) 
+        {
+            Services::Register<Camera2D>(&m_scenePanel->GetEditorCamera());
             m_runtime.RenderEditorFrame(m_scenePanel->GetFBOId(), vpW, vpH);
+        }
 
         endFrame();
     }
