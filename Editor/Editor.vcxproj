@@ -144,6 +144,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\EditorApp.cpp" />
+    <ClCompile Include="src\FilePicker.cpp" />
     <ClCompile Include="src\Panels\AssetBrowserPanel.cpp" />
     <ClCompile Include="src\Panels\HierarchyPanel.cpp" />
     <ClCompile Include="src\Panels\InspectorPanel.cpp" />
@@ -152,6 +153,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Editor\EditorApp.h" />
+    <ClInclude Include="include\Editor\FilePicker.h" />
     <ClInclude Include="include\Editor\Panels\AssetBrowserPanel.h" />
     <ClInclude Include="include\Editor\Context.h" />
     <ClInclude Include="include\Editor\Panels\HierarchyPanel.h" />

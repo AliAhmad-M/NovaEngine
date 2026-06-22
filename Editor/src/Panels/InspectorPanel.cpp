@@ -3,6 +3,7 @@
 #include <Core/ECS/ECS.h>
 #include <Core/Services.h>
 #include <Graphics/Texture.h>
+#include <Editor/FilePicker.h>
 #include <imgui.h>
 #include <cstring>
 #include <cmath>
@@ -170,6 +171,23 @@ void InspectorPanel::Draw()
 
     ImGui::Spacing();
     drawAddComponentMenu();
+
+    if (m_pendingPicker.has_value())
+    {
+        ImGui::OpenPopup(m_pendingPicker->popupId);
+        m_pickerOpen = true;
+    }
+
+    if (m_pickerOpen && m_pendingPicker.has_value())
+    {
+        auto& req = *m_pendingPicker;
+        std::string dummy;
+        if (!DrawFilePicker(req.popupId, dummy, req.filterExt, req.onConfirm))
+        {
+            m_pendingPicker.reset();
+            m_pickerOpen = false;
+        }
+    }
 
     ImGui::End();
 }
@@ -378,7 +396,14 @@ void InspectorPanel::drawTexturePathField(Sprite2D& s)
     ImGui::SameLine();
     if (ImGui::SmallButton("..."))
     {
-        // TODO: open Asset Browser picker filtered to AssetType::Texture
+        m_pendingPicker = {
+            "##pickerTex", ".png",
+            [&s](const std::string& path)
+            {
+                Texture* loaded = Services::Fetch<ContentLoader>()->LoadTexture(path);
+                if (loaded) s.texture = loaded;
+            }
+        };
     }
 }
 
@@ -519,26 +544,24 @@ void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
     }
 }
 
+static bool s_rebuildPending = false;
+
 void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 {
     bool removeRequested = false;
     if (!BeginComponent("Tilemap2D", &removeRequested)) return;
 
-    // Persistent inspector state
     static char s_mapPathBuf[512] = {};
     static char s_tileGidsBuf[256] = {};
     static int  s_tileW = 16;
     static int  s_tileH = 16;
     static int  s_collisionLayer = 0;
 
-    // Tileset list
     static std::vector<TilesetSource2D> s_tilesets;
 
-    // "Add tileset" staging fields
     static char s_pendingPath[512] = {};
     static int  s_pendingFirstgid = -1;
 
-    // Seed from live component
     static std::string s_seededFor;
     const std::string& srcPath = tm.GetSourceMapPath();
     if (s_seededFor != srcPath && !srcPath.empty())
@@ -546,12 +569,11 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         std::strncpy(s_mapPathBuf, srcPath.c_str(), sizeof(s_mapPathBuf) - 1);
         s_tileW = tm.GetTileWidth();
         s_tileH = tm.GetTileHeight();
-        s_tilesets = std::vector<TilesetSource2D>(tm.GetTilesetSources().begin(),
-            tm.GetTilesetSources().end());
+        s_tilesets = std::vector<TilesetSource2D>(
+            tm.GetTilesetSources().begin(), tm.GetTilesetSources().end());
         s_seededFor = srcPath;
     }
 
-    // Rebuild
     auto tryRebuild = [&]()
         {
             if (s_tilesets.empty() || s_mapPathBuf[0] == '\0') return;
@@ -613,6 +635,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 
     EndPropertyTable();
 
+    // Layers
     if (!tm.GetLayers().empty() && ImGui::TreeNode("Layers"))
     {
         for (size_t i = 0; i < tm.GetLayers().size(); i++)
@@ -629,14 +652,27 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         bool changed = false;
 
         BeginPropertyTable();
+
         NextRow();
         ImGui::PushID("mappath");
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Path");
         ImGui::TableSetColumnIndex(1);
-        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
         if (ImGui::InputText("##v", s_mapPathBuf, sizeof(s_mapPathBuf),
             ImGuiInputTextFlags_EnterReturnsTrue))
             changed = true;
+        ImGui::SameLine();
+        if (ImGui::SmallButton("...##map"))
+        {
+            m_pendingPicker = {
+                "##pickerMap", ".json",
+                [](const std::string& path)
+                {
+                    std::strncpy(s_mapPathBuf, path.c_str(), sizeof(s_mapPathBuf) - 1);
+                    s_rebuildPending = true;   // flag only, no tryRebuild capture
+                }
+            };
+        }
         ImGui::PopID();
 
         NextRow(); FieldInt("Tile W", &s_tileW, 1, 1, 0);
@@ -655,7 +691,6 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
     // Tilesets
     if (ImGui::TreeNodeEx("Tilesets", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        // Existing tilesets
         int removeIdx = -1;
         for (int i = 0; i < (int)s_tilesets.size(); i++)
         {
@@ -677,10 +712,31 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Staging area for a new tileset
+        // Staging area
         BeginPropertyTable();
-        NextRow(); FieldString("Texture", s_pendingPath, sizeof(s_pendingPath));
+
+        NextRow();
+        ImGui::PushID("pendingTex");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Texture");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::InputText("##v", s_pendingPath, sizeof(s_pendingPath));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("...##ts"))
+        {
+            m_pendingPicker = 
+            {
+                "##pickerTileset", ".png",
+                [](const std::string& path)
+                {
+                    std::strncpy(s_pendingPath, path.c_str(), sizeof(s_pendingPath) - 1);
+                }
+            };
+        }
+        ImGui::PopID();
+
         NextRow(); FieldInt("First GID", &s_pendingFirstgid, 1, -1, 0);
+
         EndPropertyTable();
         ImGui::TextDisabled("First GID: -1 = auto");
 
@@ -701,6 +757,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         bool changed = false;
 
         BeginPropertyTable();
+
         NextRow(); FieldInt("Layer", &s_collisionLayer, 1, 0, 0);
         if (ImGui::IsItemDeactivatedAfterEdit()) changed = true;
 
@@ -713,13 +770,19 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
             ImGuiInputTextFlags_EnterReturnsTrue))
             changed = true;
         ImGui::PopID();
-        EndPropertyTable();
 
+        EndPropertyTable();
         ImGui::TextDisabled("Comma-separated e.g. 1,2,5");
 
         if (changed) tryRebuild();
 
         ImGui::TreePop();
+    }
+
+    if (s_rebuildPending)
+    {
+        s_rebuildPending = false;
+        tryRebuild();
     }
 
     EndComponent();
@@ -731,6 +794,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         s_seededFor.clear();
         s_tilesets.clear();
         s_mapPathBuf[0] = '\0';
+        s_pendingPath[0] = '\0';
     }
 }
 

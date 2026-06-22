@@ -1,5 +1,6 @@
 #include <World/Systems/TilemapSystem2D.h>
 #include <Core/Services.h>
+#include <Core/Debug.h>
 #include <Core/Components/Transform2D.h>
 #include <Graphics/Components/Sprite2D.h>
 #include <Physics/Components/RigidBody2D.h>
@@ -106,15 +107,15 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 
 void TilemapSystem2D::OnEntityRemoved(EntityID e)
 {
-	ECS* ecs = Services::Fetch<ECS>();
+	//ECS* ecs = Services::Fetch<ECS>();
+	//Tilemap2D* tilemap = ecs->GetComponent<Tilemap2D>(e);
 
-	Tilemap2D* tilemap = ecs->GetComponent<Tilemap2D>(e);
-	if (!tilemap) return;
+	//if (!tilemap) return;
 
-	for (const auto& [childEntity, type] : tilemap->GetChildEntities())
-	{
-		ecs->DeleteEntity(childEntity);
-	}
+	//for (const auto& [childEntity, type] : tilemap->GetChildEntities())
+	//{
+	//	ecs->DeleteEntity(childEntity);
+	//}
 
-	tilemap->ClearChildEntities();
+	//tilemap->ClearChildEntities();
 }

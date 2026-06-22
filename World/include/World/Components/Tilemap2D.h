@@ -1,6 +1,7 @@
 #pragma once
 #include <Core/Utilities/Vector2.h>
-#include <Core/ECS/Types.h>
+#include <Core/ECS/ECS.h>
+#include <Core/Services.h>
 #include <Core/Debug.h>
 #include <Graphics/Texture.h>
 #include <nlohmann/json.hpp>
@@ -45,25 +46,29 @@ namespace Nova
 
 	struct Tilemap2D
 	{
-		Tilemap2D() = default;
-
-		Tilemap2D(int tileW, int tileH)
+		Tilemap2D(int tileW = 16, int tileH = 16)
 		{
 			m_tileW = std::max(1, tileW);
 			m_tileH = std::max(1, tileH);
 		}
 
-		// Note: this overload does not know the texture's source path (Tilemap2D
-		// has no ContentLoader reference). Path-aware callers should use
-		// AddTileset(tileset, path, firstgid) below, or call
-		// AddTilesetSourceRecord() manually afterward.
+		~Tilemap2D() 
+		{
+			ECS* ecs = Services::Fetch<ECS>();
+			for (const auto& [childEntity, type] : m_childEntities)
+			{
+				if (ecs->EntityExists(childEntity)) 
+					ecs->DeleteEntity(childEntity);
+			}
+
+			m_childEntities.clear();
+		}
+
 		void AddTileset(const Texture* tileset, int firstgid = -1)
 		{
 			addTilesetInternal(tileset, firstgid);
 		}
 
-		// Preferred overload: records the source path alongside the tileset so
-		// the map can be serialized and reloaded without re-baking grids.
 		void AddTileset(const Texture* tileset, const std::string& texturePath, int firstgid = -1)
 		{
 			int resolvedFirstgid = addTilesetInternal(tileset, firstgid);
@@ -213,20 +218,11 @@ namespace Nova
 			return m_childEntities;
 		}
 
-		void ClearChildEntities()
-		{
-			m_childEntities.clear();
-		}
-
-		// Source-path tracking, used by SceneSerializer to reload from JSON
-		// rather than serializing the full baked grid.
 		const std::string& GetSourceMapPath() const { return m_sourceMapPath; }
 		void SetSourceMapPath(const std::string& path) { m_sourceMapPath = path; }
 
 		const std::vector<TilesetSource2D>& GetTilesetSources() const { return m_tilesetSources; }
 
-		// Used by the deserializer to restore tileset source records when
-		// AddTileset() is called with a texture loaded from a known path.
 		void AddTilesetSourceRecord(const std::string& texturePath, int firstgid)
 		{
 			m_tilesetSources.push_back({ texturePath, firstgid });
@@ -397,8 +393,8 @@ namespace Nova
 		int m_mapW = 0;
 		int m_mapH = 0;
 
-		int m_tileW = 16;
-		int m_tileH = 16;
+		int m_tileW;
+		int m_tileH;
 
 		Vector2 m_offset = Vector2::ZERO;
 

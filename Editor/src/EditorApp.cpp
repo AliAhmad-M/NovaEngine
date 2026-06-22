@@ -181,6 +181,12 @@ void EditorApp::Run()
         m_assetBrowserPanel->Draw();
         m_scenePanel->Draw();
 
+        // Render scene into FBO
+        int vpW = m_scenePanel->GetViewportWidth();
+        int vpH = m_scenePanel->GetViewportHeight();
+        if (vpW > 0 && vpH > 0)
+            m_runtime.RenderEditorFrame(m_scenePanel->GetFBOId(), vpW, vpH);
+
         endFrame();
     }
 }

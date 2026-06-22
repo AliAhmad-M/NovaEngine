@@ -96,6 +96,26 @@ void Engine::Update()
     }
 }
 
+void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight) 
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, targetFBO);
+    glViewport(0, 0, vpWidth, vpHeight);
+    glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Projection
+    Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
+        0, (float)vpWidth, (float)vpHeight, 0, -100.0f, 100.0f);
+
+    m_renderer.Begin(projection);
+    m_ecs.GetSystem<CameraSystem2D>()->Update();
+    m_ecs.GetSystem<SpriteSystem2D>()->Update();
+    m_renderer.Flush();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+
 void Engine::Close() 
 {
     // Clear Jolt instance

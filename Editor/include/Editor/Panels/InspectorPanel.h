@@ -5,6 +5,7 @@
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
 #include <World/Components.h>
+#include <optional>
 #include <imgui.h>
 
 namespace Nova::Editor 
@@ -18,6 +19,15 @@ namespace Nova::Editor
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
     private:
+        struct PickerRequest
+        {
+            const char* popupId = nullptr;
+            const char* filterExt = "";
+            std::function<void(const std::string&)> onConfirm;
+        };
+        bool m_pickerOpen = false;
+        std::optional<PickerRequest> m_pendingPicker;
+
         void drawTransform2D(Transform2D& t);
         void drawCamera2D(Camera2D& c);
         void drawSprite2D(Sprite2D& s);

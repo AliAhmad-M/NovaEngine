@@ -77,7 +77,8 @@ float SpriteSystem2D::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* spr
 
 void SpriteSystem2D::Update(float dt) 
 {
-    Camera2D* camera2D  = Services::Fetch<Camera2D>();
+    
+    Camera2D* camera2D  = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
     Window* window      = Services::Fetch<Window>();
     Renderer* renderer  = Services::Fetch<Renderer>();
     ECS* ecs            = Services::Fetch<ECS>();
@@ -101,6 +102,8 @@ void SpriteSystem2D::Update(float dt)
         EntityID e = m_entities[i];
         Transform2D* transform = ecs->GetComponent<Transform2D>(e);
         Sprite2D* sprite = ecs->GetComponent<Sprite2D>(e);
+
+        if (!sprite->texture) continue;
 
         // Texture properties
         GLuint texHandle = sprite->texture->GetHandle();
@@ -165,6 +168,9 @@ void SpriteSystem2D::Update(float dt)
             transform->rotation,
             u, v, uw, vh
         );
+
+        // Check if sorting is needed
+        if (sprite->IsZIndexChanged() && !zSortingNeeded) zSortingNeeded = true;
     }
 
     if (enableYSort || zSortingNeeded) sortRenderingOrder();

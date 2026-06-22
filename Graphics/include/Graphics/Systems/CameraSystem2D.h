@@ -6,7 +6,7 @@ namespace Nova
 {
 	struct CameraSystem2D : public ISystem
 	{
-		void Update(float dt) override;
+		void Update(float dt = 0.0f) override;
 		void OnEntityAdded(EntityID e) override {}
 		void OnEntityRemoved(EntityID e) override {}
 		void OnAllEntitiesRemoved() override {}

@@ -3,14 +3,60 @@
 #include <cmath>
 #include <algorithm>
 #include <filesystem>
+#include <glad/glad.h>
 
 using namespace Nova::Editor;
+
+void ScenePanel::createFBO(int w, int h)
+{
+    m_vpWidth = w;
+    m_vpHeight = h;
+
+    glGenFramebuffers(1, &m_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+
+    // Color attachment
+    glGenTextures(1, &m_colorTex);
+    glBindTexture(GL_TEXTURE_2D, m_colorTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTex, 0);
+
+    // Depth/stencil renderbuffer
+    glGenRenderbuffers(1, &m_depthRbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_depthRbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_depthRbo);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void ScenePanel::resizeFBO(int w, int h)
+{
+    destroyFBO();
+    createFBO(w, h);
+}
+
+void ScenePanel::destroyFBO()
+{
+    if (m_depthRbo) { glDeleteRenderbuffers(1, &m_depthRbo); m_depthRbo = 0; }
+    if (m_colorTex) { glDeleteTextures(1, &m_colorTex);      m_colorTex = 0; }
+    if (m_fbo) { glDeleteFramebuffers(1, &m_fbo);        m_fbo = 0; }
+    m_vpWidth = m_vpHeight = 0;
+}
+
 
 ScenePanel::ScenePanel(Context* ctx)
     : m_ctx(ctx)
 {
     // Open a default untitled scene on startup
     newScene();
+}
+
+ScenePanel::~ScenePanel()
+{
+    destroyFBO();
 }
 
 void ScenePanel::Draw()
@@ -95,56 +141,24 @@ void ScenePanel::drawTabBar()
 
 void ScenePanel::drawSceneViewport()
 {
-    // Reserve the remaining space for the viewport area
     ImVec2 viewSize = ImGui::GetContentRegionAvail();
-    if (viewSize.x < 1.0f || viewSize.y < 1.0f) return;
+    int w = (int)viewSize.x;
+    int h = (int)viewSize.y;
+    if (w < 1 || h < 1) return;
 
-    // Placeholder grey canvas
-    ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-    ImDrawList* dl = ImGui::GetWindowDrawList();
+    // Resize FBO if the panel size changed
+    if (w != m_vpWidth || h != m_vpHeight)
+        resizeFBO(w, h);
 
-    // Background
-    dl->AddRectFilled(canvasPos,
-        ImVec2(canvasPos.x + viewSize.x, canvasPos.y + viewSize.y),
-        IM_COL32(30, 30, 35, 255));
+    // Display the rendered scene texture.
+    ImGui::Image(
+        (ImTextureID)(intptr_t)m_colorTex,
+        viewSize,
+        ImVec2(0, 1),   // uv0: top-left of image  = bottom of texture
+        ImVec2(1, 0)    // uv1: bottom-right of image = top of texture
+    );
 
-    // Grid lines
-    if (m_showGrid && m_gridSize > 0)
-    {
-        float scaledGrid = m_gridSize * m_viewportZoom;
-        ImU32 gridColor = IM_COL32(55, 55, 65, 200);
-
-        // Offset so grid pans with camera
-        float ox = std::fmod(m_cameraOffset[0], scaledGrid);
-        float oy = std::fmod(m_cameraOffset[1], scaledGrid);
-
-        for (float x = canvasPos.x + ox; x < canvasPos.x + viewSize.x; x += scaledGrid)
-            dl->AddLine(ImVec2(x, canvasPos.y), ImVec2(x, canvasPos.y + viewSize.y), gridColor);
-
-        for (float y = canvasPos.y + oy; y < canvasPos.y + viewSize.y; y += scaledGrid)
-            dl->AddLine(ImVec2(canvasPos.x, y), ImVec2(canvasPos.x + viewSize.x, y), gridColor);
-
-        // Origin cross
-        float cx = canvasPos.x + m_cameraOffset[0];
-        float cy = canvasPos.y + m_cameraOffset[1];
-        dl->AddLine(ImVec2(cx, canvasPos.y), ImVec2(cx, canvasPos.y + viewSize.y),
-            IM_COL32(80, 80, 100, 255));
-        dl->AddLine(ImVec2(canvasPos.x, cy), ImVec2(canvasPos.x + viewSize.x, cy),
-            IM_COL32(80, 80, 100, 255));
-    }
-
-    // "No scene content" hint
-    ImVec2 center(canvasPos.x + viewSize.x * 0.5f, canvasPos.y + viewSize.y * 0.5f);
-    const char* hint = "Scene Viewport  (connect renderer here)";
-    ImVec2 textSize = ImGui::CalcTextSize(hint);
-    dl->AddText(ImVec2(center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f),
-        IM_COL32(70, 70, 80, 255), hint);
-
-    // Invisible button to capture mouse input over the viewport
-    ImGui::InvisibleButton("##viewport", viewSize,
-        ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-
-    // Pan with middle-mouse or right-drag inside the viewport
+    // Pan (right/middle drag) and zoom (scroll)
     if (ImGui::IsItemActive())
     {
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0f) ||
@@ -155,8 +169,6 @@ void ScenePanel::drawSceneViewport()
             m_cameraOffset[1] += delta.y;
         }
     }
-
-    // Zoom with scroll wheel when hovered
     if (ImGui::IsItemHovered())
     {
         float wheel = ImGui::GetIO().MouseWheel;
@@ -178,7 +190,7 @@ void ScenePanel::newScene()
     tab.name = name;
     tab.filePath = "";
     tab.isDirty = true;  // Mark new scenes as dirty (unsaved)
-    tab.scene = std::make_unique<EditorScene>(name);
+    tab.scene = std::make_unique<Scene>(name);
 
     m_sceneTabs.push_back(std::move(tab));
 }

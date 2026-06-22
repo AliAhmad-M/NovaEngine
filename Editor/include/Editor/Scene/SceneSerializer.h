@@ -24,7 +24,7 @@ namespace Nova::Editor
          * @param filePath  Absolute or relative path, inside the project
          * @return true on success, false on failure
          */
-        bool Save(const EditorScene& scene, const std::filesystem::path& filePath);
+        bool Save(const Scene& scene, const std::filesystem::path& filePath);
 
     private:
     };

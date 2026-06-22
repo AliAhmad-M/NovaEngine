@@ -30,11 +30,11 @@ namespace Nova::Editor
         float   zoom = 1.0f;
     };
 
-    class EditorScene
+    class Scene
     {
     public:
-        EditorScene() = default;
-        explicit EditorScene(std::string name) : m_name(std::move(name)) {}
+        Scene() = default;
+        explicit Scene(std::string name) : m_name(std::move(name)) {}
 
         const std::string& GetName() const { return m_name; }
         void SetName(const std::string& name) { m_name = name; }

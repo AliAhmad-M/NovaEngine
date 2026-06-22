@@ -40,7 +40,7 @@ namespace Nova
 
         /**
          * @brief Deletes an entity and all its components
-         * @param entity Entity to delete
+         * @param entity ID of entity to delete
          */
         void DeleteEntity(EntityID entity)
         {
@@ -66,6 +66,17 @@ namespace Nova
             {
                 pair.second->OnAllEntitiesDestroyed();
             }
+        }
+
+
+        /**
+         * @brief Checks if an entity exists or not
+         * @param entity ID of entity to check
+         * @return True if entity exists, false otherwise
+         */
+        bool EntityExists(EntityID entity)
+        {
+            return m_entityManager->IsActive(entity);
         }
 
         /**

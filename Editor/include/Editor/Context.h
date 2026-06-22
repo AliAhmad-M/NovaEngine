@@ -14,7 +14,7 @@ namespace Nova::Editor
 		std::string activeScenePath;
 
 		// The scene currently focused in the editor
-		EditorScene* activeScene = nullptr;
+		Scene* activeScene = nullptr;
 
 		// Reference to scene panel for marking dirty state
 		ScenePanel* scenePanel = nullptr;

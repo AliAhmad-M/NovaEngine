@@ -180,7 +180,7 @@ SceneSerializer::SceneSerializer()
     s_contentLoader = Services::Fetch<ContentLoader>();
 }
 
-bool SceneSerializer::Save(const EditorScene& scene, const std::filesystem::path& filePath)
+bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& filePath)
 {
 
     ECS* ecs = Services::Fetch<ECS>();
