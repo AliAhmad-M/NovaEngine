@@ -16,6 +16,12 @@ namespace Nova
          */
         void ChangeScene(const std::string& path);
 
+        /**
+         * @brief Get the scene loader reference
+         * @return A pointer to the scene loader
+         */
+        SceneLoader* GetLoader() { return &m_loader; }
+
     private:
         SceneLoader m_loader;
         std::string m_currentScenePath;

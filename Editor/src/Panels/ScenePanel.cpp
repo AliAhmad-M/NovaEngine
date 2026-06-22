@@ -1,10 +1,14 @@
 #include <Editor/Panels/ScenePanel.h>
+#include <Runtime/Scene/SceneManager.h>
+#include <Core/ECS/ECS.h>
+#include <Core/Services.h>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
 #include <filesystem>
 #include <glad/glad.h>
 
+using namespace Nova;
 using namespace Nova::Editor;
 
 void ScenePanel::createFBO(int w, int h)
@@ -47,31 +51,6 @@ void ScenePanel::destroyFBO()
 }
 
 
-ScenePanel::ScenePanel(Context* ctx)
-    : m_ctx(ctx)
-{
-    // Open a default untitled scene on startup
-    newScene();
-}
-
-ScenePanel::~ScenePanel()
-{
-    destroyFBO();
-}
-
-void ScenePanel::Draw()
-{
-    ImGui::Begin("Scene");
-
-    drawSceneToolBar();
-    ImGui::Separator();
-    drawTabBar();
-    ImGui::Separator();
-    drawSceneViewport();
-
-    ImGui::End();
-}
-
 void ScenePanel::drawSceneToolBar()
 {
     // Grid toggle
@@ -110,18 +89,22 @@ void ScenePanel::drawTabBar()
         bool open = true;
         if (ImGui::BeginTabItem(label, &open, itemFlags))
         {
-            m_activeTab = i;
-            // Sync context
+            if (m_activeTab != i)
+            {
+                m_activeTab = i;
+                onTabChanged(i);
+            }
+
+            // Sync context (unchanged)
             if (!tab.filePath.empty())
             {
                 m_ctx->activeScenePath = tab.filePath;
             }
             else
             {
-                // Construct the default save path for unsaved scenes
-                std::filesystem::path projectScenesDir = std::filesystem::current_path() / ".." / "Test" / "project" / "scenes";
-                projectScenesDir = std::filesystem::absolute(projectScenesDir);
-                m_ctx->activeScenePath = (projectScenesDir / (tab.name + ".json")).string();
+                std::filesystem::path dir = std::filesystem::absolute(
+                    std::filesystem::current_path() / ".." / "Test" / "project" / "scenes");
+                m_ctx->activeScenePath = (dir / (tab.name + ".json")).string();
             }
             m_ctx->activeScene = tab.scene.get();
             ImGui::EndTabItem();
@@ -180,6 +163,63 @@ void ScenePanel::drawSceneViewport()
     }
 }
 
+void ScenePanel::onTabChanged(int index)
+{
+    if (index < 0 || index >= (int)m_sceneTabs.size()) return;
+
+    // Deselect entity
+    m_ctx->selectedEntity = -1;
+
+    SceneTab& tab = m_sceneTabs[index];
+    ECS* ecs = Services::Fetch<ECS>();
+    if (!ecs) return;
+
+    SceneManager* sceneManager = Services::Fetch<SceneManager>();
+
+    if (!tab.filePath.empty())
+    {
+        // Load scene from disk
+        std::vector<LoadedEntity> loaded;
+        if (sceneManager->GetLoader()->Load(tab.filePath, &loaded))
+        {
+            tab.scene->GetEntities().clear();
+            for (const auto& e : loaded)
+                tab.scene->AddEntity(e.id, e.name);
+
+            tab.isDirty = false;
+        }
+    }
+    else
+    {
+        ecs->DeleteAllEntities();
+        tab.scene->GetEntities().clear();
+    }
+}
+
+ScenePanel::ScenePanel(Context* ctx)
+    : m_ctx(ctx)
+{
+
+}
+
+ScenePanel::~ScenePanel()
+{
+    destroyFBO();
+}
+
+void ScenePanel::Draw()
+{
+    ImGui::Begin("Scene");
+
+    drawSceneToolBar();
+    ImGui::Separator();
+    drawTabBar();
+    ImGui::Separator();
+    drawSceneViewport();
+
+    ImGui::End();
+}
+
 void ScenePanel::newScene()
 {
     int idx = (int)m_sceneTabs.size();
@@ -201,6 +241,31 @@ void ScenePanel::closeScene(int index)
     m_sceneTabs.erase(m_sceneTabs.begin() + index);
     if (m_activeTab >= (int)m_sceneTabs.size())
         m_activeTab = (int)m_sceneTabs.size() - 1;
+}
+
+void ScenePanel::OpenSceneTab(const std::string& filePath)
+{
+    // If already open, just switch to it
+    for (int i = 0; i < (int)m_sceneTabs.size(); i++)
+    {
+        if (m_sceneTabs[i].filePath == filePath)
+        {
+            m_lastActiveTab = -1;
+            m_activeTab = i - 1;
+            return;
+        }
+    }
+
+    std::string name = std::filesystem::path(filePath).stem().string();
+
+    SceneTab tab;
+    tab.name = name;
+    tab.filePath = filePath;
+    tab.isDirty = false;
+    tab.scene = std::make_unique<Scene>(name);
+    tab.scene->SetFilePath(filePath);
+
+    m_sceneTabs.push_back(std::move(tab));
 }
 
 void ScenePanel::MarkSceneAsSaved()

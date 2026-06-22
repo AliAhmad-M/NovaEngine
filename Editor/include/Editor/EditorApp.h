@@ -32,10 +32,11 @@ namespace Nova::Editor
         void saveActiveScene();  // Helper to save the current scene
         void markSceneDirty();   // Helper to mark active scene as dirty/modified
 
-        bool m_layoutInitialized = false;
+        bool m_running            = true;
+        bool m_layoutInitialized  = false;
+        bool m_openSceneRequested = false;
 
         GLFWwindow* m_window = nullptr;
-        bool m_running   = true;
 
         Engine m_runtime;
         Context m_ctx;

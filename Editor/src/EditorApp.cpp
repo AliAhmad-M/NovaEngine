@@ -3,6 +3,7 @@
 #include <Editor/Panels/InspectorPanel.h>
 #include <Editor/Panels/AssetBrowserPanel.h>
 #include <Editor/Panels/ScenePanel.h>
+#include <Editor/FilePicker.h>
 #include <Runtime/Engine.h>
 #include <Core/Services.h>
 
@@ -141,7 +142,7 @@ bool EditorApp::Init()
 
 	applyTheme();
 
-	io.Fonts->AddFontFromFileTTF("../Test/project/assets/Inter_18pt-Regular.ttf", 18.0f);
+	io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf", 18.0f);
 
 	// Load panels
 	m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
@@ -165,21 +166,41 @@ void EditorApp::Run()
         glfwPollEvents();
 
         beginFrame();
-        drawMenuBar();   // draw menu bar first
+        drawMenuBar();   // draw menu bar
         buildLayout();   // then dockspace
 
-        // Handle keyboard shortcuts
         ImGuiIO& io = ImGui::GetIO();
+
+        // Save scene
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
         {
             saveActiveScene();
         }
 
-        // Just draw panels
+        // Draw panels
         m_hierarchyPanel->Draw();
         m_inspectorPanel->Draw();
         m_assetBrowserPanel->Draw();
         m_scenePanel->Draw();
+
+        // Open scene
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O)) 
+        {
+            m_openSceneRequested = true;
+        }
+
+        if (m_openSceneRequested)
+        {
+            ImGui::OpenPopup("##OpenScenePicker");
+            m_openSceneRequested = false;
+        }
+
+        std::string unused;
+        DrawFilePicker("##OpenScenePicker", unused, ".json",
+            [this](const std::string& path)
+            {
+                m_scenePanel->OpenSceneTab(path);
+            });
 
         // Render scene into FBO
         int vpW = m_scenePanel->GetViewportWidth();
@@ -292,7 +313,7 @@ void EditorApp::drawMenuBar()
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("New Scene", "Ctrl+N")) { m_ctx.activeScenePath.clear(); }
-            if (ImGui::MenuItem("Open Scene", "Ctrl+O")) { /* TODO: open file dialog */ }
+            if (ImGui::MenuItem("Open Scene", "Ctrl+O")) { m_openSceneRequested = true; }   
             if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
             {
                 saveActiveScene();
@@ -313,10 +334,10 @@ void EditorApp::drawMenuBar()
         // View menu – toggle panels
         if (ImGui::BeginMenu("View"))
         {
-            if (ImGui::MenuItem("Hierarchy")) { /* TODO: toggle */ }
-            if (ImGui::MenuItem("Inspector")) { /* TODO: toggle */ }
-            if (ImGui::MenuItem("Asset Browser")) { /* TODO: toggle */ }
-            if (ImGui::MenuItem("Scene")) { /* TODO: toggle */ }
+            if (ImGui::MenuItem("Hierarchy")) { /* TODO */ }
+            if (ImGui::MenuItem("Inspector")) { /* TODO */ }
+            if (ImGui::MenuItem("Asset Browser")) { /* TODO */ }
+            if (ImGui::MenuItem("Scene")) { /* TODO */ }
             ImGui::EndMenu();
         }
 
@@ -337,7 +358,7 @@ void EditorApp::saveActiveScene()
 {
     if (!m_ctx.activeScene || !m_sceneSerializer)
     {
-        fprintf(stderr, "[Editor] Cannot save: no active scene or serializer\n");
+        Debug::LogError("Cannot save: no active scene or serializer");
         return;
     }
 
@@ -345,7 +366,7 @@ void EditorApp::saveActiveScene()
     std::string savePath = m_ctx.activeScenePath;
     if (savePath.empty())
     {
-        fprintf(stderr, "[Editor] No valid save path\n");
+        Debug::LogError("No valid save path");
         return;
     }
 
@@ -353,11 +374,11 @@ void EditorApp::saveActiveScene()
     if (m_sceneSerializer->Save(*m_ctx.activeScene, savePath))
     {
         m_scenePanel->MarkSceneAsSaved();
-        printf("[Editor] Scene saved to: %s\n", savePath.c_str());
+        Debug::LogInfo("Scene saved to: %s", savePath.c_str());
     }
     else
     {
-        fprintf(stderr, "[Editor] Failed to save scene to: %s\n", savePath.c_str());
+        Debug::LogError("Failed to save scene to: %s", savePath.c_str());
     }
 }
 

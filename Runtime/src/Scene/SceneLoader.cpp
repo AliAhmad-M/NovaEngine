@@ -82,7 +82,7 @@ namespace
         {
             Sprite2DAnimationData anim;
             anim.frames = data["frames"].get<std::vector<int>>();
-            anim.speed = data["speed"].get<float>();
+            anim.speed = data["speed"];
             s.animations[name] = anim;
         }
 
@@ -126,7 +126,7 @@ namespace
             if (tex)
                 tm.AddTileset(tex, texPath, firstgid);
             else
-                Debug::LogError("[SceneLoader] Missing tileset texture: %s", texPath.c_str());
+                Debug::LogError("Missing tileset texture: %s", texPath.c_str());
         }
 
         std::string mapPath = j["mapPath"].get<std::string>();
@@ -137,12 +137,12 @@ namespace
     }
 }
 
-bool SceneLoader::Load(const std::string& jsonPath)
+bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEntities)
 {
-    std::ifstream in(jsonPath);
+    std::ifstream in(path);
     if (!in.is_open())
     {
-        fprintf(stderr, "[SceneLoader] Cannot open '%s'\n", jsonPath.c_str());
+        Debug::LogError("Failed to open scene: %s", path.c_str());
         return false;
     }
 
@@ -150,18 +150,16 @@ bool SceneLoader::Load(const std::string& jsonPath)
     try { root = nlohmann::json::parse(in); }
     catch (const std::exception& e)
     {
-        fprintf(stderr, "[SceneLoader] Parse error in '%s': %s\n", jsonPath.c_str(), e.what());
+        Debug::LogError("Parse error in '%s': %s\n", path.c_str(), e.what());
         return false;
     }
 
     ECS* ecs = Services::Fetch<ECS>();
-    if (!ecs) { fprintf(stderr, "[SceneLoader] No ECS registered\n"); return false; }
-
     s_loader = Services::Fetch<ContentLoader>();
-    if (!s_loader) { fprintf(stderr, "[SceneLoader] No ContentLoader registered\n"); return false; }
 
     ecs->DeleteAllEntities();
 
+    // Create entities from json file
     for (const auto& entityJson : root["entities"])
     {
         EntityID entity = ecs->CreateEntity();
@@ -181,9 +179,12 @@ bool SceneLoader::Load(const std::string& jsonPath)
 
         if (comp.contains("Tilemap2D"))
             ecs->AddComponent<Tilemap2D>(entity, DeserializeTilemap2D(comp["Tilemap2D"]));
+
+        if (outEntities)
+            outEntities->push_back({ entity, entityJson.value("name", "Entity") });
     }
 
-    printf("[SceneLoader] Loaded '%s' (%zu entities)\n",
-        jsonPath.c_str(), root["entities"].size());
+    Debug::LogInfo("Loaded '%s' (%zu entities)", 
+        path.c_str(), root["entities"].size());
     return true;
 }

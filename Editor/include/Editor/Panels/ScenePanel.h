@@ -26,6 +26,7 @@ namespace Nova::Editor
         void Draw();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
+        void OpenSceneTab(const std::string& filePath);
         void MarkSceneAsSaved();
         void MarkSceneAsDirty();
 
@@ -35,9 +36,11 @@ namespace Nova::Editor
         int          GetViewportHeight() const { return m_vpHeight; }
 
     private:
+
         void drawTabBar();
         void drawSceneToolBar();
         void drawSceneViewport();
+        void onTabChanged(int newIndex);
 
         void newScene();
         void closeScene(int index);
@@ -47,9 +50,12 @@ namespace Nova::Editor
         void destroyFBO();
 
         Context* m_ctx = nullptr;
-        ImGuiWindowFlags     m_windowFlags = 0;
+
+        ImGuiWindowFlags      m_windowFlags = 0;
         std::vector<SceneTab> m_sceneTabs;
-        int                  m_activeTab = -1;
+        
+        int  m_activeTab = -1;
+        int  m_lastActiveTab = -1;
 
         unsigned int m_fbo = 0;
         unsigned int m_colorTex = 0;
