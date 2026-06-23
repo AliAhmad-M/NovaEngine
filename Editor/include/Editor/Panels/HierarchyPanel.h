@@ -1,7 +1,9 @@
 #pragma once
-#include <string>
+#include <Core/ECS/ECS.h>
 #include <Editor/Context.h>
 #include <Graphics/Texture.h>
+#include <Runtime/ContentLoader.h>
+#include <string>
 #include <imgui.h>
 
 namespace Nova::Editor 
@@ -26,5 +28,8 @@ namespace Nova::Editor
         Texture* m_iconEntity;
         Texture* m_iconCamera;
         Texture* m_iconLight;
+
+        ECS* m_ecs;
+        ContentLoader* m_contentLoader;
     };
 }

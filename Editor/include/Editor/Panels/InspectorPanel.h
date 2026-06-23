@@ -1,10 +1,12 @@
 #pragma once
 
 #include <Editor/Context.h>
+#include <Core/ECS/ECS.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
 #include <World/Components.h>
+#include <Runtime/ContentLoader.h>
 #include <optional>
 #include <imgui.h>
 
@@ -39,8 +41,10 @@ namespace Nova::Editor
         void drawBehaviorScript(BehaviorScript& sc);
         void generateBehaviorStub(const std::string& path, const std::string& className);
 
-
-        Context* m_ctx = nullptr;
+        Context* m_ctx;
         ImGuiWindowFlags m_windowFlags = 0;
+
+        ECS* m_ecs;
+        ContentLoader* m_contentLoader;
     };
 }

@@ -3,10 +3,10 @@
 #include <Core/ECS/ECS.h>
 #include <Core/Services.h>
 #include <Core/Components.h>
+#include <Graphics/Texture.h>
 #include <Graphics/Components.h>
 #include <Physics/Components.h>
 #include <World/Components.h>
-#include <Graphics/Texture.h>
 #include <Runtime/ContentLoader.h>
 
 #include <nlohmann/json.hpp>
@@ -18,6 +18,7 @@
 using namespace Nova;
 using namespace Nova::Editor;
 
+static ECS* s_ecs;
 static ContentLoader* s_contentLoader;
 
 namespace
@@ -185,13 +186,13 @@ namespace
 
 SceneSerializer::SceneSerializer()
 {
+    s_ecs = Services::Fetch<ECS>();
     s_contentLoader = Services::Fetch<ContentLoader>();
 }
 
 bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& filePath)
 {
 
-    ECS* ecs = Services::Fetch<ECS>();
     nlohmann::json root;
     root["version"] = 1;
     root["name"] = scene.GetName();
@@ -207,35 +208,35 @@ bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& file
         nlohmann::json components = nlohmann::json::object();
 
         // Add one block per known component type
-        if (ecs->HasComponent<BehaviorScript>(sceneEntity.id))
+        if (s_ecs->HasComponent<BehaviorScript>(sceneEntity.id))
         {
             components["BehaviorScript"] = SerializeBehaviorScript(
-                *ecs->GetComponent<BehaviorScript>(sceneEntity.id));
+                *s_ecs->GetComponent<BehaviorScript>(sceneEntity.id));
         }
 
-        if (ecs->HasComponent<Transform2D>(sceneEntity.id))
+        if (s_ecs->HasComponent<Transform2D>(sceneEntity.id))
         {
-            components["Transform2D"] = SerializeTransform2D(*ecs->GetComponent<Transform2D>(sceneEntity.id));
+            components["Transform2D"] = SerializeTransform2D(*s_ecs->GetComponent<Transform2D>(sceneEntity.id));
         }
 
-        if (ecs->HasComponent<Camera2D>(sceneEntity.id))
+        if (s_ecs->HasComponent<Camera2D>(sceneEntity.id))
         {
-            components["Camera2D"] = SerializeCamera2D(*ecs->GetComponent<Camera2D>(sceneEntity.id));
+            components["Camera2D"] = SerializeCamera2D(*s_ecs->GetComponent<Camera2D>(sceneEntity.id));
         }
 
-        if (ecs->HasComponent<Sprite2D>(sceneEntity.id))
+        if (s_ecs->HasComponent<Sprite2D>(sceneEntity.id))
         {
-            components["Sprite2D"] = SerializeSprite2D(*ecs->GetComponent<Sprite2D>(sceneEntity.id));
+            components["Sprite2D"] = SerializeSprite2D(*s_ecs->GetComponent<Sprite2D>(sceneEntity.id));
         }
 
-        if (ecs->HasComponent<RigidBody2D>(sceneEntity.id))
+        if (s_ecs->HasComponent<RigidBody2D>(sceneEntity.id))
         {
-            components["RigidBody2D"] = SerializeRigidBody2D(*ecs->GetComponent<RigidBody2D>(sceneEntity.id));
+            components["RigidBody2D"] = SerializeRigidBody2D(*s_ecs->GetComponent<RigidBody2D>(sceneEntity.id));
         }
 
-        if (ecs->HasComponent<Tilemap2D>(sceneEntity.id))
+        if (s_ecs->HasComponent<Tilemap2D>(sceneEntity.id))
         {
-            components["Tilemap2D"] = SerializeTilemap2D(*ecs->GetComponent<Tilemap2D>(sceneEntity.id));
+            components["Tilemap2D"] = SerializeTilemap2D(*s_ecs->GetComponent<Tilemap2D>(sceneEntity.id));
         }
 
         entityJson["components"] = components;

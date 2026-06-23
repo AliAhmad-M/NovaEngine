@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <Editor/Context.h>
 #include <Graphics/Texture.h>
+#include <Runtime/ContentLoader.h>
 #include <imgui.h>
 
 namespace Nova::Editor 
@@ -58,5 +59,7 @@ namespace Nova::Editor
 
         float  m_iconSize = 64.0f;
         char   m_filter[128] = {};
+
+        ContentLoader* m_contentLoader;
     };
 }

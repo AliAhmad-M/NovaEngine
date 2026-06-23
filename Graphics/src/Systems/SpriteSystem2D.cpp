@@ -2,9 +2,7 @@
 #include <Core/Services.h>
 #include <Core/Utilities/Matrix4x4.h>
 #include <Core/Debug.h>
-#include <Graphics/Components/Camera2D.h>
-#include <Graphics/Renderer.h>
-#include <Platform/Window.h>
+
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -15,23 +13,23 @@ static const float CAMERA_MARGIN = 32.0f;
 
 void SpriteSystem2D::sortRenderingOrder()
 {
-    ECS* ecs = Services::Fetch<ECS>();
+    ECS* m_ecs = Services::Fetch<ECS>();
 
     // Insertion sort entities based on Z indexes and Y sort origins
     for (size_t i = 1; i < m_entities.size(); i++)
     {
         EntityID key = m_entities[i];
 
-        auto* transformA = ecs->GetComponent<Transform2D>(key);
-        auto* spriteA = ecs->GetComponent<Sprite2D>(key);
+        auto* transformA = m_ecs->GetComponent<Transform2D>(key);
+        auto* spriteA = m_ecs->GetComponent<Sprite2D>(key);
 
         float ySortOriginA = getGlobalYSortOrigin(transformA, spriteA);
 
         int j = (int)i - 1;
         while (j >= 0)
         {
-            auto* transformB = ecs->GetComponent<Transform2D>(m_entities[j]);
-            auto* spriteB = ecs->GetComponent<Sprite2D>(m_entities[j]);
+            auto* transformB = m_ecs->GetComponent<Transform2D>(m_entities[j]);
+            auto* spriteB = m_ecs->GetComponent<Sprite2D>(m_entities[j]);
 
             float ySortOriginB = getGlobalYSortOrigin(transformB, spriteB);
 
@@ -75,21 +73,23 @@ float SpriteSystem2D::getGlobalYSortOrigin(Transform2D* transform, Sprite2D* spr
     return y;
 }
 
+SpriteSystem2D::SpriteSystem2D() 
+{
+    m_window   = Services::Fetch<Window>();
+    m_renderer = Services::Fetch<Renderer>();
+    m_camera2D = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
+    m_ecs      = Services::Fetch<ECS>();
+}
+
 void SpriteSystem2D::Update(float dt) 
 {
-    
-    Camera2D* camera2D  = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
-    Window* window      = Services::Fetch<Window>();
-    Renderer* renderer  = Services::Fetch<Renderer>();
-    ECS* ecs            = Services::Fetch<ECS>();
-
-    // Get window size
+    // Get m_window size
     int windowWidth, windowHeight;
-    window->GetSize(&windowWidth, &windowHeight);
+    m_window->GetSize(&windowWidth, &windowHeight);
 
     // Get camera offset and zoom
-    Vector2 camOffset = camera2D ? camera2D->GetOffset() : Vector2::ZERO;
-    float zoom = camera2D ? camera2D->GetZoom() : 1.0f;
+    Vector2 camOffset = m_camera2D ? m_camera2D->GetOffset() : Vector2::ZERO;
+    float zoom = m_camera2D ? m_camera2D->GetZoom() : 1.0f;
 
     // Calculate culling bounds
     float cullLeft = camOffset.x - CAMERA_MARGIN;
@@ -100,77 +100,77 @@ void SpriteSystem2D::Update(float dt)
     for (size_t i = 0; i < m_entities.size(); i++) 
     {
         EntityID e = m_entities[i];
-        Transform2D* transform = ecs->GetComponent<Transform2D>(e);
-        Sprite2D* sprite = ecs->GetComponent<Sprite2D>(e);
+        auto* t = m_ecs->GetComponent<Transform2D>(e);
+        auto* s = m_ecs->GetComponent<Sprite2D>(e);
 
-        if (!sprite->texture) continue;
+        if (!s->texture) continue;
 
         // Texture properties
-        GLuint texHandle = sprite->texture->GetHandle();
-        int texWidth = sprite->GetTextureWidth();
-        int texHeight = sprite->GetTextureHeight();
-        int frameW = sprite->GetFrameWidth();
-        int frameH = sprite->GetFrameHeight();
+        GLuint texHandle = s->texture->GetHandle();
+        int texWidth = s->GetTextureWidth();
+        int texHeight = s->GetTextureHeight();
+        int frameW = s->GetFrameWidth();
+        int frameH = s->GetFrameHeight();
         
         // Dimensions of sprite world space
-        float worldW = frameW * transform->scale.x;
-        float worldH = frameH * transform->scale.y;
+        float worldW = frameW * t->scale.x;
+        float worldH = frameH * t->scale.y;
 
         // Frustum culling check (still in world space)
-        if (transform->position.x + worldW < cullLeft ||
-            transform->position.x > cullRight ||
-            transform->position.y + worldH < cullTop ||
-            transform->position.y > cullBottom) continue;
+        if (t->position.x + worldW < cullLeft ||
+            t->position.x > cullRight ||
+            t->position.y + worldH < cullTop ||
+            t->position.y > cullBottom) continue;
 
         // Handle animation
-        if (sprite->GetAnimation() != "none") 
+        if (s->GetAnimation() != "none") 
         {
-            Sprite2DAnimationData& animData = sprite->animations[sprite->GetAnimation()];
+            Sprite2DAnimationData& animData = s->animations[s->GetAnimation()];
             size_t frameIndex = (size_t)(glfwGetTime() * animData.speed) % animData.frames.size();
             int frame = animData.frames[frameIndex];
 
-            sprite->frame = frame;
-            sprite->src.SetCoords(
-                (float)((frame % sprite->hframes) * frameW), 
-                (float)((frame / sprite->hframes) * frameH));
+            s->frame = frame;
+            s->src.SetCoords(
+                (float)((frame % s->hframes) * frameW), 
+                (float)((frame / s->hframes) * frameH));
         }
 
         // Set source rect
-        sprite->src.SetDimensions((float)frameW, (float)frameH);
+        s->src.SetDimensions((float)frameW, (float)frameH);
 
         // Position of sprite in screen space
-        float screenX = (transform->position.x - camOffset.x) * zoom;
-        float screenY = (transform->position.y - camOffset.y) * zoom;
+        float screenX = (t->position.x - camOffset.x) * zoom;
+        float screenY = (t->position.y - camOffset.y) * zoom;
 
         // Dimensions of sprite in screen space
         float screenW = worldW * zoom;
         float screenH = worldH * zoom;
 
         // Set destination rect
-        sprite->dst.SetCoords(screenX, screenY);
-        sprite->dst.SetDimensions(screenW, screenH);
+        s->dst.SetCoords(screenX, screenY);
+        s->dst.SetDimensions(screenW, screenH);
 
         // Calculate normalized UV coordinates
-        float u = sprite->src.GetX() / texWidth;
-        float v = sprite->src.GetY() / texHeight;
+        float u = s->src.GetX() / texWidth;
+        float v = s->src.GetY() / texHeight;
         float uw = (float)frameW / texWidth;
         float vh = (float)frameH / texHeight;
 
         // Handle flips by adjusting UVs
-        if (sprite->fliph) { u += uw; uw = -uw; }
-        if (sprite->flipv) { v += vh; vh = -vh; }
+        if (s->fliph) { u += uw; uw = -uw; }
+        if (s->flipv) { v += vh; vh = -vh; }
 
         // Draw the sprites
-        renderer->DrawQuad(
-            sprite->texture->GetHandle(),
+        m_renderer->DrawQuad(
+            s->texture->GetHandle(),
             { screenX, screenY },
             { screenW, screenH },
-            transform->rotation,
+            t->rotation,
             u, v, uw, vh
         );
 
         // Check if sorting is needed
-        if (sprite->IsZIndexChanged() && !zSortingNeeded) zSortingNeeded = true;
+        if (s->IsZIndexChanged() && !zSortingNeeded) zSortingNeeded = true;
     }
 
     if (enableYSort || zSortingNeeded) sortRenderingOrder();

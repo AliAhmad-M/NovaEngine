@@ -1,6 +1,5 @@
 #include <Editor/Panels/ScenePanel.h>
-#include <Runtime/Scene/SceneManager.h>
-#include <Core/ECS/ECS.h>
+
 #include <Core/Services.h>
 #include <cstdio>
 #include <cmath>
@@ -251,16 +250,12 @@ void ScenePanel::onTabChanged(int index)
     m_ctx->selectedEntity = -1;
 
     SceneTab& tab = m_sceneTabs[index];
-    ECS* ecs = Services::Fetch<ECS>();
-    if (!ecs) return;
-
-    SceneManager* sceneManager = Services::Fetch<SceneManager>();
 
     if (!tab.filePath.empty())
     {
         // Load scene from disk
         std::vector<LoadedEntity> loaded;
-        if (sceneManager->GetLoader()->Load(tab.filePath, &loaded))
+        if (m_sceneManager->GetLoader()->Load(tab.filePath, &loaded))
         {
             tab.scene->GetEntities().clear();
             for (const auto& e : loaded)
@@ -271,7 +266,7 @@ void ScenePanel::onTabChanged(int index)
     }
     else
     {
-        ecs->DeleteAllEntities();
+        m_ecs->DeleteAllEntities();
         tab.scene->GetEntities().clear();
     }
 }
@@ -280,6 +275,8 @@ ScenePanel::ScenePanel(Context* ctx)
     : m_ctx(ctx) 
 {
     m_editorCamera.isMainCamera = true;
+    m_ecs = Services::Fetch<ECS>();
+    m_sceneManager = Services::Fetch<SceneManager>();
 }
 
 ScenePanel::~ScenePanel()

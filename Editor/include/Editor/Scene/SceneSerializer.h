@@ -1,8 +1,8 @@
 #pragma once
 
+#include <Editor/Scene/Scene.h>
 #include <string>
 #include <filesystem>
-#include <Editor/Scene/Scene.h>
 
 namespace Nova::Editor 
 {
@@ -25,7 +25,5 @@ namespace Nova::Editor
          * @return true on success, false on failure
          */
         bool Save(const Scene& scene, const std::filesystem::path& filePath);
-
-    private:
     };
 }

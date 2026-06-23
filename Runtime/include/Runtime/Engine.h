@@ -4,6 +4,7 @@
 #include <Platform/Window.h>
 #include <Platform/InputMap.h>
 #include <Graphics/Renderer.h>
+#include <Graphics/Components/Camera2D.h>
 #include <Runtime/ContentLoader.h>
 #include <Runtime/Scene/SceneManager.h>
 
@@ -14,7 +15,7 @@ namespace Nova
 	public:
 		bool Init();
 		void Update();
-		void RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight);
+		void RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight, Camera2D* editorCamera);
 		void Close();
 
 	private:
@@ -30,7 +31,7 @@ namespace Nova
 		SceneManager  m_sceneManager;
 
 		bool          m_running = true;
-		double        m_deltaTime = 0;
+		float         m_deltaTime = 0;
 	};
 }
 

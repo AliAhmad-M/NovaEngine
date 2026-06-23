@@ -1,5 +1,4 @@
 #pragma once
-#include <Runtime/ContentLoader.h>
 #include <Editor/Scene/Scene.h>
 #include <string>
 

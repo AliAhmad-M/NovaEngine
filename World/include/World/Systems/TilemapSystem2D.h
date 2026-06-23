@@ -1,16 +1,22 @@
 #pragma once
 #include <Core/ECS/ISystem.h>
 #include <Core/ECS/ECS.h>
-#include <World/Components/Tilemap2D.h>
+#include <Core/Components/Transform2D.h>
+#include <unordered_map>
 
 namespace Nova 
 {
-	class TilemapSystem2D : public ISystem
+	struct TilemapSystem2D : public ISystem
 	{
-	public:
-		void Update(float dt) override {}
+		TilemapSystem2D();
+		void Update(float dt = 0.0f) override;
 		void OnEntityAdded(EntityID e) override;
-		void OnEntityRemoved(EntityID e) override {}
-		void OnAllEntitiesRemoved() override {}
+		void OnEntityRemoved(EntityID e) override;
+		void OnAllEntitiesRemoved() override;
+
+	private:
+		ECS* m_ecs;
+		std::unordered_map<EntityID, Transform2D> m_cachedTransforms;
+
 	};
 }

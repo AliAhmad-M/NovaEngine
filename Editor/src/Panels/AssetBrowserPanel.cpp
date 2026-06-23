@@ -10,14 +10,14 @@ using namespace Nova::Editor;
 AssetBrowserPanel::AssetBrowserPanel(Context* ctx)
     : m_ctx(ctx)
 {
-    ContentLoader* contentLoader = Services::Fetch<ContentLoader>();
+    m_contentLoader = Services::Fetch<ContentLoader>();
 
-    m_iconFolder = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_folder.png") : nullptr;
-    m_iconTexture = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_texture.png") : nullptr;
-    m_iconScene = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_scene.png") : nullptr;
-    m_iconAudio = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_audio.png") : nullptr;
-    m_iconScript = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_script.png") : nullptr;
-    m_iconFont = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_font.png") : nullptr;
+    m_iconFolder  = m_contentLoader->LoadTexture("assets/icons/icon_folder.png");
+    m_iconTexture = m_contentLoader->LoadTexture("assets/icons/icon_texture.png");
+    m_iconScene   = m_contentLoader->LoadTexture("assets/icons/icon_scene.png");
+    m_iconAudio   = m_contentLoader->LoadTexture("assets/icons/icon_audio.png");
+    m_iconScript  = m_contentLoader->LoadTexture("assets/icons/icon_script.png");
+    m_iconFont    = m_contentLoader->LoadTexture("assets/icons/icon_font.png");
 
     // Default to the project's assets folder
     m_rootPath = std::filesystem::path("../Test/project/");

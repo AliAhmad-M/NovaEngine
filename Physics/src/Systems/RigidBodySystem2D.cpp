@@ -31,6 +31,8 @@ static b2Filter makeFilter(const RigidBody2D* rb)
 
 RigidBodySystem2D::RigidBodySystem2D()
 {
+    m_ecs = Services::Fetch<ECS>();
+
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = pointToMeters(0.0f, 9.81f * PHYSICS_PPM);
     m_worldId = b2CreateWorld(&worldDef);
@@ -58,15 +60,14 @@ void RigidBodySystem2D::SetGravity(const Vector2& meterPerSecSq)
 
 void RigidBodySystem2D::OnEntityAdded(EntityID e)
 {
-    ECS* ecs = Services::Fetch<ECS>();
-    auto* transform = ecs->GetComponent<Transform2D>(e);
-    auto* rb = ecs->GetComponent<RigidBody2D>(e);
+    auto* t  = m_ecs->GetComponent<Transform2D>(e);
+    auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
 
     // Create body definition
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = rb->IsStatic() ? b2_staticBody : b2_dynamicBody;
-    bodyDef.position = worldCenterToMeters(transform);
-    bodyDef.rotation = b2MakeRot(transform->rotation * (B2_PI / 180.0f));
+    bodyDef.position = worldCenterToMeters(t);
+    bodyDef.rotation = b2MakeRot(t->rotation * (B2_PI / 180.0f));
     bodyDef.fixedRotation = rb->LockRotation();
     bodyDef.userData = reinterpret_cast<void*>(static_cast<uintptr_t>(e));
 
@@ -90,14 +91,14 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     // Offset from transform in meters
     b2Vec2 localOffsetMeters =
     {
-        (rb->centerOffset.x * transform->scale.x) / PHYSICS_PPM,
-        (rb->centerOffset.y * transform->scale.y) / PHYSICS_PPM
+        (rb->centerOffset.x * t->scale.x) / PHYSICS_PPM,
+        (rb->centerOffset.y * t->scale.y) / PHYSICS_PPM
     };
 
     // Circle
     if (rb->GetShape() == Shape2D::CIRCLE)
     {
-        float uniformScale = std::max(transform->scale.x, transform->scale.y);
+        float uniformScale = std::max(t->scale.x, t->scale.y);
 
         b2Circle circle;
         circle.center = localOffsetMeters;
@@ -109,8 +110,8 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     // Box
     else
     {
-        float scaledHalfW = (rb->GetHalfWidth() * transform->scale.x) / PHYSICS_PPM;
-        float scaledHalfH = (rb->GetHalfHeight() * transform->scale.y) / PHYSICS_PPM;
+        float scaledHalfW = (rb->GetHalfWidth() * t->scale.x) / PHYSICS_PPM;
+        float scaledHalfH = (rb->GetHalfHeight() * t->scale.y) / PHYSICS_PPM;
 
         b2Polygon polygon = b2MakeOffsetBox(scaledHalfW, scaledHalfH, localOffsetMeters, b2Rot_identity);
         rb->fixture = b2CreatePolygonShape(rb->body, &shapeDef, &polygon);
@@ -123,8 +124,7 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
 
 void RigidBodySystem2D::OnEntityRemoved(EntityID e)
 {
-    ECS* ecs = Services::Fetch<ECS>();
-    auto* rb = ecs->GetComponent<RigidBody2D>(e);
+    auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
 
     if (rb && B2_IS_NON_NULL(rb->body))
     {
@@ -136,12 +136,10 @@ void RigidBodySystem2D::OnEntityRemoved(EntityID e)
 
 void RigidBodySystem2D::OnAllEntitiesRemoved()
 {
-    ECS* ecs = Services::Fetch<ECS>();
-
     for (EntityID e : entities)
     {
         // Clear ID and fixture
-        auto* rb = ecs->GetComponent<RigidBody2D>(e);
+        auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
         if (rb)
         {
             rb->body = b2_nullBodyId;
@@ -160,17 +158,16 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
 
 void RigidBodySystem2D::TeleportEntity(EntityID e)
 {
-    ECS* ecs = Services::Fetch<ECS>();
-    auto* transform = ecs->GetComponent<Transform2D>(e);
-    auto* rb = ecs->GetComponent<RigidBody2D>(e);
+    auto* t  = m_ecs->GetComponent<Transform2D>(e);
+    auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
 
     if (!rb || B2_IS_NULL(rb->body)) return;
 
     // Teleport body to the transform position
     b2Body_SetTransform(
         rb->body,
-        worldCenterToMeters(transform),
-        b2MakeRot(transform->rotation * (B2_PI / 180.0f))
+        worldCenterToMeters(t),
+        b2MakeRot(t->rotation * (B2_PI / 180.0f))
     );
     b2Body_SetAwake(rb->body, true);
 }
@@ -187,29 +184,25 @@ void RigidBodySystem2D::Update(float dt)
 
 void RigidBodySystem2D::syncFromBox2D()
 {
-    ECS* ecs = Services::Fetch<ECS>();
-
     for (EntityID e : entities)
     {
-        auto* rb = ecs->GetComponent<RigidBody2D>(e);
-        auto* transform = ecs->GetComponent<Transform2D>(e);
+        auto* t  = m_ecs->GetComponent<Transform2D>(e);
+        auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
 
         if (!rb || B2_IS_NULL(rb->body)) continue;
 
         // Get position and rotation from box2D
-        transform->position = metersToPoint(b2Body_GetPosition(rb->body));
-        transform->rotation = b2Rot_GetAngle(b2Body_GetRotation(rb->body)) * (180.0f / B2_PI);
+        t->position = metersToPoint(b2Body_GetPosition(rb->body));
+        t->rotation = b2Rot_GetAngle(b2Body_GetRotation(rb->body)) * (180.0f / B2_PI);
     }
 }
 
 void RigidBodySystem2D::processContacts()
 {
-    ECS* ecs = Services::Fetch<ECS>();
-
     // Reset per-frame collision state
     for (EntityID e : entities)
     {
-        auto* rb = ecs->GetComponent<RigidBody2D>(e);
+        auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
         if (!rb) continue;
         rb->isColliding = false;
         rb->normal = Vector2::ZERO;
@@ -231,8 +224,8 @@ void RigidBodySystem2D::processContacts()
         // ev.manifold.normal points from A toward B
         Vector2 n = { ev.manifold.normal.x, ev.manifold.normal.y };
 
-        auto* rbA = ecs->GetComponent<RigidBody2D>(eA);
-        auto* rbB = ecs->GetComponent<RigidBody2D>(eB);
+        auto* rbA = m_ecs->GetComponent<RigidBody2D>(eA);
+        auto* rbB = m_ecs->GetComponent<RigidBody2D>(eB);
 
         if (rbA) { rbA->isColliding = true; rbA->normal = -n; }
         if (rbB) { rbB->isColliding = true; rbB->normal = n; }
@@ -248,8 +241,8 @@ void RigidBodySystem2D::processContacts()
         EntityID eA = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(bodyIdA)));
         EntityID eB = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(bodyIdB)));
 
-        auto* rbA = ecs->GetComponent<RigidBody2D>(eA);
-        auto* rbB = ecs->GetComponent<RigidBody2D>(eB);
+        auto* rbA = m_ecs->GetComponent<RigidBody2D>(eA);
+        auto* rbB = m_ecs->GetComponent<RigidBody2D>(eB);
 
         if (rbA) { rbA->isColliding = false; rbA->normal = Vector2::ZERO; }
         if (rbB) { rbB->isColliding = false; rbB->normal = Vector2::ZERO; }
@@ -269,8 +262,8 @@ void RigidBodySystem2D::processContacts()
         EntityID eSensor = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(sensorBody)));
         EntityID eVisitor = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(visitorBody)));
 
-        auto* rbSensor = ecs->GetComponent<RigidBody2D>(eSensor);
-        auto* rbVisitor = ecs->GetComponent<RigidBody2D>(eVisitor);
+        auto* rbSensor = m_ecs->GetComponent<RigidBody2D>(eSensor);
+        auto* rbVisitor = m_ecs->GetComponent<RigidBody2D>(eVisitor);
 
         // Normal stays at 0 for sensors
         if (rbSensor)  rbSensor->isColliding = true;
@@ -287,8 +280,8 @@ void RigidBodySystem2D::processContacts()
         EntityID eSensor = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(sensorBody)));
         EntityID eVisitor = static_cast<EntityID>(reinterpret_cast<uintptr_t>(b2Body_GetUserData(visitorBody)));
 
-        auto* rbSensor = ecs->GetComponent<RigidBody2D>(eSensor);
-        auto* rbVisitor = ecs->GetComponent<RigidBody2D>(eVisitor);
+        auto* rbSensor = m_ecs->GetComponent<RigidBody2D>(eSensor);
+        auto* rbVisitor = m_ecs->GetComponent<RigidBody2D>(eVisitor);
 
         if (rbSensor) { rbSensor->isColliding = false; rbSensor->normal = Vector2::ZERO; }
         if (rbVisitor) { rbVisitor->isColliding = false; rbVisitor->normal = Vector2::ZERO; }

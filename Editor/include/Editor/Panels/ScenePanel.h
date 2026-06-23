@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Core/ECS/ECS.h>
+#include <Graphics/Components/Camera2D.h>
+#include <Runtime/Scene/SceneManager.h>
 #include <Editor/Context.h>
 #include <Editor/Scene/Scene.h>
-#include <Graphics/Components/Camera2D.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -54,7 +56,6 @@ namespace Nova::Editor
         void resizeFBO(int w, int h);
         void destroyFBO();
 
-
         // Converts a screen-space ImGui delta into world-space and applies it to the editor camera
         void panEditorCamera(float dx, float dy);
 
@@ -76,5 +77,8 @@ namespace Nova::Editor
 
         bool m_showGrid = true;
         int  m_gridSize = 32;
+
+        ECS* m_ecs;
+        SceneManager* m_sceneManager;
     };
 }

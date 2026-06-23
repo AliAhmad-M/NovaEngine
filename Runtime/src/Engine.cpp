@@ -19,6 +19,15 @@ using namespace Nova;
 
 bool Engine::Init()
 {
+    // Register services
+    Services::Init();
+    Services::Register(&m_ecs);
+    Services::Register(&m_window);
+    Services::Register(&m_renderer);
+    Services::Register(&m_contentLoader);
+    Services::Register(&m_inputMap);
+    Services::Register(&m_sceneManager);
+
     // Create window
     if (!m_window.Init(1280, 720, "Nova Engine")) 
     {
@@ -32,15 +41,6 @@ bool Engine::Init()
     m_ecs.Init();
     registerComponents();
     initializeSystems();
-
-    // Register services
-    Services::Init();
-    Services::Register(&m_ecs);
-    Services::Register(&m_window);
-    Services::Register(&m_renderer);
-    Services::Register(&m_contentLoader);
-    Services::Register(&m_inputMap);
-    Services::Register(&m_sceneManager);
 
     // Initialize Jolt physics
     JPH::RegisterDefaultAllocator();
@@ -69,10 +69,10 @@ void Engine::Update()
     {
         double currentTime = glfwGetTime();
         double frameStartTime = currentTime;
-        m_deltaTime = currentTime - lastTime;
+        m_deltaTime = (float)(currentTime - lastTime);
         lastTime = currentTime;
 
-        if (m_deltaTime > 0.1) m_deltaTime = targetFrameTime;
+        if (m_deltaTime > 0.1) m_deltaTime = (float)targetFrameTime;
 
         m_window.PollEvents();
         if (m_window.ShouldClose()) m_running = false;
@@ -82,10 +82,10 @@ void Engine::Update()
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        m_ecs.GetSystem<ScriptSystem>()->Update((float)m_deltaTime);
-		m_ecs.GetSystem<CameraSystem2D>()->Update((float)m_deltaTime);
-		m_ecs.GetSystem<RigidBodySystem2D>()->Update((float)m_deltaTime);
-		m_ecs.GetSystem<TilemapSystem2D>()->Update((float)m_deltaTime); 
+        m_ecs.GetSystem<ScriptSystem>()->Update(m_deltaTime);
+		m_ecs.GetSystem<CameraSystem2D>()->Update(m_deltaTime);
+		m_ecs.GetSystem<RigidBodySystem2D>()->Update(m_deltaTime);
+		m_ecs.GetSystem<TilemapSystem2D>()->Update(); 
 
         renderApplication();
 
@@ -96,19 +96,24 @@ void Engine::Update()
     }
 }
 
-void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight) 
+void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight, Camera2D* editorCamera)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, targetFBO);
     glViewport(0, 0, vpWidth, vpHeight);
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Projection
+    Vector2 offset = editorCamera->GetOffset();
+    float zoom = editorCamera->GetZoom();
+
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
-        0, (float)vpWidth, (float)vpHeight, 0, -100.0f, 100.0f);
+        offset.x, offset.x + vpWidth / zoom,
+        offset.y + vpHeight / zoom, offset.y,
+        -100.0f, 100.0f);
 
     m_renderer.Begin(projection);
     m_ecs.GetSystem<SpriteSystem2D>()->Update();
+    m_ecs.GetSystem<TilemapSystem2D>()->Update();
     m_renderer.Flush();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

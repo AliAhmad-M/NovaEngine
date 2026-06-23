@@ -125,7 +125,11 @@ static void EndPropertyTable()
 
 static void NextRow() { ImGui::TableNextRow(); }
 
-InspectorPanel::InspectorPanel(Context* ctx) : m_ctx(ctx) {}
+InspectorPanel::InspectorPanel(Context* ctx) : m_ctx(ctx) 
+{
+    m_ecs = Services::Fetch<ECS>(); 
+    m_contentLoader = Services::Fetch<ContentLoader>();
+}
 
 void InspectorPanel::Draw()
 {
@@ -134,14 +138,6 @@ void InspectorPanel::Draw()
     if (m_ctx->selectedEntity == -1)
     {
         ImGui::TextDisabled("No entity selected");
-        ImGui::End();
-        return;
-    }
-
-    ECS* ecs = Services::Fetch<ECS>();
-    if (!ecs)
-    {
-        ImGui::TextDisabled("No ECS available");
         ImGui::End();
         return;
     }
@@ -157,22 +153,22 @@ void InspectorPanel::Draw()
     ImGui::Spacing();
 
     // draw each component section if the entity has that component
-    if (Transform2D* t = ecs->GetComponent<Transform2D>(entity))
+    if (Transform2D* t = m_ecs->GetComponent<Transform2D>(entity))
         drawTransform2D(*t);
 
-    if (Camera2D* c = ecs->GetComponent<Camera2D>(entity))
+    if (Camera2D* c = m_ecs->GetComponent<Camera2D>(entity))
         drawCamera2D(*c);
 
-    if (Sprite2D* s = ecs->GetComponent<Sprite2D>(entity))
+    if (Sprite2D* s = m_ecs->GetComponent<Sprite2D>(entity))
         drawSprite2D(*s);
 
-    if (RigidBody2D* rb = ecs->GetComponent<RigidBody2D>(entity))
+    if (RigidBody2D* rb = m_ecs->GetComponent<RigidBody2D>(entity))
         drawRigidBody2D(*rb);
 
-    if (Tilemap2D* tm = ecs->GetComponent<Tilemap2D>(entity))
+    if (Tilemap2D* tm = m_ecs->GetComponent<Tilemap2D>(entity))
         drawTilemap2D(*tm);
 
-    if (BehaviorScript* bs = ecs->GetComponent<BehaviorScript>(entity))
+    if (BehaviorScript* bs = m_ecs->GetComponent<BehaviorScript>(entity))
         drawBehaviorScript(*bs);
 
     ImGui::Spacing();
@@ -200,7 +196,6 @@ void InspectorPanel::Draw()
 
 void InspectorPanel::drawAddComponentMenu()
 {
-    ECS* ecs = Services::Fetch<ECS>();
     EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
 
     float btnW = 200.0f;
@@ -213,26 +208,26 @@ void InspectorPanel::drawAddComponentMenu()
         ImGui::TextDisabled("Components");
         ImGui::Separator();
 
-        if (!ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
-            ecs->AddComponent<Transform2D>(entity, Transform2D());
+        if (!m_ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
+            m_ecs->AddComponent<Transform2D>(entity, Transform2D());
 
-        if (!ecs->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
-            ecs->AddComponent<Camera2D>(entity, Camera2D());
+        if (!m_ecs->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
+            m_ecs->AddComponent<Camera2D>(entity, Camera2D());
 
-        if (!ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
-            ecs->AddComponent<Sprite2D>(entity, Sprite2D());
+        if (!m_ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
+            m_ecs->AddComponent<Sprite2D>(entity, Sprite2D());
 
-        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
-            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
+        if (!m_ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
+            m_ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
 
-        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
-            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
+        if (!m_ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
+            m_ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
 
-        if (!ecs->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
-            ecs->AddComponent<Tilemap2D>(entity, Tilemap2D());
+        if (!m_ecs->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
+            m_ecs->AddComponent<Tilemap2D>(entity, Tilemap2D());
 
-        if (!ecs->HasComponent<BehaviorScript>(entity) && ImGui::MenuItem("Script"))
-            ecs->AddComponent<BehaviorScript>(entity, BehaviorScript());
+        if (!m_ecs->HasComponent<BehaviorScript>(entity) && ImGui::MenuItem("Script"))
+            m_ecs->AddComponent<BehaviorScript>(entity, BehaviorScript());
 
         ImGui::EndPopup();
     }
@@ -253,8 +248,8 @@ void InspectorPanel::drawTransform2D(Transform2D& t)
 
     if (removeRequested)
     {
-        ECS* ecs = Services::Fetch<ECS>();
-        ecs->RemoveComponent<Transform2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        ECS* m_ecs = Services::Fetch<ECS>();
+        m_ecs->RemoveComponent<Transform2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
 
@@ -364,15 +359,14 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
 
     if (removeRequested)
     {
-        ECS* ecs = Services::Fetch<ECS>();
-        ecs->RemoveComponent<Camera2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecs->RemoveComponent<Camera2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
 
 void InspectorPanel::drawTexturePathField(Sprite2D& s)
 {
     static char pathBuf[256];
-    std::string currentPath = Services::Fetch<ContentLoader>()->GetTexturePath(s.texture);
+    std::string currentPath = m_contentLoader->GetTexturePath(s.texture);
     std::snprintf(pathBuf, sizeof(pathBuf), "%s", currentPath.c_str());
 
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Texture");
@@ -381,7 +375,7 @@ void InspectorPanel::drawTexturePathField(Sprite2D& s)
 
     if (ImGui::InputText("##texPath", pathBuf, sizeof(pathBuf), ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        Texture* loaded = Services::Fetch<ContentLoader>()->LoadTexture(pathBuf);
+        Texture* loaded = m_contentLoader->LoadTexture(pathBuf);
         if (loaded) s.texture = loaded;
     }
 
@@ -428,8 +422,7 @@ void InspectorPanel::drawSprite2D(Sprite2D& s)
 
     if (removeRequested)
     {
-        ECS* ecs = Services::Fetch<ECS>();
-        ecs->RemoveComponent<Sprite2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecs->RemoveComponent<Sprite2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
 
@@ -522,8 +515,7 @@ void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
 
     if (removeRequested)
     {
-        ECS* ecs = Services::Fetch<ECS>();
-        ecs->RemoveComponent<RigidBody2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecs->RemoveComponent<RigidBody2D>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
 
@@ -594,9 +586,8 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
             }
 
             EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
-            ECS* ecs = Services::Fetch<ECS>();
-            ecs->RemoveComponent<Tilemap2D>(entity);
-            ecs->AddComponent<Tilemap2D>(entity, std::move(fresh));
+            m_ecs->RemoveComponent<Tilemap2D>(entity);
+            m_ecs->AddComponent<Tilemap2D>(entity, std::move(fresh));
 
             s_seededFor = std::string(s_mapPathBuf);
         };
@@ -771,8 +762,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 
     if (removeRequested)
     {
-        ECS* ecs = Services::Fetch<ECS>();
-        ecs->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecs->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctx->selectedEntity));
         s_seededFor.clear();
         s_tilesets.clear();
         s_mapPathBuf[0] = '\0';
@@ -872,8 +862,7 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
 
     if (removeRequested)
     {
-        ECS* ecs = Services::Fetch<ECS>();
-        ecs->RemoveComponent<BehaviorScript>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecs->RemoveComponent<BehaviorScript>(static_cast<EntityID>(m_ctx->selectedEntity));
     }
 }
 

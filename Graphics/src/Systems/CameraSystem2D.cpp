@@ -2,27 +2,29 @@
 #include <Core/Services.h>
 #include <Core/Debug.h>
 #include <Core/Components/Transform2D.h>
-#include <Platform/Window.h>
 #include <Graphics/Components/Camera2D.h>
 
 using namespace Nova;
 
+CameraSystem2D::CameraSystem2D() 
+{
+    m_window = Services::Fetch<Window>();
+    m_ecs = Services::Fetch<ECS>();
+}
+
 void CameraSystem2D::Update(float dt)
 {
-    Window* window  = Services::Fetch<Window>();
-    ECS* ecs        = Services::Fetch<ECS>();
-
     int windowWidth, windowHeight;
-    window->GetSize(&windowWidth, &windowHeight);
+    m_window->GetSize(&windowWidth, &windowHeight);
 
     EntityID mainCamEntity = INVALID_ENTITY;
 
     // Find the first camera flagged as main
     for (EntityID e : entities)
     {
-        Camera2D* cam = ecs->GetComponent<Camera2D>(e);
-        if (!cam) continue;
-        if (cam->isMainCamera)
+        Camera2D* c = m_ecs->GetComponent<Camera2D>(e);
+        if (!c) continue;
+        if (c->isMainCamera)
         {
             mainCamEntity = e;
             break;
@@ -34,13 +36,13 @@ void CameraSystem2D::Update(float dt)
     // Update and register / unregister
     if (mainCamEntity != INVALID_ENTITY)
     {
-        Camera2D* camera = ecs->GetComponent<Camera2D>(mainCamEntity);
+        Camera2D* c = m_ecs->GetComponent<Camera2D>(mainCamEntity);
 
         // Update camera state
-        camera->SetViewportSize(windowWidth, windowHeight);
+        c->SetViewportSize(windowWidth, windowHeight);
 
         // Register this as main camera
-        Services::Register<Camera2D>(camera);
+        Services::Register<Camera2D>(c);
     }
     else
     {

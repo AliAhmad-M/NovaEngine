@@ -208,7 +208,7 @@ void EditorApp::Run()
         if (vpW > 0 && vpH > 0) 
         {
             Services::Register<Camera2D>(&m_scenePanel->GetEditorCamera());
-            m_runtime.RenderEditorFrame(m_scenePanel->GetFBOId(), vpW, vpH);
+            m_runtime.RenderEditorFrame(m_scenePanel->GetFBOId(), vpW, vpH, &m_scenePanel->GetEditorCamera());
         }
 
         endFrame();

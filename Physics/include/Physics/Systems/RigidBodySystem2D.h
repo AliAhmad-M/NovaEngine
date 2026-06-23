@@ -31,11 +31,12 @@ namespace Nova
         b2WorldId GetWorldId() const { return m_worldId; }
 
     private:
+        ECS* m_ecs;
+        b2WorldId m_worldId = b2_nullWorldId;
+
         void buildBody(EntityID e, const Transform2D* transform, RigidBody2D* rb);
 
         void syncFromBox2D();
         void processContacts();
-
-        b2WorldId m_worldId = b2_nullWorldId;
     };
 }

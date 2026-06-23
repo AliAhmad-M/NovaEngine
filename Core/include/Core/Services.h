@@ -28,7 +28,8 @@ namespace Nova
         {
             if (!s_instance)
             {
-                Debug::LogErrorAndExit("Services not initialized");
+                static Services fallback;
+                return fallback;
             }
 
             return *s_instance;

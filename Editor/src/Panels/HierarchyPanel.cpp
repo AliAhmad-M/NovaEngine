@@ -1,7 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/HierarchyPanel.h>
 #include <Editor/Panels/ScenePanel.h>
-#include <Core/ECS/ECS.h>
 #include <Core/Services.h>
 #include <imgui.h>
 #include <cstring>
@@ -12,10 +11,11 @@ using namespace Nova::Editor;
 
 HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctx(ctx)
 {
-	ContentLoader* contentLoader = Services::Fetch<ContentLoader>();
-    m_iconEntity = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_entity.png") : nullptr;
-    m_iconCamera = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_camera.png") : nullptr;
-    m_iconLight = contentLoader ? contentLoader->LoadTexture("assets/icons/icon_light.png") : nullptr;
+    m_ecs = Services::Fetch<ECS>(); m_contentLoader = Services::Fetch<ContentLoader>();
+    
+    m_iconEntity = m_contentLoader->LoadTexture("assets/icons/icon_entity.png");
+    m_iconCamera = m_contentLoader->LoadTexture("assets/icons/icon_camera.png");
+    m_iconLight  = m_contentLoader->LoadTexture("assets/icons/icon_light.png");
 }
 
 void HierarchyPanel::Draw()
@@ -42,10 +42,7 @@ void HierarchyPanel::createEntity()
 {
     if (!m_ctx->activeScene) return;
 
-    ECS* ecs = Services::Fetch<ECS>();
-    if (!ecs) return;
-
-    EntityID newEntity = ecs->CreateEntity();
+    EntityID newEntity = m_ecs->CreateEntity();
 
     char name[64];
     std::snprintf(name, sizeof(name), "Entity_%zu",
@@ -118,8 +115,7 @@ void HierarchyPanel::drawEntityList()
             {
                 EntityID idToRemove = node.id;
 
-                if (ECS* ecs = Services::Fetch<ECS>())
-                    ecs->DeleteEntity(idToRemove);
+                m_ecs->DeleteEntity(idToRemove);
 
                 m_ctx->activeScene->RemoveEntity(idToRemove);
 
