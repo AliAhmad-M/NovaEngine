@@ -144,6 +144,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="project\scripts\Player.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\character_preview.png" />
@@ -161,6 +162,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="project\assets\tilemap.json" />
+    <None Include="project\scenes\SampleScene.nova" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="project\scripts\Player.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

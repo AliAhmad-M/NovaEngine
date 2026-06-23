@@ -18,6 +18,9 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="project\scripts\Player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\character_preview.png">
@@ -53,5 +56,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="project\assets\tilemap.json" />
+    <None Include="project\scenes\SampleScene.nova" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="project\scripts\Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -137,9 +137,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Behavior\BehaviorRegistry.cpp" />
     <ClCompile Include="src\Debug.cpp" />
     <ClCompile Include="src\ECS\EntityManager.cpp" />
     <ClCompile Include="src\ECS\SystemManager.cpp" />
+    <ClCompile Include="src\Systems\ScriptSystem.cpp" />
     <ClCompile Include="src\Utilities\Color.cpp" />
     <ClCompile Include="src\Utilities\Matrix3x2.cpp" />
     <ClCompile Include="src\Utilities\Matrix3x3.cpp" />
@@ -149,7 +151,10 @@
     <ClCompile Include="src\Utilities\Vector4.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Core\Behavior\Behavior.h" />
+    <ClInclude Include="include\Core\Behavior\BehaviorRegistry.h" />
     <ClInclude Include="include\Core\Components.h" />
+    <ClInclude Include="include\Core\Components\BehaviorScript.h" />
     <ClInclude Include="include\Core\Components\Transform2D.h" />
     <ClInclude Include="include\Core\Debug.h" />
     <ClInclude Include="include\Core\ECS\Constants.h" />
@@ -160,6 +165,8 @@
     <ClInclude Include="include\Core\ECS\SystemManager.h" />
     <ClInclude Include="include\Core\ECS\Types.h" />
     <ClInclude Include="include\Core\Services.h" />
+    <ClInclude Include="include\Core\Systems.h" />
+    <ClInclude Include="include\Core\Systems\ScriptSystem.h" />
     <ClInclude Include="include\Core\Utilities\Color.h" />
     <ClInclude Include="include\Core\Utilities\Matrix3x2.h" />
     <ClInclude Include="include\Core\Utilities\Matrix3x3.h" />

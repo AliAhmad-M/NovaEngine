@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/InspectorPanel.h>
 #include <Core/ECS/ECS.h>
+#include <Core/Behavior/BehaviorRegistry.h>
 #include <Core/Services.h>
 #include <Graphics/Texture.h>
 #include <Editor/FilePicker.h>
@@ -8,6 +9,8 @@
 #include <cstring>
 #include <cmath>
 #include <array>
+#include <sstream>
+#include <vector>
 
 using namespace Nova::Editor;
 
@@ -153,7 +156,7 @@ void InspectorPanel::Draw()
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Draw each component section if the entity has that component
+    // draw each component section if the entity has that component
     if (Transform2D* t = ecs->GetComponent<Transform2D>(entity))
         drawTransform2D(*t);
 
@@ -169,6 +172,9 @@ void InspectorPanel::Draw()
     if (Tilemap2D* tm = ecs->GetComponent<Tilemap2D>(entity))
         drawTilemap2D(*tm);
 
+    if (BehaviorScript* bs = ecs->GetComponent<BehaviorScript>(entity))
+        drawBehaviorScript(*bs);
+
     ImGui::Spacing();
     drawAddComponentMenu();
 
@@ -181,8 +187,8 @@ void InspectorPanel::Draw()
     if (m_pickerOpen && m_pendingPicker.has_value())
     {
         auto& req = *m_pendingPicker;
-        std::string dummy;
-        if (!DrawFilePicker(req.popupId, dummy, req.filterExt, req.onConfirm))
+        std::string path = "../Test/project";
+        if (!DrawFilePicker(req.popupId, path, req.filterExt, req.onConfirm))
         {
             m_pendingPicker.reset();
             m_pickerOpen = false;
@@ -190,6 +196,46 @@ void InspectorPanel::Draw()
     }
 
     ImGui::End();
+}
+
+void InspectorPanel::drawAddComponentMenu()
+{
+    ECS* ecs = Services::Fetch<ECS>();
+    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+
+    float btnW = 200.0f;
+    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - btnW) * 0.5f);
+    if (ImGui::Button("Add Component", ImVec2(btnW, 0)))
+        ImGui::OpenPopup("AddComponentPopup");
+
+    if (ImGui::BeginPopup("AddComponentPopup"))
+    {
+        ImGui::TextDisabled("Components");
+        ImGui::Separator();
+
+        if (!ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
+            ecs->AddComponent<Transform2D>(entity, Transform2D());
+
+        if (!ecs->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
+            ecs->AddComponent<Camera2D>(entity, Camera2D());
+
+        if (!ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
+            ecs->AddComponent<Sprite2D>(entity, Sprite2D());
+
+        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
+            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
+
+        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
+            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
+
+        if (!ecs->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
+            ecs->AddComponent<Tilemap2D>(entity, Tilemap2D());
+
+        if (!ecs->HasComponent<BehaviorScript>(entity) && ImGui::MenuItem("Script"))
+            ecs->AddComponent<BehaviorScript>(entity, BehaviorScript());
+
+        ImGui::EndPopup();
+    }
 }
 
 void InspectorPanel::drawTransform2D(Transform2D& t)
@@ -230,7 +276,7 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     if (zoom != c.GetZoom())
         c.SetZoom(zoom);
 
-    // Boundaries: left, right, up, down
+    // boundaries: left, right, up, down
     std::array<float, 4> boundaries = c.GetBoundaries();
     bool boundsChanged = false;
 
@@ -241,25 +287,11 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
         ImGui::PushID("BoundLeft");
         bool unbounded = std::isinf(boundaries[0]);
         float v = unbounded ? 0.0f : boundaries[0];
-
         ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
-        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f))
-        {
-            boundaries[0] = v;
-            boundsChanged = true;
-        }
-        if (unbounded)
-        {
-            ImGui::BeginDisabled();
-            ImGui::DragFloat("##v", &v, 1.0f);
-            ImGui::EndDisabled();
-        }
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[0] = v; boundsChanged = true; }
+        if (unbounded) { ImGui::BeginDisabled(); ImGui::DragFloat("##v", &v, 1.0f); ImGui::EndDisabled(); }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##inf", &unbounded))
-        {
-            boundaries[0] = unbounded ? -INFINITY : 0.0f;
-            boundsChanged = true;
-        }
+        if (ImGui::Checkbox("∞##inf", &unbounded)) { boundaries[0] = unbounded ? -INFINITY : 0.0f; boundsChanged = true; }
         ImGui::PopID();
     }
 
@@ -271,23 +303,10 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
         bool unbounded = std::isinf(boundaries[1]);
         float v = unbounded ? 0.0f : boundaries[1];
         ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
-        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) 
-        { 
-            boundaries[1] = v; 
-            boundsChanged = true; 
-        }
-        if (unbounded) 
-        { 
-            ImGui::BeginDisabled(); 
-            ImGui::DragFloat("##v", &v, 1.0f); 
-            ImGui::EndDisabled(); 
-        }
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[1] = v; boundsChanged = true; }
+        if (unbounded) { ImGui::BeginDisabled(); ImGui::DragFloat("##v", &v, 1.0f); ImGui::EndDisabled(); }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##inf", &unbounded)) 
-        { 
-            boundaries[1] = unbounded ? INFINITY : 0.0f; 
-            boundsChanged = true; 
-        }
+        if (ImGui::Checkbox("∞##inf", &unbounded)) { boundaries[1] = unbounded ? INFINITY : 0.0f; boundsChanged = true; }
         ImGui::PopID();
     }
 
@@ -299,23 +318,10 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
         bool unbounded = std::isinf(boundaries[2]);
         float v = unbounded ? 0.0f : boundaries[2];
         ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
-        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) 
-        { 
-            boundaries[2] = v; 
-            boundsChanged = true; 
-        }
-        if (unbounded) 
-        { 
-            ImGui::BeginDisabled(); 
-            ImGui::DragFloat("##v", &v, 1.0f); 
-            ImGui::EndDisabled(); 
-        }
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[2] = v; boundsChanged = true; }
+        if (unbounded) { ImGui::BeginDisabled(); ImGui::DragFloat("##v", &v, 1.0f); ImGui::EndDisabled(); }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##inf", &unbounded)) 
-        { 
-            boundaries[2] = unbounded ? -INFINITY : 0.0f; 
-            boundsChanged = true; 
-        }
+        if (ImGui::Checkbox("∞##inf", &unbounded)) { boundaries[2] = unbounded ? -INFINITY : 0.0f; boundsChanged = true; }
         ImGui::PopID();
     }
 
@@ -327,23 +333,10 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
         bool unbounded = std::isinf(boundaries[3]);
         float v = unbounded ? 0.0f : boundaries[3];
         ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
-        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) 
-        { 
-            boundaries[3] = v; 
-            boundsChanged = true; 
-        }
-        if (unbounded) 
-        { 
-            ImGui::BeginDisabled(); 
-            ImGui::DragFloat("##v", &v, 1.0f); 
-            ImGui::EndDisabled(); 
-        }
+        if (!unbounded && ImGui::DragFloat("##v", &v, 1.0f)) { boundaries[3] = v; boundsChanged = true; }
+        if (unbounded) { ImGui::BeginDisabled(); ImGui::DragFloat("##v", &v, 1.0f); ImGui::EndDisabled(); }
         ImGui::SameLine();
-        if (ImGui::Checkbox("∞##inf", &unbounded)) 
-        { 
-            boundaries[3] = unbounded ? INFINITY : 0.0f; 
-            boundsChanged = true; 
-        }
+        if (ImGui::Checkbox("∞##inf", &unbounded)) { boundaries[3] = unbounded ? INFINITY : 0.0f; boundsChanged = true; }
         ImGui::PopID();
     }
 
@@ -378,7 +371,6 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
 
 void InspectorPanel::drawTexturePathField(Sprite2D& s)
 {
-    // Get path to the texture
     static char pathBuf[256];
     std::string currentPath = Services::Fetch<ContentLoader>()->GetTexturePath(s.texture);
     std::snprintf(pathBuf, sizeof(pathBuf), "%s", currentPath.c_str());
@@ -415,7 +407,6 @@ void InspectorPanel::drawSprite2D(Sprite2D& s)
     BeginPropertyTable();
 
     NextRow(); drawTexturePathField(s);
-
     NextRow(); FieldInt("H Frames", &s.hframes, 1, 1, 0);
     NextRow(); FieldInt("V Frames", &s.vframes, 1, 1, 0);
     NextRow(); FieldInt("Frame", &s.frame, 1, 0, 0);
@@ -489,50 +480,42 @@ void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
     NextRow();
     bool isStatic = rb.IsStatic();
     FieldBool("Static", &isStatic);
-    if (isStatic != rb.IsStatic())
-        rb.SetStatic(isStatic);
+    if (isStatic != rb.IsStatic()) rb.SetStatic(isStatic);
 
     NextRow();
     bool isSensor = rb.IsSensor();
     FieldBool("Sensor", &isSensor);
-    if (isSensor != rb.IsSensor())
-        rb.SetSensor(isSensor);
+    if (isSensor != rb.IsSensor()) rb.SetSensor(isSensor);
 
     NextRow();
     float density = rb.GetDensity();
     FieldFloat("Density", &density, 0.01f, 0.0f, 0.0f);
-    if (density != rb.GetDensity())
-        rb.SetDensity(density);
+    if (density != rb.GetDensity()) rb.SetDensity(density);
 
     NextRow();
     float restitution = rb.GetRestitution();
     FieldFloat("Restitution", &restitution, 0.01f, 0.0f, 1.0f);
-    if (restitution != rb.GetRestitution())
-        rb.SetRestitution(restitution);
+    if (restitution != rb.GetRestitution()) rb.SetRestitution(restitution);
 
     NextRow();
     float friction = rb.GetFriction();
     FieldFloat("Friction", &friction, 0.01f, 0.0f, 1.0f);
-    if (friction != rb.GetFriction())
-        rb.SetFriction(friction);
+    if (friction != rb.GetFriction()) rb.SetFriction(friction);
 
     NextRow();
     bool lockRotation = rb.LockRotation();
     FieldBool("Lock Rotation", &lockRotation);
-    if (lockRotation != rb.LockRotation())
-        rb.SetLockRotation(lockRotation);
+    if (lockRotation != rb.LockRotation()) rb.SetLockRotation(lockRotation);
 
     NextRow();
     float linearDamping = rb.GetLinearDamping();
     FieldFloat("Linear Damping", &linearDamping, 0.01f, 0.0f, 0.0f);
-    if (linearDamping != rb.GetLinearDamping())
-        rb.SetLinearDamping(linearDamping);
+    if (linearDamping != rb.GetLinearDamping()) rb.SetLinearDamping(linearDamping);
 
     NextRow();
     float angularDamping = rb.GetAngularDamping();
     FieldFloat("Angular Damping", &angularDamping, 0.01f, 0.0f, 0.0f);
-    if (angularDamping != rb.GetAngularDamping())
-        rb.SetAngularDamping(angularDamping);
+    if (angularDamping != rb.GetAngularDamping()) rb.SetAngularDamping(angularDamping);
 
     EndPropertyTable();
     EndComponent();
@@ -618,7 +601,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
             s_seededFor = std::string(s_mapPathBuf);
         };
 
-    // Stats
+    // stats
     BeginPropertyTable();
 
     char dimsBuf[64];
@@ -635,7 +618,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 
     EndPropertyTable();
 
-    // Layers
+    // layers
     if (!tm.GetLayers().empty() && ImGui::TreeNode("Layers"))
     {
         for (size_t i = 0; i < tm.GetLayers().size(); i++)
@@ -646,7 +629,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::TreePop();
     }
 
-    // Map
+    // map
     if (ImGui::TreeNodeEx("Map", ImGuiTreeNodeFlags_DefaultOpen))
     {
         bool changed = false;
@@ -669,7 +652,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
                 [](const std::string& path)
                 {
                     std::strncpy(s_mapPathBuf, path.c_str(), sizeof(s_mapPathBuf) - 1);
-                    s_rebuildPending = true;   // flag only, no tryRebuild capture
+                    s_rebuildPending = true;
                 }
             };
         }
@@ -688,7 +671,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::TreePop();
     }
 
-    // Tilesets
+    // tilesets
     if (ImGui::TreeNodeEx("Tilesets", ImGuiTreeNodeFlags_DefaultOpen))
     {
         int removeIdx = -1;
@@ -712,7 +695,6 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Staging area
         BeginPropertyTable();
 
         NextRow();
@@ -724,7 +706,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::SameLine();
         if (ImGui::SmallButton("...##ts"))
         {
-            m_pendingPicker = 
+            m_pendingPicker =
             {
                 "##pickerTileset", ".png",
                 [](const std::string& path)
@@ -751,7 +733,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
         ImGui::TreePop();
     }
 
-    // Collision
+    // collision
     if (ImGui::TreeNodeEx("Collision", ImGuiTreeNodeFlags_DefaultOpen))
     {
         bool changed = false;
@@ -798,37 +780,137 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
     }
 }
 
-void InspectorPanel::drawAddComponentMenu()
+void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
 {
-    ECS* ecs = Services::Fetch<ECS>();
-    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+    bool removeRequested = false;
+    if (!BeginComponent("BehaviorScript", &removeRequested)) return;
 
-    float btnW = 200.0f;
-    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - btnW) * 0.5f);
-    if (ImGui::Button("Add Component", ImVec2(btnW, 0)))
-        ImGui::OpenPopup("AddComponentPopup");
-
-    if (ImGui::BeginPopup("AddComponentPopup"))
+    if (bs.scriptPath.empty())
     {
-        ImGui::TextDisabled("Components");
-        ImGui::Separator();
+        static char s_dirBuf[512] = {};
+        static char s_classNameBuf[128] = {};
 
-        if (!ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
-            ecs->AddComponent<Transform2D>(entity, Transform2D());
+        BeginPropertyTable();
 
-        if (!ecs->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
-            ecs->AddComponent<Camera2D>(entity, Camera2D());
+        // directory row — browse button opens folder picker
+        NextRow();
+        ImGui::PushID("scriptdir");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Directory");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::InputText("##dir", s_dirBuf, sizeof(s_dirBuf));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("...##dir"))
+        {
+            m_pendingPicker = {
+                "##pickerBehaviorDir", "",  // no extension filter
+                [](const std::string& path)
+                {
+                    // strip filename
+                    size_t slash = path.find_last_of("/\\");
+                    std::string dir = (slash != std::string::npos) ? path.substr(0, slash) : path;
+                    std::strncpy(s_dirBuf, dir.c_str(), sizeof(s_dirBuf) - 1);
+                }
+            };
+        }
+        ImGui::PopID();
 
-        if (!ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
-            ecs->AddComponent<Sprite2D>(entity, Sprite2D());
-        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
-            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
-        if (!ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
-            ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
+        // class name row
+        NextRow();
+        ImGui::PushID("scriptname");
+        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Class Name");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputText("##name", s_classNameBuf, sizeof(s_classNameBuf));
+        ImGui::PopID();
 
-        if (!ecs->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
-            ecs->AddComponent<Tilemap2D>(entity, Tilemap2D());
+        // full path preview
+        if (s_dirBuf[0] != '\0' && s_classNameBuf[0] != '\0')
+        {
+            char previewBuf[640];
+            std::snprintf(previewBuf, sizeof(previewBuf), "%s/%s", s_dirBuf, s_classNameBuf);
+            NextRow(); FieldReadOnly("Full Path", previewBuf);
+        }
 
-        ImGui::EndPopup();
+        EndPropertyTable();
+
+        ImGui::TextDisabled("Class name only, no extension");
+
+        bool canCreate = s_dirBuf[0] != '\0' && s_classNameBuf[0] != '\0';
+        if (!canCreate) ImGui::BeginDisabled();
+
+        if (ImGui::Button("Create & Bind", ImVec2(-1.0f, 0.0f)))
+        {
+            std::string fullPath = std::string(s_dirBuf) + "/" + std::string(s_classNameBuf);
+            std::string className = std::string(s_classNameBuf);
+
+            generateBehaviorStub(fullPath, className);
+
+            bs.scriptPath = fullPath;
+            bs.behaviorName = className;
+            s_dirBuf[0] = '\0';
+            s_classNameBuf[0] = '\0';
+        }
+
+        if (!canCreate) ImGui::EndDisabled();
     }
+    else
+    {
+        // script bound
+        BeginPropertyTable();
+        NextRow(); FieldReadOnly("Script", bs.scriptPath.c_str());
+        EndPropertyTable();
+
+        if (ImGui::Button("Clear", ImVec2(-1.0f, 0.0f)))
+        {
+            bs.scriptPath.clear();
+            bs.behaviorName.clear();
+        }
+    }
+
+    EndComponent();
+
+    if (removeRequested)
+    {
+        ECS* ecs = Services::Fetch<ECS>();
+        ecs->RemoveComponent<BehaviorScript>(static_cast<EntityID>(m_ctx->selectedEntity));
+    }
+}
+
+void InspectorPanel::generateBehaviorStub(const std::string& path, const std::string& className)
+{
+    std::string hPath = path + ".h";
+    std::string cppPath = path + ".cpp";
+
+    // Do not overwrite existing files
+    if (std::ifstream(hPath) || std::ifstream(cppPath))
+    {
+        Debug::LogWarn("Behavior stub already exists at: %s", path.c_str());
+        return;
+    }
+
+    std::ofstream h(hPath);
+    if (h.is_open())
+    {
+        h << "#pragma once\n";
+        h << "#include <Core/Behavior/Behavior.h>\n\n";
+        h << "class " << className << " : public Nova::Behavior\n";
+        h << "{\n";
+        h << "public:\n";
+        h << "    const char* GetName() const override { return \"" << className << "\"; }\n\n";
+        h << "    void OnStart()          override {}\n";
+        h << "    void OnUpdate(float dt) override {}\n";
+        h << "    void OnDestroy()        override {}\n";
+        h << "};\n";
+    }
+
+    std::ofstream cpp(cppPath);
+    if (cpp.is_open())
+    {
+        cpp << "#include \"" << className << ".h\"\n";
+        cpp << "#include <Core/Behavior/BehaviorRegistry.h>\n\n";
+        cpp << "REGISTER_BEHAVIOR(" << className << ")\n";
+    }
+
+    Debug::LogInfo("[Editor] Generated behavior stub: %s", path.c_str());
 }

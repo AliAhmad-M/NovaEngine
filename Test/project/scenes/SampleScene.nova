@@ -2,6 +2,10 @@
     "entities": [
         {
             "components": {
+                "BehaviorScript": {
+                    "behaviorName": "Player",
+                    "scriptPath": "../Test\\project\\scripts/Player"
+                },
                 "Sprite2D": {
                     "animations": {
                         "none": {
@@ -18,7 +22,55 @@
                     "texturePath": "D:\\Programs\\Programming\\Projects\\C++\\TheWorldEngine\\Test\\project\\assets\\ninja.png",
                     "vframes": 7,
                     "ySortOrigin": 0.0,
-                    "zIndex": 0
+                    "zIndex": 2
+                },
+                "Transform2D": {
+                    "position": {
+                        "x": 160.0,
+                        "y": 96.0
+                    },
+                    "rotation": 0.0,
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0
+                    }
+                }
+            },
+            "id": 0,
+            "name": "Entity_0"
+        },
+        {
+            "components": {
+                "Tilemap2D": {
+                    "mapPath": "../Test\\project\\assets\\tilemap.json",
+                    "tileHeight": 16,
+                    "tileWidth": 16,
+                    "tilesets": [
+                        {
+                            "firstgid": 1,
+                            "texturePath": "..\\Test\\project\\assets\\spring.png"
+                        },
+                        {
+                            "firstgid": 29,
+                            "texturePath": "../Test\\project\\assets\\dirt.png"
+                        },
+                        {
+                            "firstgid": 44,
+                            "texturePath": "../Test\\project\\assets\\tree.png"
+                        },
+                        {
+                            "firstgid": 76,
+                            "texturePath": "../Test\\project\\assets\\water - spring.png"
+                        },
+                        {
+                            "firstgid": 91,
+                            "texturePath": "../Test\\project\\assets\\texture.png"
+                        },
+                        {
+                            "firstgid": 123,
+                            "texturePath": "../Test\\project\\assets\\summer.png"
+                        }
+                    ]
                 },
                 "Transform2D": {
                     "position": {
@@ -27,15 +79,39 @@
                     },
                     "rotation": 0.0,
                     "scale": {
-                        "x": 3.0,
-                        "y": 3.0
+                        "x": 1.0,
+                        "y": 1.0
                     }
                 }
             },
-            "id": 0,
-            "name": "Entity_0"
+            "id": 1,
+            "name": "Entity_1"
+        },
+        {
+            "components": {
+                "Camera2D": {
+                    "boundaries": {
+                        "down": "inf",
+                        "left": "-inf",
+                        "right": "inf",
+                        "up": "-inf"
+                    },
+                    "isMainCamera": true,
+                    "offset": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "viewport": {
+                        "height": 720,
+                        "width": 1280
+                    },
+                    "zoom": 4.0
+                }
+            },
+            "id": 32,
+            "name": "Entity_2"
         }
     ],
-    "name": "Untitled_0",
+    "name": "SampleScene",
     "version": 1
 }

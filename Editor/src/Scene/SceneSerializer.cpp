@@ -27,6 +27,14 @@ namespace
         return nlohmann::json{ {"x", v.x}, {"y", v.y} };
     }
 
+    nlohmann::json SerializeBehaviorScript(const BehaviorScript& bs)
+    {
+        nlohmann::json j;
+        j["scriptPath"] = bs.scriptPath;
+        j["behaviorName"] = bs.behaviorName;
+        return j;
+    }
+
     nlohmann::json SerializeTransform2D(const Transform2D& t)
     {
         nlohmann::json j;
@@ -199,6 +207,12 @@ bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& file
         nlohmann::json components = nlohmann::json::object();
 
         // Add one block per known component type
+        if (ecs->HasComponent<BehaviorScript>(sceneEntity.id))
+        {
+            components["BehaviorScript"] = SerializeBehaviorScript(
+                *ecs->GetComponent<BehaviorScript>(sceneEntity.id));
+        }
+
         if (ecs->HasComponent<Transform2D>(sceneEntity.id))
         {
             components["Transform2D"] = SerializeTransform2D(*ecs->GetComponent<Transform2D>(sceneEntity.id));

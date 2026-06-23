@@ -31,6 +31,14 @@ namespace
         return j.get<float>();
     }
 
+    BehaviorScript DeserializeBehaviorScript(const nlohmann::json& j)
+    {
+        BehaviorScript bs;
+        bs.scriptPath = j.value("scriptPath", "");
+        bs.behaviorName = j.value("behaviorName", "");
+        return bs;
+    }
+
     Transform2D DeserializeTransform2D(const nlohmann::json& j)
     {
         Transform2D t;
@@ -164,6 +172,9 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
     {
         EntityID entity = ecs->CreateEntity();
         const auto& comp = entityJson["components"];
+
+        if (comp.contains("BehaviorScript"))
+            ecs->AddComponent<BehaviorScript>(entity, DeserializeBehaviorScript(comp["BehaviorScript"]));
 
         if (comp.contains("Transform2D"))
             ecs->AddComponent<Transform2D>(entity, DeserializeTransform2D(comp["Transform2D"]));

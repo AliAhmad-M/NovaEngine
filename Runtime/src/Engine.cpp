@@ -1,6 +1,7 @@
 #include <Runtime/Engine.h>
 #include <Core/Services.h>
 #include <Core/Components.h>
+#include <Core/Systems.h>
 #include <Graphics/Components.h>
 #include <Graphics/Systems.h>
 #include <Physics/Components.h>
@@ -19,7 +20,7 @@ using namespace Nova;
 bool Engine::Init()
 {
     // Create window
-    if (!m_window.Init(1280, 720, "Star Platinum Engine")) 
+    if (!m_window.Init(1280, 720, "Nova Engine")) 
     {
         return false;
     }
@@ -81,6 +82,7 @@ void Engine::Update()
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        m_ecs.GetSystem<ScriptSystem>()->Update((float)m_deltaTime);
 		m_ecs.GetSystem<CameraSystem2D>()->Update((float)m_deltaTime);
 		m_ecs.GetSystem<RigidBodySystem2D>()->Update((float)m_deltaTime);
 		m_ecs.GetSystem<TilemapSystem2D>()->Update((float)m_deltaTime); 
@@ -130,6 +132,7 @@ void Engine::Close()
 void Engine::registerComponents() 
 {
     m_ecs.RegisterComponent<Transform2D>();
+    m_ecs.RegisterComponent<BehaviorScript>();
     m_ecs.RegisterComponent<Sprite2D>();
     m_ecs.RegisterComponent<RigidBody2D>();
 	m_ecs.RegisterComponent<Tilemap2D>();
@@ -138,6 +141,10 @@ void Engine::registerComponents()
 
 void Engine::initializeSystems() 
 {
+    // Initialize behavior script system
+    m_ecs.RegisterSystem<ScriptSystem>();
+    m_ecs.AddComponentToSystem<BehaviorScript, ScriptSystem>();
+
     // Initialize sprite system (2D)
     m_ecs.RegisterSystem<SpriteSystem2D>();
     m_ecs.AddComponentToSystem<Transform2D, SpriteSystem2D>();

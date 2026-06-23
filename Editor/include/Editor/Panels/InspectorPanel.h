@@ -28,15 +28,17 @@ namespace Nova::Editor
         bool m_pickerOpen = false;
         std::optional<PickerRequest> m_pendingPicker;
 
+        void drawAddComponentMenu();
+
         void drawTransform2D(Transform2D& t);
         void drawCamera2D(Camera2D& c);
         void drawSprite2D(Sprite2D& s);
+        void drawTexturePathField(Sprite2D& s);
         void drawRigidBody2D(RigidBody2D& rb);
         void drawTilemap2D(Tilemap2D& tm);
+        void drawBehaviorScript(BehaviorScript& sc);
+        void generateBehaviorStub(const std::string& path, const std::string& className);
 
-        void drawAddComponentMenu();
-
-        void drawTexturePathField(Sprite2D& s);
 
         Context* m_ctx = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;
