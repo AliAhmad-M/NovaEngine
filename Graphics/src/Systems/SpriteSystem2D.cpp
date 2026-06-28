@@ -77,12 +77,14 @@ SpriteSystem2D::SpriteSystem2D()
 {
     m_window   = Services::Fetch<Window>();
     m_renderer = Services::Fetch<Renderer>();
-    m_camera2D = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
     m_ecs      = Services::Fetch<ECS>();
 }
 
 void SpriteSystem2D::Update(float dt) 
 {
+    // Try fetch camera on each update
+    m_camera2D = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
+
     // Get m_window size
     int windowWidth, windowHeight;
     m_window->GetSize(&windowWidth, &windowHeight);

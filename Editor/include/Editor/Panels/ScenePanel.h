@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <mutex>
 #include <imgui.h>
 
 namespace Nova::Editor
@@ -51,6 +52,8 @@ namespace Nova::Editor
 
         void newScene();
         void closeScene(int index);
+        void buildAndRunGame();
+        void drawBuildLog();
 
         void createFBO(int w, int h);
         void resizeFBO(int w, int h);
@@ -77,6 +80,12 @@ namespace Nova::Editor
 
         bool m_showGrid = true;
         int  m_gridSize = 32;
+
+        std::string         m_buildLog;
+        std::mutex          m_buildLogMutex;
+        std::atomic<bool>   m_building{ false };
+        bool                m_showBuildLog = false;
+        bool                m_buildLogScrollToBottom = false;
 
         ECS* m_ecs;
         SceneManager* m_sceneManager;

@@ -15,7 +15,7 @@ namespace Nova
 	public:
 		bool Init();
 		void Update();
-		void RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight, Camera2D* editorCamera);
+		void RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight);
 		void Close();
 
 	private:

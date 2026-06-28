@@ -96,19 +96,16 @@ void Engine::Update()
     }
 }
 
-void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight, Camera2D* editorCamera)
+void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, targetFBO);
     glViewport(0, 0, vpWidth, vpHeight);
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Vector2 offset = editorCamera->GetOffset();
-    float zoom = editorCamera->GetZoom();
-
     Matrix4x4 projection = Matrix4x4::CreateOrthographicOffCenter(
-        offset.x, offset.x + vpWidth / zoom,
-        offset.y + vpHeight / zoom, offset.y,
+        0.0f, (float)vpWidth,
+        (float)vpHeight, 0.0f,
         -100.0f, 100.0f);
 
     m_renderer.Begin(projection);
@@ -128,10 +125,10 @@ void Engine::Close()
     JPH::UnregisterTypes();
 
     // Clear the engine context
-    Services::Shutdown();
     m_ecs.DeleteAllEntities();
     m_contentLoader.Cleanup();
     m_window.Exit();
+    Services::Shutdown();
 }
 
 void Engine::registerComponents() 

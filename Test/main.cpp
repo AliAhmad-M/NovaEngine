@@ -1,5 +1,6 @@
 #include <Runtime/Engine.h>
 #include <Core/Services.h>
+#include <filesystem>
 #include <string>
 
 using namespace Nova;
@@ -12,7 +13,12 @@ int main()
     runtime.Init();
     
     // Setup scenes
-    std::string defaultScene = "project/scenes/SampleScene.nova";
+    std::string defaultScene = 
+        (std::filesystem::path(PROJECT_DIR) 
+            / "project" 
+            / "scenes" 
+            / "SampleScene.nova"
+    ).string();
     SceneManager* sceneManager = Services::Fetch<SceneManager>();
     sceneManager->ChangeScene(defaultScene);
 
