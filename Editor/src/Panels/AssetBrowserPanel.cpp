@@ -18,6 +18,7 @@ AssetBrowserPanel::AssetBrowserPanel(Context* ctx)
     m_iconAudio   = m_contentLoader->LoadTexture("assets/icons/icon_audio.png");
     m_iconScript  = m_contentLoader->LoadTexture("assets/icons/icon_script.png");
     m_iconFont    = m_contentLoader->LoadTexture("assets/icons/icon_font.png");
+    m_iconFolderNew = m_contentLoader->LoadTexture("assets/icons/folder.png");
 
     // Default to the project's assets folder
     m_rootPath = std::filesystem::path("../Test/project/");
@@ -160,7 +161,6 @@ void AssetBrowserPanel::DrawToolbar()
     ImGui::SliderFloat("##iconSize", &m_iconSize, 32.0f, 96.0f, "%.0f");
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Icon size");
 }
-
 void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
 {
     if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root)) return;
@@ -172,12 +172,10 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
     if (label.empty()) label = tmp.string();
     bool isCurrentDir = (root == m_currentPath);
 
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-        ImGuiTreeNodeFlags_SpanAvailWidth;
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
     if (isCurrentDir)
         flags |= ImGuiTreeNodeFlags_Selected;
 
-    // Check if there are sub-directories
     bool hasSubDirs = false;
     for (const auto& e : std::filesystem::directory_iterator(root))
         if (e.is_directory()) { hasSubDirs = true; break; }
@@ -185,9 +183,29 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
     if (!hasSubDirs)
         flags |= ImGuiTreeNodeFlags_Leaf;
 
-    bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+    // Draw arrow only with hidden label
+    std::string hiddenLabel = "##tree_" + label;
+    bool open = ImGui::TreeNodeEx(hiddenLabel.c_str(), flags);
 
-    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+    // Draw icon and label on same line after arrow
+    ImGui::SameLine();
+
+    if (m_iconFolderNew && m_iconFolderNew->GetHandle())
+    {
+        ImGui::Image(
+            (ImTextureID)(intptr_t)m_iconFolderNew->GetHandle(),
+            ImVec2(16, 16),
+            ImVec2(0, 0),
+            ImVec2(1, 1)
+        );
+        ImGui::SameLine();
+    }
+
+    // Selectable as the clickable label
+    bool clicked = ImGui::Selectable(label.c_str(), isCurrentDir,
+        ImGuiSelectableFlags_None, ImVec2(0, 16));
+
+    if (clicked)
     {
         m_currentPath = root;
         Refresh();
@@ -196,7 +214,7 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
     if (open)
     {
         for (const auto& e : std::filesystem::directory_iterator(root))
-            if (e.is_directory()) 
+            if (e.is_directory())
                 DrawDirectoryTree(e.path());
         ImGui::TreePop();
     }

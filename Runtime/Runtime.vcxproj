@@ -111,7 +111,7 @@
       <PreprocessorDefinitions>JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
 ;JPH_OBJECT_STREAM;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Physics\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Physics\include;$(SolutionDir)\World\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -150,6 +150,11 @@
     <ClCompile Include="src\Scene\SceneLoader.cpp" />
     <ClCompile Include="src\Scene\SceneManager.cpp" />
     <ClCompile Include="src\ContentLoader.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\World\World.vcxproj">
+      <Project>{2967cee1-f328-49ad-a707-d4ef018d2162}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

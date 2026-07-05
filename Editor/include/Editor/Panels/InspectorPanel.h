@@ -4,13 +4,14 @@
 #include <Core/ECS/ECS.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
+#include <Graphics/Texture.h>
 #include <Physics/Components.h>
 #include <World/Components.h>
 #include <Runtime/ContentLoader.h>
 #include <optional>
 #include <imgui.h>
 
-namespace Nova::Editor 
+namespace Nova::Editor
 {
     class InspectorPanel
     {
@@ -46,5 +47,13 @@ namespace Nova::Editor
 
         ECS* m_ecs;
         ContentLoader* m_contentLoader;
+
+        // Component icons
+        Texture* m_iconTransform = nullptr;
+        Texture* m_iconSprite = nullptr;
+        Texture* m_iconCamera = nullptr;
+        Texture* m_iconRigidbody = nullptr;
+        Texture* m_iconTilemap = nullptr;
+        Texture* m_iconScript = nullptr;
     };
 }

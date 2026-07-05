@@ -17,10 +17,14 @@ namespace Nova::Editor
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
     private:
+        int  m_renamingEntity = -1;
+        char m_renameBuffer[128] = {};
+        char m_searchBuffer[128] = {};
         void drawEntityList();
         void drawContextMenu();
         void drawCreateButton();
         void createEntity();
+        void drawSearchBar();
 
         Context* m_ctx = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;

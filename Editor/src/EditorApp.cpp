@@ -195,8 +195,8 @@ void EditorApp::Run()
             m_openSceneRequested = false;
         }
 
-        std::string unused;
-        DrawFilePicker("##OpenScenePicker", unused, ".nova",
+        std::string scenesPath = "../Test/project/scenes";
+        DrawFilePicker("##OpenScenePicker", scenesPath, ".nova",
             [this](const std::string& path)
             {
                 m_scenePanel->OpenSceneTab(path);

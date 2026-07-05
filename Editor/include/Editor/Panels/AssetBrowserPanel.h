@@ -56,6 +56,7 @@ namespace Nova::Editor
         Texture* m_iconAudio;
         Texture* m_iconScript;
         Texture* m_iconFont;
+        Texture* m_iconFolderNew = nullptr; 
 
         float  m_iconSize = 64.0f;
         char   m_filter[128] = {};

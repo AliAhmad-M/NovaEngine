@@ -18,11 +18,20 @@ HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctx(ctx)
     m_iconLight  = m_contentLoader->LoadTexture("assets/icons/icon_light.png");
 }
 
+void HierarchyPanel::drawSearchBar()
+{
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputTextWithHint("##search", "Search entities...",
+        m_searchBuffer, sizeof(m_searchBuffer));
+}
+
 void HierarchyPanel::Draw()
 {
     ImGui::Begin("Hierarchy");
 
     drawCreateButton();
+    ImGui::Spacing();
+    drawSearchBar();
     ImGui::Separator();
 
     if (m_ctx->activeScene)
@@ -30,7 +39,8 @@ void HierarchyPanel::Draw()
     else
         ImGui::TextDisabled("No scene open");
 
-    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)
+        && m_ctx->selectedEntity == -1)
         ImGui::OpenPopup("HierarchyContextMenu");
 
     drawContextMenu();
@@ -40,17 +50,23 @@ void HierarchyPanel::Draw()
 
 void HierarchyPanel::createEntity()
 {
-    if (!m_ctx->activeScene) return;
+    if (!m_ctx->activeScene) 
+    {
+        printf("[DEBUG]: No active scene\n");
+        return;
+    }
 
     EntityID newEntity = m_ecs->CreateEntity();
+    printf("[DEBUG]: Created entity ID: %d\n", (int)newEntity);
 
     char name[64];
     std::snprintf(name, sizeof(name), "Entity_%zu",
         m_ctx->activeScene->GetEntities().size());
 
     m_ctx->activeScene->AddEntity(newEntity, name);
+    printf("[DEBUG]: Added entity '%s' to scene, total entities: %zu\n", 
+        name, m_ctx->activeScene->GetEntities().size());
 
-    // Mark scene as modified
     if (m_ctx->scenePanel)
         m_ctx->scenePanel->MarkSceneAsDirty();
 }
@@ -69,6 +85,19 @@ void HierarchyPanel::drawEntityList()
 
     for (auto& node : entities)
     {
+        if (m_searchBuffer[0] != '\0')
+        {
+            std::string name = node.name;
+            std::string search = m_searchBuffer;
+
+            // Case insensitive search
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            std::transform(search.begin(), search.end(), search.begin(), ::tolower);
+
+            if (name.find(search) == std::string::npos)
+                continue;  // skip entities that don't match
+        }
+
         bool selected = (m_ctx->selectedEntity == static_cast<int>(node.id));
 
         ImGui::PushID(static_cast<int>(node.id));
@@ -82,6 +111,15 @@ void HierarchyPanel::drawEntityList()
             m_ctx->selectedEntity = static_cast<int>(node.id);
         }
 
+        // Check double click separately on hovered item
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            m_renamingEntity = static_cast<int>(node.id);
+            std::strncpy(m_renameBuffer, node.name.c_str(), sizeof(m_renameBuffer));
+            m_renameBuffer[sizeof(m_renameBuffer) - 1] = '\0';
+        }
+
+        // Right click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
         {
             m_ctx->selectedEntity = static_cast<int>(node.id);
@@ -105,12 +143,44 @@ void HierarchyPanel::drawEntityList()
         );
         ImGui::SameLine();
         ImGui::SetCursorPosY(rowPos.y + 4.0f);
-        ImGui::Text("%s", node.name.c_str());
+
+        // Show rename input or normal text
+        if (m_renamingEntity == static_cast<int>(node.id))
+        {
+            ImGui::SetNextItemWidth(150.0f);
+            ImGui::SetKeyboardFocusHere();
+            if (ImGui::InputText("##rename", m_renameBuffer, sizeof(m_renameBuffer),
+                ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+            {
+                node.name = m_renameBuffer;
+                m_renamingEntity = -1;
+                if (m_ctx->scenePanel)
+                    m_ctx->scenePanel->MarkSceneAsDirty();
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+                m_renamingEntity = -1;
+        }
+        else
+        {
+            ImGui::Text("%s", node.name.c_str());
+        }
+        
 
         if (ImGui::BeginPopup("EntityRowMenu"))
         {
             ImGui::TextDisabled("%s", node.name.c_str());
             ImGui::Separator();
+
+            // Rename option
+            if (ImGui::MenuItem("Rename"))
+            {
+                m_renamingEntity = static_cast<int>(node.id);
+                std::strncpy(m_renameBuffer, node.name.c_str(), sizeof(m_renameBuffer));
+                m_renameBuffer[sizeof(m_renameBuffer) - 1] = '\0';
+                ImGui::CloseCurrentPopup();
+            }
+
+            // Delete option
             if (ImGui::MenuItem("Delete"))
             {
                 EntityID idToRemove = node.id;

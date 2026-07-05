@@ -113,7 +113,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Editor\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Core\include;$(SolutionDir)\Platform\include;$(SolutionDir)\Graphics\include;$(SolutionDir)\Physics\include;$(SolutionDir)\Runtime\include;$(SolutionDir)\Editor\include;$(SolutionDir)\World\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -176,6 +176,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="imgui.ini" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\World\World.vcxproj">
+      <Project>{2967cee1-f328-49ad-a707-d4ef018d2162}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

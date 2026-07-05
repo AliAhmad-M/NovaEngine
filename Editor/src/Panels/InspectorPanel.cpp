@@ -14,34 +14,82 @@
 
 using namespace Nova::Editor;
 
+InspectorPanel::InspectorPanel(Context* ctx) : m_ctx(ctx)
+{
+    m_ecs = Services::Fetch<ECS>();
+    m_contentLoader = Services::Fetch<ContentLoader>();
+
+    m_iconTransform  = m_contentLoader->LoadTexture("assets/icons/move.png");
+    m_iconSprite     = m_contentLoader->LoadTexture("assets/icons/image.png");
+    m_iconCamera     = m_contentLoader->LoadTexture("assets/icons/icon_camera.png");
+    m_iconRigidbody  = m_contentLoader->LoadTexture("assets/icons/atom.png");
+    m_iconTilemap    = m_contentLoader->LoadTexture("assets/icons/grid.png");
+    m_iconScript     = m_contentLoader->LoadTexture("assets/icons/script.png");
+}
+
 static void FieldVec2(const char* label, float* v, float speed = 0.1f)
 {
     ImGui::PushID(label);
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
+
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(label);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        {
+            v[0] += ImGui::GetIO().MouseDelta.x * speed;
+            v[1] += ImGui::GetIO().MouseDelta.x * speed;
+        }
+    }
+
     ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::DragFloat2("##v", v, speed);
+    ImGui::InputFloat2("##v", v, "%.3f");
+
     ImGui::PopID();
 }
+
 
 static void FieldFloat(const char* label, float* v, float speed = 0.01f,
     float vmin = 0.0f, float vmax = 0.0f)
 {
     ImGui::PushID(label);
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
+
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(label);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            *v += ImGui::GetIO().MouseDelta.x * speed;
+    }
+
     ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::DragFloat("##v", v, speed, vmin, vmax);
+    ImGui::InputFloat("##v", v, 0.0f, 0.0f, "%.3f");  // 0,0 hides +- buttons
+
     ImGui::PopID();
 }
 
-static void FieldInt(const char* label, int* v, float speed = 1.0f, int vmin = 0, int vmax = 0)
+static void FieldInt(const char* label, int* v, float speed = 1.0f,
+    int vmin = 0, int vmax = 0)
 {
     ImGui::PushID(label);
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
+
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(label);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            *v += (int)(ImGui::GetIO().MouseDelta.x * speed);
+    }
+
     ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::DragInt("##v", v, speed, vmin, vmax);
+    ImGui::InputInt("##v", v, 0, 0);  // 0,0 hides +- buttons
+
     ImGui::PopID();
 }
 
@@ -73,7 +121,8 @@ static void FieldReadOnly(const char* label, const char* value)
     ImGui::PopID();
 }
 
-static bool BeginComponent(const char* name, bool* removeRequested = nullptr)
+static bool BeginComponent(const char* name, bool* removeRequested = nullptr,
+    ImTextureID icon = 0)
 {
     ImGui::PushID(name);
 
@@ -84,20 +133,58 @@ static bool BeginComponent(const char* name, bool* removeRequested = nullptr)
         ImGuiTreeNodeFlags_AllowOverlap |
         ImGuiTreeNodeFlags_FramePadding;
 
-    bool open = ImGui::TreeNodeEx(name, flags);
+    // Draw the arrow/frame only (empty label) so we control icon + text placement ourselves
+    bool open = ImGui::TreeNodeEx("##header", flags);
 
-    if (removeRequested)
+    float lineHeight = ImGui::GetFrameHeight();
+    float textHeight = ImGui::GetTextLineHeight();
+
+    // Icon comes right after the arrow
+    ImGui::SameLine();
+    if (icon)
     {
-        float btnW = ImGui::GetFrameHeight();
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x - btnW + ImGui::GetCursorPosX()
-            - ImGui::GetStyle().ItemSpacing.x);
-        if (ImGui::Button("x", ImVec2(btnW, btnW))) *removeRequested = true;
+        float iconSize = 16.0f;
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (lineHeight - iconSize) * 0.5f);
+        ImGui::Image(icon, ImVec2(iconSize, iconSize), ImVec2(0, 0), ImVec2(1, 1));
+        ImGui::SameLine();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (lineHeight - iconSize) * 0.5f);
+    }
+
+    // Label after the icon, vertically centered in the row
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (lineHeight - textHeight) * 0.5f);
+    ImGui::TextUnformatted(name);
+    
+
+    // Three dots button on the right side of header
+    float btnW = ImGui::GetFrameHeight();
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - btnW + ImGui::GetCursorPosX()
+        - ImGui::GetStyle().ItemSpacing.x);
+
+    if (ImGui::Button("...##opts", ImVec2(btnW, btnW)))
+        ImGui::OpenPopup("##ComponentCtx");
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+        ImGui::OpenPopup("##ComponentCtx");
+
+    if (ImGui::BeginPopup("##ComponentCtx"))
+    {
+        ImGui::TextDisabled("%s", name);
+        ImGui::Separator();
+        if (ImGui::MenuItem("Reset")) {}
+        ImGui::Separator();
+        if (ImGui::MenuItem("Move Up")) {}
+        if (ImGui::MenuItem("Move Down")) {}
+        ImGui::Separator();
+        if (removeRequested && ImGui::MenuItem("Remove Component"))
+            *removeRequested = true;
+        ImGui::Separator();
+        if (ImGui::MenuItem("Copy Component")) {}
+        if (ImGui::MenuItem("Paste Component Values")) {}
+        ImGui::EndPopup();
     }
 
     if (!open)
-    {
         ImGui::PopID();
-    }
 
     return open;
 }
@@ -124,12 +211,6 @@ static void EndPropertyTable()
 }
 
 static void NextRow() { ImGui::TableNextRow(); }
-
-InspectorPanel::InspectorPanel(Context* ctx) : m_ctx(ctx) 
-{
-    m_ecs = Services::Fetch<ECS>(); 
-    m_contentLoader = Services::Fetch<ContentLoader>();
-}
 
 void InspectorPanel::Draw()
 {
@@ -236,7 +317,8 @@ void InspectorPanel::drawAddComponentMenu()
 void InspectorPanel::drawTransform2D(Transform2D& t)
 {
     bool removeRequested = false;
-    if (!BeginComponent("Transform2D", &removeRequested)) return;
+    ImTextureID iconHandle = m_iconTransform ? (ImTextureID)(intptr_t)m_iconTransform->GetHandle() : 0;
+    if (!BeginComponent("Transform2D", &removeRequested, iconHandle)) return;
 
     BeginPropertyTable();
     NextRow(); FieldVec2("Position", &t.position.x);
@@ -256,7 +338,8 @@ void InspectorPanel::drawTransform2D(Transform2D& t)
 void InspectorPanel::drawCamera2D(Camera2D& c)
 {
     bool removeRequested = false;
-    if (!BeginComponent("Camera2D", &removeRequested)) return;
+    ImTextureID iconHandle = m_iconCamera ? (ImTextureID)(intptr_t)m_iconCamera->GetHandle() : 0;
+    if (!BeginComponent("Camera2D", &removeRequested, iconHandle)) return;
 
     BeginPropertyTable();
 
@@ -396,7 +479,8 @@ void InspectorPanel::drawTexturePathField(Sprite2D& s)
 void InspectorPanel::drawSprite2D(Sprite2D& s)
 {
     bool removeRequested = false;
-    if (!BeginComponent("Sprite2D", &removeRequested)) return;
+    ImTextureID iconHandle = m_iconSprite ? (ImTextureID)(intptr_t)m_iconSprite->GetHandle() : 0;
+    if (!BeginComponent("Sprite2D", &removeRequested, iconHandle)) return;
 
     BeginPropertyTable();
 
@@ -429,7 +513,8 @@ void InspectorPanel::drawSprite2D(Sprite2D& s)
 void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
 {
     bool removeRequested = false;
-    if (!BeginComponent("RigidBody2D", &removeRequested)) return;
+    ImTextureID iconHandle = m_iconRigidbody ? (ImTextureID)(intptr_t)m_iconRigidbody->GetHandle() : 0;
+    if (!BeginComponent("RigidBody2D", &removeRequested, iconHandle)) return;
 
     BeginPropertyTable();
 
@@ -524,7 +609,8 @@ static bool s_rebuildPending = false;
 void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 {
     bool removeRequested = false;
-    if (!BeginComponent("Tilemap2D", &removeRequested)) return;
+    ImTextureID iconHandle = m_iconTilemap ? (ImTextureID)(intptr_t)m_iconTilemap->GetHandle() : 0;
+    if (!BeginComponent("Tilemap2D", &removeRequested, iconHandle)) return;
 
     static char s_mapPathBuf[512] = {};
     static char s_tileGidsBuf[256] = {};
@@ -773,7 +859,8 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
 {
     bool removeRequested = false;
-    if (!BeginComponent("BehaviorScript", &removeRequested)) return;
+    ImTextureID iconHandle = m_iconScript ? (ImTextureID)(intptr_t)m_iconScript->GetHandle() : 0;
+    if (!BeginComponent("BehaviorScript", &removeRequested, iconHandle)) return;
 
     if (bs.scriptPath.empty())
     {
