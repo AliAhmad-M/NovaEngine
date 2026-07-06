@@ -156,6 +156,10 @@ void HierarchyPanel::drawEntityList()
                 m_renamingEntity = -1;
                 if (m_ctx->scenePanel)
                     m_ctx->scenePanel->MarkSceneAsDirty();
+
+                // Auto save after rename
+                if (m_ctx->onSaveScene)
+                    m_ctx->onSaveScene();
             }
             if (ImGui::IsKeyPressed(ImGuiKey_Escape))
                 m_renamingEntity = -1;

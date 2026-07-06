@@ -19,7 +19,7 @@
                     "flipv": false,
                     "frame": 0,
                     "hframes": 4,
-                    "texturePath": "D:\\Programs\\Programming\\Projects\\C++\\TheWorldEngine\\Test\\project\\assets\\ninja.png",
+                    "texturePath": "",
                     "vframes": 7,
                     "ySortOrigin": 0.0,
                     "zIndex": 2
@@ -37,7 +37,7 @@
                 }
             },
             "id": 0,
-            "name": "Entity_0"
+            "name": "entity"
         },
         {
             "components": {

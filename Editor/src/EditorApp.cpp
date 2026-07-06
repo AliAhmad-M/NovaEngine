@@ -156,6 +156,8 @@ bool EditorApp::Init()
 	// Set scene panel reference in context for dirty marking
 	m_ctx.scenePanel = m_scenePanel.get();
 
+    m_ctx.onSaveScene = [this]() { saveActiveScene(); };
+
 	return true;
 }
 

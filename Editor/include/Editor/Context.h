@@ -1,6 +1,7 @@
 #pragma once
 #include <Editor/Scene/Scene.h>
 #include <string>
+#include <functional>
 
 namespace Nova::Editor 
 {
@@ -17,5 +18,8 @@ namespace Nova::Editor
 
 		// Reference to scene panel for marking dirty state
 		ScenePanel* scenePanel = nullptr;
+
+		// Callback to trigger save from any panel
+		std::function<void()> onSaveScene;
 	};
 }
