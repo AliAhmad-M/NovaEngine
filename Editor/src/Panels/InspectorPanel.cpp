@@ -497,9 +497,9 @@ void InspectorPanel::drawSprite2D(Sprite2D& s)
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Z Index");
     ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-1.0f);
-    int zIndex = s.GetZIndex();
+    int zIndex = s.zIndex;
     if (ImGui::DragInt("##zindex", &zIndex))
-        s.SetZIndex(zIndex);
+        s.zIndex = zIndex;
 
     EndPropertyTable();
     EndComponent();

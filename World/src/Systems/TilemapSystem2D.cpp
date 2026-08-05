@@ -101,7 +101,8 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 					tile.tileset->GetHandle(),
 					{ x, y }, { w, h },
 					0.0f,
-					tile.tx, tile.ty, tile.tw, tile.th
+					tile.tx, tile.ty, tile.tw, tile.th,
+					Color::WHITE, 0.0f
 				);
 			}
 		}

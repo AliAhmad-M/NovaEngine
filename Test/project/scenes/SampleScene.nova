@@ -19,7 +19,7 @@
                     "flipv": false,
                     "frame": 0,
                     "hframes": 4,
-                    "texturePath": "",
+                    "texturePath": "../Test/project\\assets\\ninja.png",
                     "vframes": 7,
                     "ySortOrigin": 0.0,
                     "zIndex": 2
@@ -37,7 +37,7 @@
                 }
             },
             "id": 0,
-            "name": "entity"
+            "name": "Player"
         },
         {
             "components": {
@@ -74,7 +74,7 @@
                 },
                 "Transform2D": {
                     "position": {
-                        "x": 1.0,
+                        "x": 0.0,
                         "y": 0.0
                     },
                     "rotation": 0.0,
@@ -85,7 +85,7 @@
                 }
             },
             "id": 1,
-            "name": "Entity_1"
+            "name": "Tilemap"
         },
         {
             "components": {
@@ -109,7 +109,7 @@
                 }
             },
             "id": 7,
-            "name": "Entity_2"
+            "name": "Camera"
         }
     ],
     "name": "SampleScene",

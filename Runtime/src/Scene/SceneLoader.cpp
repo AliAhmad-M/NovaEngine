@@ -84,7 +84,7 @@ namespace
         s.flipv = j["flipv"].get<bool>();
         s.ySortOrigin = j["ySortOrigin"].get<float>();
         s.applyYSort = j["applyYSort"].get<bool>();
-        s.SetZIndex(j["zIndex"].get<int>());
+        s.zIndex = j["zIndex"].get<int>();
 
         for (auto& [name, data] : j["animations"].items())
         {

@@ -18,7 +18,8 @@ namespace Nova
     {
         Vector2 position;
         Vector2 texCoord;
-        float r, g, b, a; // Normalized color (0.0 - 1.0)
+        float r, g, b, a;
+        float depth;
     };
 
     class Renderer 
@@ -48,9 +49,10 @@ namespace Nova
          * @param tw       Texture coordinate width (normalized).
          * @param th       Texture coordinate height (normalized).
          * @param color    Tint color applied to the texture sample.
+		 * @param depth	   Depth value for sorting (lower = closer to camera).
          */
         void DrawQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
-            float tx, float ty, float tw, float th, const Color& color = Color::WHITE);
+            float tx, float ty, float tw, float th, const Color& color, float depth);
 
         /**
          * @brief Draws a rectangle, either filled or as a wireframe outline.
@@ -101,27 +103,11 @@ namespace Nova
         std::vector<Vertex> m_vertexBatch;
         static const size_t MAX_QUADS = 2000;
 
-        /**
-         * @brief Compiles and links a vertex and fragment shader into a program.
-         * @param vertexSrc   GLSL source for the vertex shader.
-         * @param fragmentSrc GLSL source for the fragment shader.
-         * @return Linked shader program ID.
-         */
+        // Compiles and links a vertex and fragment shader into a program.
         GLuint createShaderProgram(const char* vertexSrc, const char* fragmentSrc);
 
-        /**
-         * @brief Pushes four vertices for a quad into the batch, with rotation and color.
-         * @param texture  OpenGL texture ID to use.
-         * @param pos      Top-left position of the quad.
-         * @param size     Width and height of the quad.
-         * @param rotation Rotation in degrees.
-         * @param tx       Texture coordinate X offset.
-         * @param ty       Texture coordinate Y offset.
-         * @param tw       Texture coordinate width.
-         * @param th       Texture coordinate height.
-         * @param color    Tint color (bytes 0-255).
-         */
+        // Pushes four vertices for a quad into the batch.
         void pushQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
-            float tx, float ty, float tw, float th, const Color& color);
+            float tx, float ty, float tw, float th, const Color& color, float depth);
     };
 }

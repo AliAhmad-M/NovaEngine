@@ -10,9 +10,8 @@ public:
     const char* GetName() const override { return "Player"; }
 
     void OnStart()          override {}
-    void OnUpdate(float dt) override
-    {
-        Nova::Camera2D* camera = Nova::Services::Fetch<Nova::Camera2D>();
-    }
+    void OnUpdate(float dt) override {}
     void OnDestroy()        override {}
+
+private:
 };

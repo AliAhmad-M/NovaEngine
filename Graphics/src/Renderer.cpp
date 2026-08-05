@@ -2,37 +2,6 @@
 
 using namespace Nova;
 
-void Renderer::pushQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
-    float tx, float ty, float tw, float th, const Color& color)
-{
-    if (texture != m_currentTexture || m_vertexBatch.size() + 4 > MAX_QUADS * 4) {
-        Flush();
-        m_currentTexture = texture;
-    }
-
-    // Normalize color bytes to 0.0 - 1.0
-    float r = color.r / 255.0f;
-    float g = color.g / 255.0f;
-    float b = color.b / 255.0f;
-    float a = color.a / 255.0f;
-
-    float rad = rotation * (3.14159f / 180.0f);
-    float cosR = cosf(rad);
-    float sinR = sinf(rad);
-    Vector2 halfSize = { size.x * 0.5f, size.y * 0.5f };
-
-    auto getRot = [&](float x, float y) {
-        float rx = x * cosR - y * sinR;
-        float ry = x * sinR + y * cosR;
-        return Vector2{ rx + pos.x + halfSize.x, ry + pos.y + halfSize.y };
-        };
-
-    m_vertexBatch.push_back({ getRot(-halfSize.x, -halfSize.y), { tx,      ty      }, r, g, b, a });
-    m_vertexBatch.push_back({ getRot(halfSize.x, -halfSize.y), { tx + tw, ty      }, r, g, b, a });
-    m_vertexBatch.push_back({ getRot(halfSize.x,  halfSize.y), { tx + tw, ty + th }, r, g, b, a });
-    m_vertexBatch.push_back({ getRot(-halfSize.x,  halfSize.y), { tx,      ty + th }, r, g, b, a });
-}
-
 GLuint Renderer::createShaderProgram(const char* vertexSrc, const char* fragmentSrc)
 {
     auto compile = [](GLenum type, const char* source) {
@@ -54,31 +23,62 @@ GLuint Renderer::createShaderProgram(const char* vertexSrc, const char* fragment
     return program;
 }
 
+void Renderer::pushQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
+    float tx, float ty, float tw, float th, const Color& color, float depth)
+{
+    if (texture != m_currentTexture || m_vertexBatch.size() + 4 > MAX_QUADS * 4) {
+        Flush();
+        m_currentTexture = texture;
+    }
+
+    float r = color.r / 255.0f;
+    float g = color.g / 255.0f;
+    float b = color.b / 255.0f;
+    float a = color.a / 255.0f;
+
+    float rad = rotation * (3.14159f / 180.0f);
+    float cosR = cosf(rad);
+    float sinR = sinf(rad);
+    Vector2 halfSize = { size.x * 0.5f, size.y * 0.5f };
+
+    auto getRot = [&](float x, float y) {
+        float rx = x * cosR - y * sinR;
+        float ry = x * sinR + y * cosR;
+        return Vector2{ rx + pos.x + halfSize.x, ry + pos.y + halfSize.y };
+        };
+
+    m_vertexBatch.push_back({ getRot(-halfSize.x, -halfSize.y), { tx,      ty      }, r, g, b, a, depth });
+    m_vertexBatch.push_back({ getRot(halfSize.x, -halfSize.y), { tx + tw, ty      }, r, g, b, a, depth });
+    m_vertexBatch.push_back({ getRot(halfSize.x,  halfSize.y), { tx + tw, ty + th }, r, g, b, a, depth });
+    m_vertexBatch.push_back({ getRot(-halfSize.x,  halfSize.y), { tx,      ty + th }, r, g, b, a, depth });
+}
+
 void Renderer::Init() {
-    const char* vs = 
+    const char* vs =
         R"(#version 330 core
         layout(location = 0) in vec2 aPos;
         layout(location = 1) in vec2 aTex;
         layout(location = 2) in vec4 aColor;
+        layout(location = 3) in float aDepth;
         uniform mat4 uProj;
         out vec2 vTex;
         out vec4 vColor;
         void main() {
-            gl_Position = uProj * vec4(aPos, 0.0, 1.0);
+            gl_Position = uProj * vec4(aPos, aDepth, 1.0);
             vTex   = aTex;
             vColor = aColor;
         })";
 
-    const char* fs = 
+    const char* fs =
         R"(#version 330 core
         in vec2 vTex;
         in vec4 vColor;
         uniform sampler2D uTex;
         out vec4 fColor;
         void main() {
-            // Most font libraries output a GL_RED or GL_ALPHA texture. 
-            // We sample the texture and apply it directly to the tint color.
-            fColor = texture(uTex, vTex) * vColor;
+            vec4 texColor = texture(uTex, vTex);
+            if (texColor.a < 0.5) discard;
+            fColor = texColor * vColor;
         })";
 
     m_shader = createShaderProgram(vs, fs);
@@ -97,6 +97,8 @@ void Renderer::Init() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoord));
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, r));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, depth));
 
     std::vector<uint32_t> indices(MAX_QUADS * 6);
     for (uint32_t i = 0, v = 0; i < MAX_QUADS * 6; i += 6, v += 4) {
@@ -108,6 +110,8 @@ void Renderer::Init() {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
 
     glGenTextures(1, &m_whiteTexture);
     glBindTexture(GL_TEXTURE_2D, m_whiteTexture);
@@ -144,20 +148,20 @@ void Renderer::DrawLine(Vector2 a, Vector2 b, const Color& color, float thicknes
     Vector2 mid = { (a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f };
     Vector2 quadPos = { mid.x - len * 0.5f, mid.y - thickness * 0.5f };
 
-    pushQuad(m_whiteTexture, quadPos, { len, thickness }, angle, 0, 0, 1, 1, color);
+    pushQuad(m_whiteTexture, quadPos, { len, thickness }, angle, 0, 0, 1, 1, color, 0.0f);
 }
 
 void Renderer::DrawQuad(GLuint texture, Vector2 pos, Vector2 size, float rotation,
-    float tx, float ty, float tw, float th, const Color& color)
+    float tx, float ty, float tw, float th, const Color& color, float depth)
 {
-    pushQuad(texture, pos, size, rotation, tx, ty, tw, th, color);
+    pushQuad(texture, pos, size, rotation, tx, ty, tw, th, color, depth);
 }
 
 void Renderer::DrawRect(Vector2 pos, Vector2 size, float rotation, const Color& color, bool outline, float thickness)
 {
     if (!outline)
     {
-        pushQuad(m_whiteTexture, pos, size, rotation, 0, 0, 1, 1, color);
+        pushQuad(m_whiteTexture, pos, size, rotation, 0, 0, 1, 1, color, 0.0f);
         return;
     }
 
@@ -230,7 +234,9 @@ void Renderer::DrawCircle(Vector2 center, float radius, const Color& color, bool
             pushQuad(m_whiteTexture,
                 quadPos,
                 { sliceWidth, distToMid },
-                renderAngle, 0, 0, 1, 1, color
+                renderAngle,
+                0, 0, 1, 1, 
+                color, 0.0f
             );
         }
     }
@@ -267,7 +273,9 @@ void Renderer::DrawCircle(Vector2 center, float radius, const Color& color, bool
             pushQuad(m_whiteTexture,
                 quadPos,
                 { length, thickness },
-                renderAngle, 0, 0, 1, 1, color
+                renderAngle, 
+                0, 0, 1, 1, 
+                color, 0.0f
             );
         }
     }
@@ -302,7 +310,7 @@ void Renderer::DrawText(const Font& font, const std::string& text, Vector2 pos, 
         float tw = glyph->uvMax.x - glyph->uvMin.x;
         float th = glyph->uvMax.y - glyph->uvMin.y;
 
-        pushQuad(textureHandle, { xPos, yPos }, { width, height }, 0.0f, tx, ty, tw, th, color);
+        pushQuad(textureHandle, { xPos, yPos }, { width, height }, 0.0f, tx, ty, tw, th, color, 0.0f);
 
         // Step cursor forward
         cursor.x += glyph->advance * scale;

@@ -57,7 +57,7 @@ namespace
         j["frame"] = s.frame;
         j["fliph"] = s.fliph;
         j["flipv"] = s.flipv;
-        j["zIndex"] = s.GetZIndex();
+        j["zIndex"] = s.zIndex;
         j["ySortOrigin"] = s.ySortOrigin;
         j["applyYSort"] = s.applyYSort;
         j["currentAnimation"] = s.GetAnimation();

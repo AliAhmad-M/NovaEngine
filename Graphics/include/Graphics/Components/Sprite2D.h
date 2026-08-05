@@ -31,19 +31,18 @@ namespace Nova
         Rectangle dst;  // Sprite dst rect
 
         int frame = 0;   // Current frame
+		int zIndex = 0;  // Rendering layer depth
         int hframes = 1; // Total frames in one row
         int vframes = 1; // Total frames in one column
 
         // Animation map
         std::unordered_map<std::string, Sprite2DAnimationData> animations{};
 
-        // Visual properties
-        bool fliph = false;
-        bool flipv = false;
+        bool fliph = false; // Horizontal flip
+        bool flipv = false; // Vertical flip
 
-        // Y-sorting properties
-        float ySortOrigin = 0.0f;
-        bool applyYSort = false;
+		float ySortOrigin = 0.0f; // Y sort origin offset
+		bool applyYSort = false;  // Flag to apply Y sorting for this sprite
 
         /**
          * @brief Construct a sprite component.
@@ -53,7 +52,7 @@ namespace Nova
          * @param zIndex Rendering layer depth.
          */
         Sprite2D(Texture* texture = nullptr, int hframes = 1, int vframes = 1, int zIndex = 0)
-            : texture(texture), frame(0), hframes(hframes), vframes(vframes), m_zIndex(zIndex)
+			: texture(texture), frame(0), hframes(hframes), vframes(vframes), zIndex(zIndex)
         {
             // Initialize the default "none" animation
             animations["none"] = Sprite2DAnimationData();
@@ -118,33 +117,6 @@ namespace Nova
         const std::string& GetAnimation() const { return m_animation; }
 
         /**
-         * @brief Set the Z-index for rendering order.
-         * @param zIndex Depth layer
-         */
-        void SetZIndex(int zIndex)
-        {
-            m_zIndex = zIndex;
-            m_zIndexChanged = true;
-        }
-
-        /**
-         * @brief Get the current Z-index.
-         * @return Current Z-index value.
-         */
-        int GetZIndex() const { return m_zIndex; }
-
-        /**
-         * @brief Check if Z-index was changed since last check.
-         * @return True if changed, false otherwise. Resets flag after call.
-         */
-        bool IsZIndexChanged()
-        {
-            bool changed = m_zIndexChanged;
-            m_zIndexChanged = false;
-            return changed;
-        }
-
-        /**
          * @brief Get texture width in pixels.
          * @return Total texture width.
          */
@@ -170,7 +142,5 @@ namespace Nova
 
     private:
         std::string m_animation = "none";
-        int m_zIndex = 0;
-        bool m_zIndexChanged = false;
     };
 }
