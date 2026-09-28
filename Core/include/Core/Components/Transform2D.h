@@ -1,7 +1,9 @@
 #pragma once
 
+#define NOMINMAX
 #include <Core/Utilities/Vector2.h>
 #include <cmath>
+#include <algorithm>
 
 namespace Nova 
 {
@@ -17,8 +19,8 @@ namespace Nova
         Transform2D(const Vector2& position = Vector2::ZERO, float rotation = 0.0f, const Vector2& scale = Vector2::ONE)
             : position(position), rotation(rotation)
         {
-            this->scale.x = std::max(0.001f, scale.x);
-            this->scale.y = std::max(0.001f, scale.y);
+            this->scale.x = scale.x < 0.001f ? 0.001f : scale.x;
+            this->scale.y = scale.y < 0.001f ? 0.001f : scale.y;
         }
     };
 }

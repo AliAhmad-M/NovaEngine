@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <glad/glad.h>
 #include <Windows.h>
+#include <Core/Components.h>
 
 using namespace Nova;
 using namespace Nova::Editor;
@@ -379,6 +380,52 @@ void ScenePanel::drawSceneToolBar()
 
     if (ImGui::SmallButton("Build Log"))
         m_showBuildLog = !m_showBuildLog;
+
+    // Gizmo toolbar
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
+    // Translate button
+    bool isTrans = (m_gizmoOp == ImGuizmo::TRANSLATE);
+    if (isTrans) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.44f, 0.70f, 1.0f, 1.0f));
+    if (ImGui::SmallButton("T##trans")) m_gizmoOp = ImGuizmo::TRANSLATE;
+    if (isTrans) ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Translate (W)");
+
+    ImGui::SameLine();
+
+    // Rotate button
+    bool isRot = (m_gizmoOp == ImGuizmo::ROTATE);
+    if (isRot) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.44f, 0.70f, 1.0f, 1.0f));
+    if (ImGui::SmallButton("R##rot")) m_gizmoOp = ImGuizmo::ROTATE;
+    if (isRot) ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Rotate (E)");
+
+    ImGui::SameLine();
+
+    // Scale button
+    bool isScale = (m_gizmoOp == ImGuizmo::SCALE);
+    if (isScale) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.44f, 0.70f, 1.0f, 1.0f));
+    if (ImGui::SmallButton("S##scale")) m_gizmoOp = ImGuizmo::SCALE;
+    if (isScale) ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Scale (R)");
+
+    ImGui::SameLine();
+
+    // Local/World toggle
+    bool isLocal = (m_gizmoMode == ImGuizmo::LOCAL);
+    if (ImGui::SmallButton(isLocal ? "Local" : "World"))
+        m_gizmoMode = isLocal ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle Local/World space");
+
+    // Keyboard shortcuts (ignored while typing in a text field)
+    if (!ImGui::GetIO().WantTextInput)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_W)) m_gizmoOp = ImGuizmo::TRANSLATE;
+        if (ImGui::IsKeyPressed(ImGuiKey_E)) m_gizmoOp = ImGuizmo::ROTATE;
+        if (ImGui::IsKeyPressed(ImGuiKey_R)) m_gizmoOp = ImGuizmo::SCALE;
+    }
 }
 
 void ScenePanel::drawGrid()
@@ -440,6 +487,9 @@ void ScenePanel::drawSceneViewport()
         ImVec2(1, 0)
     );
 
+    drawSelectionOutline();
+    drawGizmo();
+
     if (ImGui::IsItemHovered())
     {
         ImVec2 delta = ImGui::GetIO().MouseDelta;
@@ -484,7 +534,7 @@ void ScenePanel::onTabChanged(int index)
         {
             tab.scene->GetEntities().clear();
             for (const auto& e : loaded)
-                tab.scene->AddEntity(e.id, e.name);
+                tab.scene->AddEntity(e.id, e.name, e.parentId);
 
             tab.isDirty = false;
         }
@@ -580,4 +630,97 @@ void ScenePanel::MarkSceneAsDirty()
 {
     if (m_activeTab >= 0 && m_activeTab < (int)m_sceneTabs.size())
         m_sceneTabs[m_activeTab].isDirty = true;
+}
+
+void ScenePanel::drawGizmo()
+{
+    if (m_ctx->selectedEntity == -1) return;
+    if (!m_ctx->activeScene) return;
+
+    ECS* ecs = Services::Fetch<ECS>();
+    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+
+    Transform2D* transform = ecs->GetComponent<Transform2D>(entity);
+    if (!transform) return;
+
+    // Set ImGuizmo rect to match viewport
+    ImVec2 viewportMin = ImGui::GetItemRectMin();
+    ImVec2 viewportSize = ImGui::GetItemRectSize();
+
+    ImGuizmo::SetOrthographic(true);
+    ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+    ImGuizmo::SetRect(
+        viewportMin.x, viewportMin.y,
+        viewportSize.x, viewportSize.y
+    );
+
+    float zoom = m_editorCamera.GetZoom();
+    Vector2 camOffset = m_editorCamera.GetOffset();
+
+    // Build orthographic projection matrix
+    float halfW = (viewportSize.x * 0.5f) / zoom;
+    float halfH = (viewportSize.y * 0.5f) / zoom;
+
+    float left = camOffset.x - halfW;
+    float right = camOffset.x + halfW;
+    float top = camOffset.y - halfH;
+    float bottom = camOffset.y + halfH;
+
+    float proj[16] = {
+        2.0f / (right - left),  0,                  0,  0,
+        0,                  2.0f / (top - bottom),   0,  0,
+        0,                  0,                  -1,  0,
+        -(right + left) / (right - left), -(top + bottom) / (top - bottom), 0, 1
+    };
+
+    // View matrix - identity for 2D
+    float view[16] = {
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    };
+
+    // Build entity transform matrix (translation, rotation in DEGREES, scale).
+    // NOTE: if Transform2D::rotation is stored in radians, multiply by 57.29578f here
+    // and by 0.01745329f when writing back below.
+    float translation[3] = { transform->position.x, transform->position.y, 0.0f };
+    float rotation[3] = { 0.0f, 0.0f, transform->rotation };
+    float scale[3] = { transform->scale.x, transform->scale.y, 1.0f };
+
+    float matrix[16];
+    ImGuizmo::RecomposeMatrixFromComponents(translation, rotation, scale, matrix);
+
+    // Draw gizmo
+    ImGuizmo::Manipulate(view, proj, m_gizmoOp, m_gizmoMode, matrix);
+
+    // If gizmo was used, write back only the component matching the active operation
+    if (ImGuizmo::IsUsing())
+    {
+        float newT[3], newR[3], newS[3];
+        ImGuizmo::DecomposeMatrixToComponents(matrix, newT, newR, newS);
+
+        if (m_gizmoOp == ImGuizmo::TRANSLATE)
+        {
+            transform->position.x = newT[0];
+            transform->position.y = newT[1];
+        }
+        else if (m_gizmoOp == ImGuizmo::ROTATE)
+        {
+            transform->rotation = newR[2];
+        }
+        else if (m_gizmoOp == ImGuizmo::SCALE)
+        {
+            transform->scale.x = newS[0];
+            transform->scale.y = newS[1];
+        }
+
+        if (m_ctx->scenePanel)
+            m_ctx->scenePanel->MarkSceneAsDirty();
+    }
+}
+
+void ScenePanel::drawSelectionOutline()
+{
+    // TODO: implement selection outline
 }

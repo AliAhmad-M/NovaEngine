@@ -192,7 +192,12 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
             ecs->AddComponent<Tilemap2D>(entity, DeserializeTilemap2D(comp["Tilemap2D"]));
 
         if (outEntities)
-            outEntities->push_back({ entity, entityJson.value("name", "Entity") });
+        {
+            EntityID parentId = static_cast<EntityID>(
+                entityJson.value("parentId", static_cast<int>(NO_PARENT))
+                );
+            outEntities->push_back({ entity, entityJson.value("name", "Entity"), parentId });
+        }
     }
 
     Debug::LogInfo("Loaded '%s' (%zu entities)", 

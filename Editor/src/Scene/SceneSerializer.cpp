@@ -204,6 +204,7 @@ bool SceneSerializer::Save(const Scene& scene, const std::filesystem::path& file
         nlohmann::json entityJson;
         entityJson["id"] = sceneEntity.id;
         entityJson["name"] = sceneEntity.name;
+        entityJson["parentId"] = sceneEntity.parentId;
 
         nlohmann::json components = nlohmann::json::object();
 

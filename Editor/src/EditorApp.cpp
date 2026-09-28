@@ -125,8 +125,8 @@ EditorApp::~EditorApp() = default;
 
 bool EditorApp::Init()
 {
-	// Init runtime
-	m_runtime.Init();
+    // Init runtime
+    m_runtime.Init();
     m_window = Services::Fetch<Window>()->GetNativeWindow();
 
     // Initialize ImGui
@@ -140,25 +140,26 @@ bool EditorApp::Init()
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-	applyTheme();
+    applyTheme();
 
-	io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf", 18.0f);
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf", 18.0f);
 
-	// Load panels
-	m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
-	m_inspectorPanel = std::make_unique<InspectorPanel>(&m_ctx);
-	m_assetBrowserPanel = std::make_unique<AssetBrowserPanel>(&m_ctx);
-	m_scenePanel = std::make_unique<ScenePanel>(&m_ctx);
+    // Load panels
+    m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
+    m_inspectorPanel = std::make_unique<InspectorPanel>(&m_ctx);
+    m_assetBrowserPanel = std::make_unique<AssetBrowserPanel>(&m_ctx);
+    m_scenePanel = std::make_unique<ScenePanel>(&m_ctx);
+    m_inputMapPanel = std::make_unique<InputMapPanel>(&m_ctx);
 
-	// Initialize scene serializer
-	m_sceneSerializer = std::make_unique<SceneSerializer>();
+    // Initialize scene serializer
+    m_sceneSerializer = std::make_unique<SceneSerializer>();
 
-	// Set scene panel reference in context for dirty marking
-	m_ctx.scenePanel = m_scenePanel.get();
+    // Set scene panel reference in context for dirty marking
+    m_ctx.scenePanel = m_scenePanel.get();
 
     m_ctx.onSaveScene = [this]() { saveActiveScene(); };
 
-	return true;
+    return true;
 }
 
 void EditorApp::Run()
@@ -175,9 +176,15 @@ void EditorApp::Run()
 
         // Save scene
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
-        {
             saveActiveScene();
-        }
+
+        // New scene
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_N))
+            m_scenePanel->newScene();
+
+        // Open scene shortcut (menu item sets the same flag)
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O))
+            m_openScenePicker = true;
 
         // Draw panels
         m_hierarchyPanel->Draw();
@@ -185,20 +192,17 @@ void EditorApp::Run()
         m_assetBrowserPanel->Draw();
         m_scenePanel->Draw();
 
-        // Open scene
-        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O)) 
-        {
-            m_openSceneRequested = true;
-        }
+        if (m_showInputMap)
+            m_inputMapPanel->Draw(m_showInputMap);
 
-        if (m_openSceneRequested)
+        // Open scene picker: open once, draw once per frame
+        if (m_openScenePicker)
         {
             ImGui::OpenPopup("##OpenScenePicker");
-            m_openSceneRequested = false;
+            m_openScenePicker = false;
         }
 
-        std::string scenesPath = "../Test/project/scenes";
-        DrawFilePicker("##OpenScenePicker", scenesPath, ".nova",
+        DrawFilePicker("##OpenScenePicker", m_scenesPath, ".nova",
             [this](const std::string& path)
             {
                 m_scenePanel->OpenSceneTab(path);
@@ -207,7 +211,7 @@ void EditorApp::Run()
         // Render scene into FBO
         int vpW = m_scenePanel->GetViewportWidth();
         int vpH = m_scenePanel->GetViewportHeight();
-        if (vpW > 0 && vpH > 0) 
+        if (vpW > 0 && vpH > 0)
         {
             Services::Register<Camera2D>(&m_scenePanel->GetEditorCamera());
             m_runtime.RenderEditorFrame(m_scenePanel->GetFBOId(), vpW, vpH);
@@ -231,6 +235,7 @@ void EditorApp::beginFrame()
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGuizmo::BeginFrame();
 }
 
 void EditorApp::endFrame()
@@ -289,16 +294,16 @@ void EditorApp::buildLayout()
         ImGuiID dockBottom = 0;
         ImGuiID dockCenter = 0;
 
-        // Step 1 — split right (Inspector, full height)
+        // Step 1 - split right (Inspector, full height)
         ImGui::DockBuilderSplitNode(dockID, ImGuiDir_Right, kInspectorWidthRatio, &dockRight, &dockCenter);
 
-        // Step 2 — split bottom (Asset Browser, spans Hierarchy + Scene)
+        // Step 2 - split bottom (Asset Browser, spans Hierarchy + Scene)
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Down, kAssetBrowserHeightRatio, &dockBottom, &dockCenter);
 
-        // Step 3 — split left (Hierarchy) from remaining top area
+        // Step 3 - split left (Hierarchy) from remaining top area
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Left, kHierarchyWidthRatio, &dockLeft, &dockCenter);
 
-        // Assign panels — names must match ImGui::Begin() strings exactly
+        // Assign panels - names must match ImGui::Begin() strings exactly
         ImGui::DockBuilderDockWindow("Hierarchy", dockLeft);
         ImGui::DockBuilderDockWindow("Scene", dockCenter);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
@@ -312,51 +317,45 @@ void EditorApp::buildLayout()
 
 void EditorApp::drawMenuBar()
 {
-    if (ImGui::BeginMainMenuBar())
+    if (!ImGui::BeginMainMenuBar()) return;
+
+    if (ImGui::BeginMenu("File"))
     {
-        // File menu
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("New Scene", "Ctrl+N")) { m_ctx.activeScenePath.clear(); }
-            if (ImGui::MenuItem("Open Scene", "Ctrl+O")) { m_openSceneRequested = true; }   
-            if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
-            {
-                saveActiveScene();
-            }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Exit"))    m_running = false;
-            ImGui::EndMenu();
-        }
+        if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+            m_scenePanel->newScene();
 
-        // Edit menu
-        if (ImGui::BeginMenu("Edit"))
-        {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* TODO */ }
-            if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* TODO */ }
-            ImGui::EndMenu();
-        }
+        if (ImGui::MenuItem("Open Scene", "Ctrl+O"))
+            m_openScenePicker = true;
 
-        // View menu – toggle panels
-        if (ImGui::BeginMenu("View"))
-        {
-            if (ImGui::MenuItem("Hierarchy")) { /* TODO */ }
-            if (ImGui::MenuItem("Inspector")) { /* TODO */ }
-            if (ImGui::MenuItem("Asset Browser")) { /* TODO */ }
-            if (ImGui::MenuItem("Scene")) { /* TODO */ }
-            ImGui::EndMenu();
-        }
+        if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
+            saveActiveScene();
 
-        // Display active scene path on the right side
-        if (!m_ctx.activeScenePath.empty())
-        {
-            float textWidth = ImGui::CalcTextSize(m_ctx.activeScenePath.c_str()).x;
-            float menuBarWidth = ImGui::GetContentRegionAvail().x;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + menuBarWidth - textWidth - 8.0f);
-            ImGui::TextDisabled("%s", m_ctx.activeScenePath.c_str());
-        }
+        ImGui::Separator();
 
-        ImGui::EndMainMenuBar();
+        if (ImGui::MenuItem("Exit"))
+            m_running = false;
+
+        ImGui::EndMenu();
     }
+
+    if (ImGui::BeginMenu("Edit"))
+    {
+        if (ImGui::MenuItem("Input Map"))
+            m_showInputMap = true;
+
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("View"))
+    {
+        if (ImGui::MenuItem("Hierarchy", nullptr, true)) {}
+        if (ImGui::MenuItem("Inspector", nullptr, true)) {}
+        if (ImGui::MenuItem("Asset Browser", nullptr, true)) {}
+        if (ImGui::MenuItem("Console", nullptr, true)) {}
+        ImGui::EndMenu();
+    }
+
+    ImGui::EndMainMenuBar();
 }
 
 void EditorApp::saveActiveScene()

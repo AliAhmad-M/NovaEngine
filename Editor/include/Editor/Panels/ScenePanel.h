@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 namespace Nova::Editor
 {
@@ -33,6 +34,9 @@ namespace Nova::Editor
         void OpenSceneTab(const std::string& filePath);
         void MarkSceneAsSaved();
         void MarkSceneAsDirty();
+        void drawGizmo();              
+        void drawSelectionOutline();
+        void newScene();
 
         unsigned int GetFBOId()          const { return m_fbo; }
         unsigned int GetColorTexture()   const { return m_colorTex; }
@@ -44,13 +48,17 @@ namespace Nova::Editor
 
     private:
 
+        // Gizmo
+        ImGuizmo::OPERATION m_gizmoOp = ImGuizmo::TRANSLATE;
+        ImGuizmo::MODE      m_gizmoMode = ImGuizmo::LOCAL;
+        bool                m_useGizmo = true;
+
         void drawTabBar();
         void drawSceneToolBar();
         void drawGrid();
         void drawSceneViewport();
         void onTabChanged(int newIndex);
 
-        void newScene();
         void closeScene(int index);
         void buildAndRunGame();
         void drawBuildLog();

@@ -26,8 +26,8 @@
                 },
                 "Transform2D": {
                     "position": {
-                        "x": 160.0,
-                        "y": 96.0
+                        "x": 121.88513946533203,
+                        "y": 34.253902435302734
                     },
                     "rotation": 0.0,
                     "scale": {
@@ -37,7 +37,8 @@
                 }
             },
             "id": 0,
-            "name": "Player"
+            "name": "Player",
+            "parentId": 4294967295
         },
         {
             "components": {
@@ -74,8 +75,8 @@
                 },
                 "Transform2D": {
                     "position": {
-                        "x": 0.0,
-                        "y": 0.0
+                        "x": 20.96316146850586,
+                        "y": -7.241830825805664
                     },
                     "rotation": 0.0,
                     "scale": {
@@ -85,7 +86,8 @@
                 }
             },
             "id": 1,
-            "name": "Tilemap"
+            "name": "Tilemap",
+            "parentId": 4294967295
         },
         {
             "components": {
@@ -109,7 +111,8 @@
                 }
             },
             "id": 7,
-            "name": "Camera"
+            "name": "Camera",
+            "parentId": 4294967295
         }
     ],
     "name": "SampleScene",

@@ -11,6 +11,7 @@
 #include <Editor/Panels/InspectorPanel.h>
 #include <Editor/Panels/ScenePanel.h>
 #include <Editor/Scene/SceneSerializer.h>
+#include <Editor/Panels/InputMapPanel.h>
 
 namespace Nova::Editor 
 {
@@ -32,9 +33,12 @@ namespace Nova::Editor
         void saveActiveScene();  // Helper to save the current scene
         void markSceneDirty();   // Helper to mark active scene as dirty/modified
 
+
         bool m_running            = true;
         bool m_layoutInitialized  = false;
         bool m_openSceneRequested = false;
+        bool m_showInputMap = false;
+        bool m_openScenePicker = false;
 
         GLFWwindow* m_window = nullptr;
 
@@ -46,9 +50,11 @@ namespace Nova::Editor
         static constexpr float kInspectorWidthRatio = 0.22f;
         static constexpr float kAssetBrowserHeightRatio = 0.28f;
 
+        std::unique_ptr<InputMapPanel> m_inputMapPanel;
         std::unique_ptr<AssetBrowserPanel> m_assetBrowserPanel;
         std::unique_ptr<HierarchyPanel>    m_hierarchyPanel;
         std::unique_ptr<InspectorPanel>    m_inspectorPanel;
         std::unique_ptr<ScenePanel>        m_scenePanel;
+        std::string m_scenesPath = "../Test/project/scenes";
     };
 }
