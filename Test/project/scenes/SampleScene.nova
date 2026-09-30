@@ -50,8 +50,57 @@
                 },
                 "Transform2D": {
                     "position": {
-                        "x": 344.0,
-                        "y": 300.0
+                        "x": 121.88513946533203,
+                        "y": 34.253902435302734
+                    },
+                    "rotation": 0.0,
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0
+                    }
+                }
+            },
+            "id": 0,
+            "name": "Player",
+            "parentId": 4294967295
+        },
+        {
+            "components": {
+                "Tilemap2D": {
+                    "mapPath": "../Test\\project\\assets\\tilemap.json",
+                    "tileHeight": 16,
+                    "tileWidth": 16,
+                    "tilesets": [
+                        {
+                            "firstgid": 1,
+                            "texturePath": "..\\Test\\project\\assets\\spring.png"
+                        },
+                        {
+                            "firstgid": 29,
+                            "texturePath": "../Test\\project\\assets\\dirt.png"
+                        },
+                        {
+                            "firstgid": 44,
+                            "texturePath": "../Test\\project\\assets\\tree.png"
+                        },
+                        {
+                            "firstgid": 76,
+                            "texturePath": "../Test\\project\\assets\\water - spring.png"
+                        },
+                        {
+                            "firstgid": 91,
+                            "texturePath": "../Test\\project\\assets\\texture.png"
+                        },
+                        {
+                            "firstgid": 123,
+                            "texturePath": "../Test\\project\\assets\\summer.png"
+                        }
+                    ]
+                },
+                "Transform2D": {
+                    "position": {
+                        "x": 20.96316146850586,
+                        "y": -7.241830825805664
                     },
                     "rotation": 0.0,
                     "scale": {
@@ -61,12 +110,33 @@
                 }
             },
             "id": 1,
-            "name": "Main Ship"
+            "name": "Tilemap",
+            "parentId": 4294967295
         },
         {
-            "components": {},
-            "id": 2,
-            "name": "Entity_2"
+            "components": {
+                "Camera2D": {
+                    "boundaries": {
+                        "down": "inf",
+                        "left": "-inf",
+                        "right": "inf",
+                        "up": "-inf"
+                    },
+                    "isMainCamera": true,
+                    "offset": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "viewport": {
+                        "height": 720,
+                        "width": 1280
+                    },
+                    "zoom": 4.0
+                }
+            },
+            "id": 7,
+            "name": "Camera",
+            "parentId": 4294967295
         }
     ],
     "name": "SampleScene",

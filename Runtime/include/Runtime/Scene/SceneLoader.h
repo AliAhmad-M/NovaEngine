@@ -6,10 +6,12 @@
 
 namespace Nova
 {
+    static constexpr EntityID NO_PARENT = static_cast<EntityID>(-1);
     struct LoadedEntity
     {
         EntityID    id;
         std::string name;
+        EntityID    parentId = NO_PARENT;
     };
 
     class SceneLoader

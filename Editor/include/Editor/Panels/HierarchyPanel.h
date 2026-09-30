@@ -23,7 +23,8 @@ namespace Nova::Editor
         void drawEntityList();
         void drawContextMenu();
         void drawCreateButton();
-        void createEntity();
+        void createEntity(EntityID parentId = NO_PARENT);
+        void drawEntityNode(SceneEntity& node, std::vector<SceneEntity>& entities);
         void drawSearchBar();
 
         Context* m_ctxRef = nullptr;

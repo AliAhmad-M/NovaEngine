@@ -5,20 +5,17 @@
 #include <Core/Utilities/Vector2.h>
 #include <Core/ECS/ECS.h>
 
-namespace Nova::Editor 
+namespace Nova::Editor
 {
-    /**
-     * @brief A live entity tracked by the editor, paired with a display name.
-     */
+    static constexpr EntityID NO_PARENT = static_cast<EntityID>(-1);
+
     struct SceneEntity
     {
         EntityID    id = 0;
         std::string name;
+        EntityID    parentId = NO_PARENT;  // add this
     };
 
-    /**
-     * @brief Global camera for a scene: clamp boundaries, pan offset, and zoom.
-     */
     struct SceneCamera
     {
         float left = 0.0f;
@@ -48,21 +45,19 @@ namespace Nova::Editor
         std::vector<SceneEntity>& GetEntities() { return m_entities; }
         const std::vector<SceneEntity>& GetEntities() const { return m_entities; }
 
-        /**
-         * @brief Track a newly created entity under this scene
-         * @param id    The EntityID of the new entity
-         * @param name  Display name for the hierarchy panel
-         */
-        void AddEntity(EntityID id, const std::string& name)
+        void AddEntity(EntityID id, const std::string& name,
+            EntityID parentId = NO_PARENT)
         {
-            m_entities.push_back({ id, name });
+            m_entities.push_back({ id, name, parentId });
         }
 
-        /**
-         * @brief Stop tracking an entity (does NOT destroy it in the ECS)
-         */
         void RemoveEntity(EntityID id)
         {
+            // Unparent children of removed entity
+            for (auto& e : m_entities)
+                if (e.parentId == id)
+                    e.parentId = NO_PARENT;
+
             for (auto it = m_entities.begin(); it != m_entities.end(); ++it)
             {
                 if (it->id == id)
@@ -80,10 +75,27 @@ namespace Nova::Editor
             return nullptr;
         }
 
+        // Set parent of an entity
+        void SetParent(EntityID childId, EntityID parentId)
+        {
+            SceneEntity* child = FindEntity(childId);
+            if (child) child->parentId = parentId;
+        }
+
+        // Get direct children of an entity
+        std::vector<EntityID> GetChildren(EntityID parentId) const
+        {
+            std::vector<EntityID> children;
+            for (const auto& e : m_entities)
+                if (e.parentId == parentId)
+                    children.push_back(e.id);
+            return children;
+        }
+
     private:
-        std::string m_name = "Untitled";
-        std::string m_filePath;
-        SceneCamera m_camera;
+        std::string              m_name = "Untitled";
+        std::string              m_filePath;
+        SceneCamera              m_camera;
         std::vector<SceneEntity> m_entities;
     };
 }

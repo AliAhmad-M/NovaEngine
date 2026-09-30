@@ -39,6 +39,9 @@
     <ClCompile Include="src\FilePicker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Panels\InputMapPanel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\Inspector\EditorFields.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -69,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Editor\FilePicker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Editor\Panels\InputMapPanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Editor\Inspector\EditorFields.h">
