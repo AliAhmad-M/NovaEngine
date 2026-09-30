@@ -15,7 +15,7 @@ namespace Nova
 		void OnAllEntitiesRemoved() override;
 
 	private:
-		ECS* m_ecs;
+		ECS* m_ecsRef;
 		std::unordered_map<EntityID, Transform2D> m_cachedTransforms;
 
 	};

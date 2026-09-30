@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Editor/Context.h>
 #include <Core/ECS/ECS.h>
 #include <Core/Components.h>
 #include <Graphics/Components.h>
@@ -8,6 +7,7 @@
 #include <Physics/Components.h>
 #include <World/Components.h>
 #include <Runtime/ContentLoader.h>
+#include <Editor/Context.h>
 #include <optional>
 #include <imgui.h>
 
@@ -32,7 +32,6 @@ namespace Nova::Editor
         std::optional<PickerRequest> m_pendingPicker;
 
         void drawAddComponentMenu();
-
         void drawTransform2D(Transform2D& t);
         void drawCamera2D(Camera2D& c);
         void drawSprite2D(Sprite2D& s);
@@ -42,11 +41,11 @@ namespace Nova::Editor
         void drawBehaviorScript(BehaviorScript& sc);
         void generateBehaviorStub(const std::string& path, const std::string& className);
 
-        Context* m_ctx;
+        Context* m_ctxRef;
         ImGuiWindowFlags m_windowFlags = 0;
 
-        ECS* m_ecs;
-        ContentLoader* m_contentLoader;
+        ECS* m_ecsRef;
+        ContentLoader* m_contentLoaderRef;
 
         // Component icons
         Texture* m_iconTransform = nullptr;

@@ -13,6 +13,6 @@ namespace Nova
         void OnAllEntitiesRemoved()      override;
 
     private:
-        ECS* m_ecs;
+        ECS* m_ecsRef;
     };
 }

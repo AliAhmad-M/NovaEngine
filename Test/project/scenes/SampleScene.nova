@@ -2,93 +2,6 @@
     "entities": [
         {
             "components": {
-                "BehaviorScript": {
-                    "behaviorName": "Player",
-                    "scriptPath": "../Test\\project\\scripts/Player"
-                },
-                "Sprite2D": {
-                    "animations": {
-                        "none": {
-                            "frames": [],
-                            "speed": 1
-                        }
-                    },
-                    "applyYSort": false,
-                    "currentAnimation": "none",
-                    "fliph": false,
-                    "flipv": false,
-                    "frame": 0,
-                    "hframes": 4,
-                    "texturePath": "../Test/project\\assets\\ninja.png",
-                    "vframes": 7,
-                    "ySortOrigin": 0.0,
-                    "zIndex": 2
-                },
-                "Transform2D": {
-                    "position": {
-                        "x": 160.0,
-                        "y": 96.0
-                    },
-                    "rotation": 0.0,
-                    "scale": {
-                        "x": 1.0,
-                        "y": 1.0
-                    }
-                }
-            },
-            "id": 0,
-            "name": "Player"
-        },
-        {
-            "components": {
-                "Tilemap2D": {
-                    "mapPath": "../Test\\project\\assets\\tilemap.json",
-                    "tileHeight": 16,
-                    "tileWidth": 16,
-                    "tilesets": [
-                        {
-                            "firstgid": 1,
-                            "texturePath": "..\\Test\\project\\assets\\spring.png"
-                        },
-                        {
-                            "firstgid": 29,
-                            "texturePath": "../Test\\project\\assets\\dirt.png"
-                        },
-                        {
-                            "firstgid": 44,
-                            "texturePath": "../Test\\project\\assets\\tree.png"
-                        },
-                        {
-                            "firstgid": 76,
-                            "texturePath": "../Test\\project\\assets\\water - spring.png"
-                        },
-                        {
-                            "firstgid": 91,
-                            "texturePath": "../Test\\project\\assets\\texture.png"
-                        },
-                        {
-                            "firstgid": 123,
-                            "texturePath": "../Test\\project\\assets\\summer.png"
-                        }
-                    ]
-                },
-                "Transform2D": {
-                    "position": {
-                        "x": 0.0,
-                        "y": 0.0
-                    },
-                    "rotation": 0.0,
-                    "scale": {
-                        "x": 1.0,
-                        "y": 1.0
-                    }
-                }
-            },
-            "id": 1,
-            "name": "Tilemap"
-        },
-        {
-            "components": {
                 "Camera2D": {
                     "boundaries": {
                         "down": "inf",
@@ -105,11 +18,55 @@
                         "height": 720,
                         "width": 1280
                     },
-                    "zoom": 4.0
+                    "zoom": 2.0
                 }
             },
-            "id": 7,
+            "id": 0,
             "name": "Camera"
+        },
+        {
+            "components": {
+                "BehaviorScript": {
+                    "behaviorName": "MainShipMovement",
+                    "scriptPath": "../Test/project\\scripts\\Entities\\Main Ship\\MainShipMovement"
+                },
+                "Sprite2D": {
+                    "animations": {
+                        "none": {
+                            "frames": [],
+                            "speed": 1
+                        }
+                    },
+                    "applyYSort": false,
+                    "currentAnimation": "none",
+                    "fliph": false,
+                    "flipv": false,
+                    "frame": 0,
+                    "hframes": 1,
+                    "texturePath": "../Test/project\\assets\\Textures\\Main Ship\\Bases\\Main Ship - Base - Full health.png",
+                    "vframes": 1,
+                    "ySortOrigin": 0.0,
+                    "zIndex": 0
+                },
+                "Transform2D": {
+                    "position": {
+                        "x": 344.0,
+                        "y": 300.0
+                    },
+                    "rotation": 0.0,
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0
+                    }
+                }
+            },
+            "id": 1,
+            "name": "Main Ship"
+        },
+        {
+            "components": {},
+            "id": 2,
+            "name": "Entity_2"
         }
     ],
     "name": "SampleScene",

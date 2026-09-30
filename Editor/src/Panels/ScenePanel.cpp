@@ -1,6 +1,7 @@
 #include <Editor/Panels/ScenePanel.h>
-
+#include <Editor/Scene/SceneSerializer.h>
 #include <Core/Services.h>
+
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
@@ -118,26 +119,55 @@ void ScenePanel::buildAndRunGame()
         std::filesystem::current_path() / ".." / "NovaEngine.sln"
     ).string();
 
-    std::string exePath = std::filesystem::absolute(
-        std::filesystem::current_path() / ".." / "Test" / "bin" / "x64" / "Release" / "Output" / "Test.exe"
+    // Test project file
+    std::string vcxprojPath = std::filesystem::absolute(
+        std::filesystem::current_path() / ".." / "Test" / "Test.vcxproj"
     ).string();
 
-    std::thread([this, slnPath, exePath]()
+    const std::string configuration = "Release";
+    const std::string platform = "x64";
+
+    std::thread([this, slnPath, vcxprojPath, configuration, platform]()
         {
             std::string msbuild = findMSBuild();
             if (msbuild.empty())
             {
                 std::lock_guard<std::mutex> lock(m_buildLogMutex);
                 m_buildLog += "[ERROR] Could not locate MSBuild via vswhere. Is Visual Studio installed?\n";
+                m_buildLogScrollToBottom = true;
                 m_building = false;
                 return;
             }
 
-            // Build command
-            std::string buildCmd =
-                "\"" + msbuild + "\" \"" + slnPath + "\" /t:Test /p:Configuration=Release;Platform=x64 /m 2>&1";
+            // Resolve the output exe path
+            std::string exePath = std::filesystem::absolute(
+                std::filesystem::current_path() / ".." / "Test" 
+                / "bin" / "x64" / "Release" / "Output" / "Test.exe"
+            ).string();
 
-            // Set up stdout pipe
+            if (exePath.empty())
+            {
+                std::lock_guard<std::mutex> lock(m_buildLogMutex);
+                m_buildLog += "[ERROR] Could not resolve TargetPath for the Test project.\n";
+                m_buildLogScrollToBottom = true;
+                m_building = false;
+                return;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(m_buildLogMutex);
+                m_buildLog += "Resolved target exe: " + exePath + "\n";
+                m_buildLogScrollToBottom = true;
+            }
+
+            // Snapshot the exe's last-write-time
+            std::error_code fsErr;
+            bool hadPreviousExe = std::filesystem::exists(exePath, fsErr);
+            std::filesystem::file_time_type previousWriteTime{};
+            if (hadPreviousExe)
+                previousWriteTime = std::filesystem::last_write_time(exePath, fsErr);
+
+            // Run the actual build
             SECURITY_ATTRIBUTES sa{};
             sa.nLength = sizeof(sa);
             sa.bInheritHandle = TRUE;
@@ -156,7 +186,11 @@ void ScenePanel::buildAndRunGame()
 
             PROCESS_INFORMATION pi{};
 
-            std::string cmdLine = "\"" + msbuild + "\" \"" + slnPath + "\" /t:Test /p:Configuration=Release;Platform=x64 /m";
+            std::string cmdLine = "\"" + msbuild + "\" \"" + slnPath + "\" /t:Test /p:Configuration="
+                + configuration + ";Platform=" + platform + " /m";
+
+            // Run with CWD
+            std::string slnDir = std::filesystem::path(slnPath).parent_path().string();
 
             bool launched = CreateProcessA(
                 nullptr,
@@ -164,7 +198,8 @@ void ScenePanel::buildAndRunGame()
                 nullptr, nullptr,
                 TRUE,
                 CREATE_NO_WINDOW,
-                nullptr, nullptr,
+                nullptr,
+                slnDir.c_str(),
                 &si, &pi
             );
 
@@ -174,7 +209,9 @@ void ScenePanel::buildAndRunGame()
             {
                 std::lock_guard<std::mutex> lock(m_buildLogMutex);
                 m_buildLog += "[ERROR] Failed to launch msbuild. Is it on PATH?\n";
+                m_buildLogScrollToBottom = true;
                 m_building = false;
+                CloseHandle(hReadPipe);
                 return;
             }
 
@@ -191,6 +228,9 @@ void ScenePanel::buildAndRunGame()
 
             CloseHandle(hReadPipe);
 
+			// Wait for the build process to finish and get its exit code
+            WaitForSingleObject(pi.hProcess, INFINITE);
+
             DWORD exitCode = 0;
             GetExitCodeProcess(pi.hProcess, &exitCode);
             CloseHandle(pi.hProcess);
@@ -199,49 +239,74 @@ void ScenePanel::buildAndRunGame()
             {
                 std::lock_guard<std::mutex> lock(m_buildLogMutex);
                 if (exitCode == 0)
-                    m_buildLog += "\nBuild Succeeded, Launching Game\n";
+                    m_buildLog += "\nBuild Succeeded\n";
                 else
                     m_buildLog += "\nBuild FAILED (exit code " + std::to_string(exitCode) + ")\n";
                 m_buildLogScrollToBottom = true;
             }
 
-            if (exitCode == 0)
+            if (exitCode != 0)
             {
-                // Log the path being attempted
+                m_building = false;
+                return;
+            }
+
+            // Verify that the exe was rewritten
+            {
+                std::lock_guard<std::mutex> lock(m_buildLogMutex);
+                m_buildLog += "Attempting to launch: " + exePath + "\n";
+                m_buildLogScrollToBottom = true;
+            }
+
+            if (!std::filesystem::exists(exePath, fsErr))
+            {
+                std::lock_guard<std::mutex> lock(m_buildLogMutex);
+                m_buildLog += "[ERROR] Exe not found at resolved TargetPath after a successful build.\n";
+                m_buildLog += "        This means MSBuild reported success but didn't produce the expected output — check the log above.\n";
+                m_buildLogScrollToBottom = true;
+                m_building = false;
+                return;
+            }
+
+            if (hadPreviousExe)
+            {
+                auto newWriteTime = std::filesystem::last_write_time(exePath, fsErr);
+                if (!fsErr && newWriteTime == previousWriteTime)
                 {
                     std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                    m_buildLog += "Attempting to launch: " + exePath + "\n";
+                    m_buildLog += "[WARNING] MSBuild reported success but the exe's timestamp did NOT change.\n";
+                    m_buildLog += "          You are about to launch a STALE binary. This usually means:\n";
+                    m_buildLog += "            - the /t:Test target name doesn't match the project actually containing main.cpp, or\n";
+                    m_buildLog += "            - the build considered everything already up to date incorrectly.\n";
+                    m_buildLog += "          Try a full rebuild (msbuild /t:Test:Rebuild) from a terminal to confirm.\n";
                     m_buildLogScrollToBottom = true;
                 }
+            }
 
-                if (!std::filesystem::exists(exePath))
-                {
-                    std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                    m_buildLog += "[ERROR] Exe not found at that path. Check your output directory.\n";
-                    m_buildLogScrollToBottom = true;
-                }
-                else
-                {
-                    STARTUPINFOA runSi{};
-                    runSi.cb = sizeof(runSi);
-                    PROCESS_INFORMATION runPi{};
-                    std::string runCmd = "\"" + exePath + "\"";
+            {
+                std::lock_guard<std::mutex> lock(m_buildLogMutex);
+                m_buildLog += "Launching Game\n";
+                m_buildLogScrollToBottom = true;
+            }
 
-                    bool ok = CreateProcessA(nullptr, runCmd.data(), nullptr, nullptr,
-                        FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &runSi, &runPi);
+            STARTUPINFOA runSi{};
+            runSi.cb = sizeof(runSi);
+            PROCESS_INFORMATION runPi{};
+            std::string runCmd = "\"" + exePath + "\"";
 
-                    if (!ok)
-                    {
-                        std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                        m_buildLog += "[ERROR] CreateProcessA failed. Error code: " + std::to_string(GetLastError()) + "\n";
-                        m_buildLogScrollToBottom = true;
-                    }
-                    else
-                    {
-                        if (runPi.hProcess) CloseHandle(runPi.hProcess);
-                        if (runPi.hThread)  CloseHandle(runPi.hThread);
-                    }
-                }
+            bool ok = CreateProcessA(nullptr, runCmd.data(), nullptr, nullptr,
+                FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &runSi, &runPi);
+
+            if (!ok)
+            {
+                std::lock_guard<std::mutex> lock(m_buildLogMutex);
+                m_buildLog += "[ERROR] CreateProcessA failed. Error code: " + std::to_string(GetLastError()) + "\n";
+                m_buildLogScrollToBottom = true;
+            }
+            else
+            {
+                if (runPi.hProcess) CloseHandle(runPi.hProcess);
+                if (runPi.hThread)  CloseHandle(runPi.hThread);
             }
 
             m_building = false;
@@ -333,15 +398,15 @@ void ScenePanel::drawTabBar()
 
             if (!tab.filePath.empty())
             {
-                m_ctx->activeScenePath = tab.filePath;
+                m_ctxRef->activeScenePath = tab.filePath;
             }
             else
             {
                 std::filesystem::path dir = std::filesystem::absolute(
                     std::filesystem::current_path() / ".." / "Test" / "project" / "scenes");
-                m_ctx->activeScenePath = (dir / (tab.name + ".nova")).string();
+                m_ctxRef->activeScenePath = (dir / (tab.name + ".nova")).string();
             }
-            m_ctx->activeScene = tab.scene.get();
+            m_ctxRef->activeSceneRef = tab.scene.get();
             ImGui::EndTabItem();
         }
 
@@ -355,6 +420,139 @@ void ScenePanel::drawTabBar()
     ImGui::EndTabBar();
 }
 
+void ScenePanel::startPlay()
+{
+    if (m_playing || m_building) return;
+
+    if (!m_ctxRef->activeSceneRef)
+    {
+        Debug::LogError("Cannot play: no active scene");
+        return;
+    }
+
+    m_playSnapshotPath =
+        (std::filesystem::temp_directory_path() / "nova_play_snapshot.nova").string();
+
+    SceneSerializer* serializer = Services::Fetch<SceneSerializer>();
+    if (!serializer || !serializer->Save(*m_ctxRef->activeSceneRef, m_playSnapshotPath))
+    {
+        Debug::LogError("Failed to snapshot scene before play");
+        m_playSnapshotPath.clear();
+        return;
+    }
+
+    m_playing = true;
+    m_showGameWindow = true;
+}
+
+void ScenePanel::stopPlay()
+{
+    if (!m_playing) return;
+
+    m_playing = false;
+
+    if (!m_playSnapshotPath.empty() && m_ctxRef->activeSceneRef)
+    {
+        std::vector<LoadedEntity> loaded;
+        m_ecsRef->DeleteAllEntities();
+
+        if (m_sceneManagerRef->GetLoader()->Load(m_playSnapshotPath, &loaded))
+        {
+            m_ctxRef->activeSceneRef->GetEntities().clear();
+            for (const auto& e : loaded)
+                m_ctxRef->activeSceneRef->AddEntity(e.id, e.name);
+        }
+        else
+        {
+            Debug::LogError("Failed to restore scene after play");
+        }
+
+        std::error_code ec;
+        std::filesystem::remove(m_playSnapshotPath, ec);
+        m_playSnapshotPath.clear();
+    }
+}
+
+void ScenePanel::createGameFBO(int w, int h)
+{
+    m_gameVpWidth = w;
+    m_gameVpHeight = h;
+
+    glGenFramebuffers(1, &m_gameFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_gameFbo);
+
+    glGenTextures(1, &m_gameColorTex);
+    glBindTexture(GL_TEXTURE_2D, m_gameColorTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_gameColorTex, 0);
+
+    glGenRenderbuffers(1, &m_gameDepthRbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_gameDepthRbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_gameDepthRbo);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void ScenePanel::resizeGameFBO(int w, int h)
+{
+    destroyGameFBO();
+    createGameFBO(w, h);
+}
+
+void ScenePanel::destroyGameFBO()
+{
+    if (m_gameDepthRbo) { glDeleteRenderbuffers(1, &m_gameDepthRbo); m_gameDepthRbo = 0; }
+    if (m_gameColorTex) { glDeleteTextures(1, &m_gameColorTex); m_gameColorTex = 0; }
+    if (m_gameFbo) { glDeleteFramebuffers(1, &m_gameFbo); m_gameFbo = 0; }
+    m_gameVpWidth = m_gameVpHeight = 0;
+}
+
+void ScenePanel::drawGameWindow()
+{
+    if (!m_showGameWindow) return;
+
+    bool open = m_showGameWindow;
+
+    ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Game", &open))
+    {
+        ImGui::End();
+        if (!open && m_playing) stopPlay();
+        m_showGameWindow = open;
+        return;
+    }
+
+    ImGui::TextColored(m_playing ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+        m_playing ? "Playing" : "Stopped");
+
+    ImVec2 viewSize = ImGui::GetContentRegionAvail();
+    int w = (int)viewSize.x;
+    int h = (int)viewSize.y;
+
+    if (w > 0 && h > 0)
+    {
+        // Resize
+        if (w != m_gameVpWidth || h != m_gameVpHeight)
+            resizeGameFBO(w, h);
+
+        if (m_gameColorTex)
+        {
+            ImGui::Image((ImTextureID)(intptr_t)m_gameColorTex, viewSize,
+                ImVec2(0, 1), ImVec2(1, 0));
+        }
+    }
+
+    ImGui::End();
+
+    if (!open && m_playing)
+        stopPlay();
+
+    m_showGameWindow = open;
+}
+
 void ScenePanel::drawSceneToolBar()
 {
     ImGui::Checkbox("Grid", &m_showGrid);
@@ -364,21 +562,38 @@ void ScenePanel::drawSceneToolBar()
         newScene();
     ImGui::SameLine();
 
-    if (m_building)
+    if (m_playing)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.25f, 0.25f, 1.0f));
+        if (ImGui::SmallButton("Stop"))
+            stopPlay();
+        ImGui::PopStyleColor();
+    }
+    else if (m_building)
     {
         ImGui::BeginDisabled();
-        ImGui::SmallButton("Building...");
+        ImGui::SmallButton("> Play");
         ImGui::EndDisabled();
     }
     else
     {
         if (ImGui::SmallButton("> Play"))
-            buildAndRunGame();
+            startPlay();
     }
     ImGui::SameLine();
 
-    if (ImGui::SmallButton("Build Log"))
-        m_showBuildLog = !m_showBuildLog;
+    if (m_building || m_playing)
+    {
+        ImGui::BeginDisabled();
+        ImGui::SmallButton(m_building ? "Building..." : "> Build");
+        ImGui::EndDisabled();
+    }
+    else
+    {
+        if (ImGui::SmallButton("> Build"))
+            buildAndRunGame();
+    }
+    ImGui::SameLine();
 }
 
 void ScenePanel::drawGrid()
@@ -473,14 +688,14 @@ void ScenePanel::onTabChanged(int index)
 {
     if (index < 0 || index >= (int)m_sceneTabs.size()) return;
 
-    m_ctx->selectedEntity = -1;
+    m_ctxRef->selectedEntity = -1;
 
     SceneTab& tab = m_sceneTabs[index];
 
     if (!tab.filePath.empty())
     {
         std::vector<LoadedEntity> loaded;
-        if (m_sceneManager->GetLoader()->Load(tab.filePath, &loaded))
+        if (m_sceneManagerRef->GetLoader()->Load(tab.filePath, &loaded))
         {
             tab.scene->GetEntities().clear();
             for (const auto& e : loaded)
@@ -491,37 +706,37 @@ void ScenePanel::onTabChanged(int index)
     }
     else
     {
-        m_ecs->DeleteAllEntities();
+        m_ecsRef->DeleteAllEntities();
         tab.scene->GetEntities().clear();
     }
 }
 
 ScenePanel::ScenePanel(Context* ctx)
-    : m_ctx(ctx)
+    : m_ctxRef(ctx)
 {
-    m_editorCamera.isMainCamera = true;
-    m_ecs = Services::Fetch<ECS>();
-    m_sceneManager = Services::Fetch<SceneManager>();
+    m_editorCamera.isMain = true;
+    m_ecsRef = Services::Fetch<ECS>();
+    m_sceneManagerRef = Services::Fetch<SceneManager>();
 }
 
 ScenePanel::~ScenePanel()
 {
     destroyFBO();
+    destroyGameFBO();
 }
 
 void ScenePanel::Draw()
 {
     ImGui::Begin("Scene");
-
     drawSceneToolBar();
     ImGui::Separator();
     drawTabBar();
     ImGui::Separator();
     drawSceneViewport();
-
     ImGui::End();
 
     drawBuildLog();
+    drawGameWindow();
 }
 
 void ScenePanel::newScene()

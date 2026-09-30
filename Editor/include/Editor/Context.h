@@ -13,11 +13,11 @@ namespace Nova::Editor
 		int selectedEntity = -1;
 		std::string activeScenePath;
 
-		// The scene currently focused in the editor
-		Scene* activeScene = nullptr;
+		// Reference to currently focused scene in editor
+		Scene* activeSceneRef = nullptr;
 
 		// Reference to scene panel for marking dirty state
-		ScenePanel* scenePanel = nullptr;
+		ScenePanel* scenePanelRef = nullptr;
 
 		// Callback to trigger save from any panel
 		std::function<void()> onSaveScene;

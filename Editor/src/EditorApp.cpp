@@ -5,7 +5,11 @@
 #include <Editor/Panels/ScenePanel.h>
 #include <Editor/FilePicker.h>
 #include <Runtime/Engine.h>
+#include <Graphics/Systems.h>
+#include <Physics/Systems.h>
+#include <World/Systems.h>
 #include <Core/Services.h>
+#include <Core/Systems.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -127,7 +131,7 @@ bool EditorApp::Init()
 {
 	// Init runtime
 	m_runtime.Init();
-    m_window = Services::Fetch<Window>()->GetNativeWindow();
+    m_nativeWindow = Services::Fetch<Window>()->GetNativeWindow();
 
     // Initialize ImGui
     IMGUI_CHECKVERSION();
@@ -137,7 +141,7 @@ bool EditorApp::Init()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+    ImGui_ImplGlfw_InitForOpenGL(m_nativeWindow, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
 	applyTheme();
@@ -152,9 +156,10 @@ bool EditorApp::Init()
 
 	// Initialize scene serializer
 	m_sceneSerializer = std::make_unique<SceneSerializer>();
+    Services::Register(m_sceneSerializer.get());
 
 	// Set scene panel reference in context for dirty marking
-	m_ctx.scenePanel = m_scenePanel.get();
+	m_ctx.scenePanelRef = m_scenePanel.get();
 
     m_ctx.onSaveScene = [this]() { saveActiveScene(); };
 
@@ -163,7 +168,7 @@ bool EditorApp::Init()
 
 void EditorApp::Run()
 {
-    while (m_running && !glfwWindowShouldClose(m_window))
+    while (m_running && !glfwWindowShouldClose(m_nativeWindow))
     {
         glfwPollEvents();
 
@@ -205,12 +210,29 @@ void EditorApp::Run()
             });
 
         // Render scene into FBO
-        int vpW = m_scenePanel->GetViewportWidth();
-        int vpH = m_scenePanel->GetViewportHeight();
+        int vpW = m_scenePanel->GetSceneViewportWidth();
+        int vpH = m_scenePanel->GetSceneViewportHeight();
         if (vpW > 0 && vpH > 0) 
         {
             Services::Register<Camera2D>(&m_scenePanel->GetEditorCamera());
-            m_runtime.RenderEditorFrame(m_scenePanel->GetFBOId(), vpW, vpH);
+            m_runtime.RenderEditorFrame(m_scenePanel->GetSceneFBOId(), vpW, vpH);
+        }
+
+        double currentTime = glfwGetTime();
+        float dt = (float)(currentTime - m_lastFrameTime);
+        m_lastFrameTime = currentTime;
+        if (dt > 0.1f) dt = 1.0f / 60.0f;
+
+        if (m_scenePanel->IsPlaying())
+        {
+            m_runtime.UpdateEditorGame(dt);
+
+            int gvpW = m_scenePanel->GetGameViewportWidth();
+            int gvpH = m_scenePanel->GetGameViewportHeight();
+            if (gvpW > 0 && gvpH > 0)
+            {
+                m_runtime.RenderEditorFrame(m_scenePanel->GetGameFBOId(), gvpW, gvpH);
+            }
         }
 
         endFrame();
@@ -238,14 +260,14 @@ void EditorApp::endFrame()
     ImGui::Render();
 
     int w, h;
-    glfwGetFramebufferSize(m_window, &w, &h);
+    glfwGetFramebufferSize(m_nativeWindow, &w, &h);
     glViewport(0, 0, w, h);
     glClearColor(0.08f, 0.08f, 0.10f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    glfwSwapBuffers(m_window);
+    glfwSwapBuffers(m_nativeWindow);
 }
 
 void EditorApp::buildLayout()
@@ -289,16 +311,11 @@ void EditorApp::buildLayout()
         ImGuiID dockBottom = 0;
         ImGuiID dockCenter = 0;
 
-        // Step 1 — split right (Inspector, full height)
         ImGui::DockBuilderSplitNode(dockID, ImGuiDir_Right, kInspectorWidthRatio, &dockRight, &dockCenter);
-
-        // Step 2 — split bottom (Asset Browser, spans Hierarchy + Scene)
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Down, kAssetBrowserHeightRatio, &dockBottom, &dockCenter);
-
-        // Step 3 — split left (Hierarchy) from remaining top area
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Left, kHierarchyWidthRatio, &dockLeft, &dockCenter);
 
-        // Assign panels — names must match ImGui::Begin() strings exactly
+        // Assign panels
         ImGui::DockBuilderDockWindow("Hierarchy", dockLeft);
         ImGui::DockBuilderDockWindow("Scene", dockCenter);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
@@ -317,14 +334,18 @@ void EditorApp::drawMenuBar()
         // File menu
         if (ImGui::BeginMenu("File"))
         {
+            bool playing = m_scenePanel->IsPlaying();
+
+            if (playing) ImGui::BeginDisabled();
+
             if (ImGui::MenuItem("New Scene", "Ctrl+N")) { m_ctx.activeScenePath.clear(); }
-            if (ImGui::MenuItem("Open Scene", "Ctrl+O")) { m_openSceneRequested = true; }   
-            if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
-            {
-                saveActiveScene();
-            }
+            if (ImGui::MenuItem("Open Scene", "Ctrl+O")) { m_openSceneRequested = true; }
+            if (ImGui::MenuItem("Save Scene", "Ctrl+S")) { saveActiveScene(); }
+
+            if (playing) ImGui::EndDisabled();
+
             ImGui::Separator();
-            if (ImGui::MenuItem("Exit"))    m_running = false;
+            if (ImGui::MenuItem("Exit")) m_running = false;
             ImGui::EndMenu();
         }
 
@@ -361,7 +382,7 @@ void EditorApp::drawMenuBar()
 
 void EditorApp::saveActiveScene()
 {
-    if (!m_ctx.activeScene || !m_sceneSerializer)
+    if (!m_ctx.activeSceneRef || !m_sceneSerializer)
     {
         Debug::LogError("Cannot save: no active scene or serializer");
         return;
@@ -376,7 +397,7 @@ void EditorApp::saveActiveScene()
     }
 
     // Save the scene
-    if (m_sceneSerializer->Save(*m_ctx.activeScene, savePath))
+    if (m_sceneSerializer->Save(*m_ctx.activeSceneRef, savePath))
     {
         m_scenePanel->MarkSceneAsSaved();
         Debug::LogInfo("Scene saved to: %s", savePath.c_str());
@@ -389,8 +410,8 @@ void EditorApp::saveActiveScene()
 
 void EditorApp::markSceneDirty()
 {
-    if (m_ctx.scenePanel)
+    if (m_ctx.scenePanelRef)
     {
-        m_ctx.scenePanel->MarkSceneAsDirty();
+        m_ctx.scenePanelRef->MarkSceneAsDirty();
     }
 }

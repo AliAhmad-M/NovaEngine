@@ -1,5 +1,6 @@
 #pragma once
 #include <Core/Utilities/Vector2.h>
+#include <Core/Behavior/Inspectables.h>
 #include <array>
 #include <algorithm>
 
@@ -10,7 +11,7 @@ namespace Nova
      */
     struct Camera2D
     {
-        bool isMainCamera;
+        bool isMain;
 
         /**
          * @brief Construct a new Camera 2D object
@@ -18,12 +19,35 @@ namespace Nova
          * @param m_zoom Initial zoom level
          * @param m_boundaries Camera movement limits {left, right, top, bottom}
          */
-        Camera2D(bool isMainCamera = false,
+        Camera2D(bool isMain = false,
             float m_zoom = 1.0f,
             std::array<float, 4> m_boundaries = { -INFINITY, INFINITY, -INFINITY, INFINITY })
         {
             SetZoom(m_zoom);
             SetBoundaries(m_boundaries);
+        }
+
+        void ReflectFields(Inspectables& fields)
+        {
+            fields.Bool("Main Camera", &isMain);
+            fields.Vec2("Offset", [this] { return GetOffset(); }, [this](Vector2 v) { SetOffset(v); });
+
+            fields.Header("View");
+            fields.Float("Zoom", [this] { return GetZoom(); }, [this](float v) { SetZoom(v); }, 0.01f);
+            fields.Int("Viewport Width", [this] { int w, h; GetViewPortSize(w, h); return w; },
+                [this](int v) { int w, h; GetViewPortSize(w, h); SetViewportSize(v, h); });
+            fields.Int("Viewport Height", [this] { int w, h; GetViewPortSize(w, h); return h; },
+                [this](int v) { int w, h; GetViewPortSize(w, h); SetViewportSize(w, v); });
+
+            fields.Header("Boundaries");
+            fields.Float("Left Bound", [this] { return GetBoundaries()[0]; },
+                [this](float v) { auto b = GetBoundaries(); b[0] = v; SetBoundaries(b); }, 1.0f, 0.0f, 0.0f, true, -1.0f);
+            fields.Float("Right Bound", [this] { return GetBoundaries()[1]; },
+                [this](float v) { auto b = GetBoundaries(); b[1] = v; SetBoundaries(b); }, 1.0f, 0.0f, 0.0f, true, 1.0f);
+            fields.Float("Top Bound", [this] { return GetBoundaries()[2]; },
+                [this](float v) { auto b = GetBoundaries(); b[2] = v; SetBoundaries(b); }, 1.0f, 0.0f, 0.0f, true, -1.0f);
+            fields.Float("Bottom Bound", [this] { return GetBoundaries()[3]; },
+                [this](float v) { auto b = GetBoundaries(); b[3] = v; SetBoundaries(b); }, 1.0f, 0.0f, 0.0f, true, 1.0f);
         }
 
         /**
@@ -152,8 +176,8 @@ namespace Nova
          */
         void SetViewportSize(int width, int height)
         {
-            m_width = width;
-            m_height = height;
+            m_width = std::max(1, width);
+            m_height = std::max(1, height);
         }
 
     private:

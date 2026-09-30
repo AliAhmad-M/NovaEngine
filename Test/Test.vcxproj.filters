@@ -18,7 +18,7 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="project\scripts\Player.cpp">
+    <ClCompile Include="project\scripts\Entities\Main Ship\MainShipMovement.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -26,40 +26,9 @@
     <Image Include="assets\character_preview.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="project\assets\dirt.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\ninja.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\slime.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\spring.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\summer.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\texture.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\tree.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="project\assets\water - spring.png">
-      <Filter>Resource Files</Filter>
-    </Image>
   </ItemGroup>
   <ItemGroup>
-    <Font Include="project\assets\boldpixels.ttf" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="project\assets\tilemap.json" />
-    <None Include="project\scenes\SampleScene.nova" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="project\scripts\Player.h">
+    <ClInclude Include="project\scripts\Entities\Main Ship\MainShipMovement.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

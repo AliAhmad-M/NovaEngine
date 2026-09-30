@@ -24,6 +24,7 @@
     <ProjectGuid>{fbcfaf99-6a7b-4e86-9bb4-8642806baed5}</ProjectGuid>
     <RootNamespace>Test</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Test</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -143,28 +144,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="project\scripts\Player.cpp" />
+    <ClCompile Include="project\scripts\Entities\Main Ship\MainShipMovement.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\character_preview.png" />
-    <Image Include="project\assets\dirt.png" />
-    <Image Include="project\assets\ninja.png" />
-    <Image Include="project\assets\slime.png" />
-    <Image Include="project\assets\spring.png" />
-    <Image Include="project\assets\summer.png" />
-    <Image Include="project\assets\texture.png" />
-    <Image Include="project\assets\tree.png" />
-    <Image Include="project\assets\water - spring.png" />
   </ItemGroup>
   <ItemGroup>
-    <Font Include="project\assets\boldpixels.ttf" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="project\assets\tilemap.json" />
-    <None Include="project\scenes\SampleScene.nova" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="project\scripts\Player.h" />
+    <ClInclude Include="project\scripts\Entities\Main Ship\MainShipMovement.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\World\World.vcxproj">

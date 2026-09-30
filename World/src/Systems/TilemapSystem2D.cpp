@@ -11,15 +11,15 @@ using namespace Nova;
 
 TilemapSystem2D::TilemapSystem2D() 
 {
-	m_ecs = Services::Fetch<ECS>();
+	m_ecsRef = Services::Fetch<ECS>();
 }
 
 void TilemapSystem2D::Update(float dt) 
 {
 	for (EntityID e : entities)
 	{
-		auto* t  = m_ecs->GetComponent<Transform2D>(e);
-		auto* tm = m_ecs->GetComponent<Tilemap2D>(e);
+		auto* t  = m_ecsRef->GetComponent<Transform2D>(e);
+		auto* tm = m_ecsRef->GetComponent<Tilemap2D>(e);
 
 		// Skip updating children if transform unchanged
 		auto& tCached = m_cachedTransforms[e];
@@ -30,7 +30,7 @@ void TilemapSystem2D::Update(float dt)
 		// Update child entity transforms
 		for (auto& [childEntity, type] : tm->GetChildEntities()) 
 		{
-			auto* tChild = m_ecs->GetComponent<Transform2D>(childEntity);
+			auto* tChild = m_ecsRef->GetComponent<Transform2D>(childEntity);
 			tChild->position = t->position;
 			tChild->rotation = t->rotation;
 			tChild->scale	 = t->scale;
@@ -42,8 +42,8 @@ void TilemapSystem2D::Update(float dt)
 
 void TilemapSystem2D::OnEntityAdded(EntityID e)
 {
-	auto* t  = m_ecs->GetComponent<Transform2D>(e);
-	auto* tm = m_ecs->GetComponent<Tilemap2D>(e);
+	auto* t  = m_ecsRef->GetComponent<Transform2D>(e);
+	auto* tm = m_ecsRef->GetComponent<Tilemap2D>(e);
 
 	const std::vector<Tile2D>& tileset = tm->GetTileset();
 	const std::vector<TilemapLayer2D>& layers = tm->GetLayers();
@@ -110,9 +110,9 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 		renderer->Flush();
 		layerTexture->UnbindFBO();
 
-		EntityID layerEntity = m_ecs->CreateEntity();
-		m_ecs->AddComponent(layerEntity, Transform2D(t->position, t->rotation, t->scale));
-		m_ecs->AddComponent(layerEntity, Sprite2D(layerTexture, 1, 1, (int)layerIdx));
+		EntityID layerEntity = m_ecsRef->CreateEntity();
+		m_ecsRef->AddComponent(layerEntity, Transform2D(t->position, t->rotation, t->scale));
+		m_ecsRef->AddComponent(layerEntity, Sprite2D(layerTexture, 1, 1, (int)layerIdx));
 
 		tm->AddChildEntity(layerEntity, TilemapChildType2D::LayerSprite);
 	}
@@ -127,9 +127,9 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 		float x = (float)region.startCol * tileW * t->scale.x;
 		float y = (float)region.startRow * tileH * t->scale.y;
 
-		EntityID colliderEntity = m_ecs->CreateEntity();
-		m_ecs->AddComponent(colliderEntity, Transform2D(Vector2(x, y), 0.0f, t->scale));
-		m_ecs->AddComponent(colliderEntity, RigidBody2D(Vector2(w / 2.0f, h / 2.0f), w, h, true, false));
+		EntityID colliderEntity = m_ecsRef->CreateEntity();
+		m_ecsRef->AddComponent(colliderEntity, Transform2D(Vector2(x, y), 0.0f, t->scale));
+		m_ecsRef->AddComponent(colliderEntity, RigidBody2D(Vector2(w / 2.0f, h / 2.0f), w, h, true, false));
 
 		tm->AddChildEntity(colliderEntity, TilemapChildType2D::RectCollider);
 	}

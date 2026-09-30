@@ -41,7 +41,7 @@ namespace Nova::Editor
         const char* AssetTypeIcon(AssetType t) const;
         GLuint      GetEntryIcon(const AssetEntry& entry) const;
 
-        Context* m_ctx = nullptr;
+        Context* m_ctxRef = nullptr;
         ImGuiWindowFlags         m_windowFlags = 0;
         std::filesystem::path    m_rootPath;
         std::filesystem::path    m_currentPath;
@@ -61,6 +61,6 @@ namespace Nova::Editor
         float  m_iconSize = 64.0f;
         char   m_filter[128] = {};
 
-        ContentLoader* m_contentLoader;
+        ContentLoader* m_contentLoaderRef;
     };
 }

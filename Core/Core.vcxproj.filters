@@ -128,5 +128,8 @@
     <ClInclude Include="include\Core\Systems\ScriptSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Core\Behavior\Inspectables.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

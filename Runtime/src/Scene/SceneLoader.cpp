@@ -51,7 +51,7 @@ namespace
     Camera2D DeserializeCamera2D(const nlohmann::json& j)
     {
         Camera2D c;
-        c.isMainCamera = j["isMainCamera"].get<bool>();
+        c.isMain = j["isMainCamera"].get<bool>();
         c.SetZoom(j["zoom"].get<float>());
 
         std::array<float, 4> boundaries =

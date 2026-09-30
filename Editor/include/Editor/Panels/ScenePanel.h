@@ -34,10 +34,15 @@ namespace Nova::Editor
         void MarkSceneAsSaved();
         void MarkSceneAsDirty();
 
-        unsigned int GetFBOId()          const { return m_fbo; }
-        unsigned int GetColorTexture()   const { return m_colorTex; }
-        int          GetViewportWidth()  const { return m_vpWidth; }
-        int          GetViewportHeight() const { return m_vpHeight; }
+        unsigned int GetSceneFBOId()          const { return m_fbo; }
+        unsigned int GetSceneColorTexture()   const { return m_colorTex; }
+        int          GetSceneViewportWidth()  const { return m_vpWidth; }
+        int          GetSceneViewportHeight() const { return m_vpHeight; }
+
+        unsigned int GetGameFBOId()          const { return m_gameFbo; }
+        int          GetGameViewportWidth()  const { return m_gameVpWidth; }
+        int          GetGameViewportHeight() const { return m_gameVpHeight; }
+        bool         IsPlaying()             const { return m_playing; }
 
         // Returns the editor-owned camera
         Camera2D& GetEditorCamera() { return m_editorCamera; }
@@ -62,7 +67,7 @@ namespace Nova::Editor
         // Converts a screen-space ImGui delta into world-space and applies it to the editor camera
         void panEditorCamera(float dx, float dy);
 
-        Context* m_ctx = nullptr;
+        Context* m_ctxRef = nullptr;
 
         ImGuiWindowFlags      m_windowFlags = 0;
         std::vector<SceneTab> m_sceneTabs;
@@ -87,7 +92,26 @@ namespace Nova::Editor
         bool                m_showBuildLog = false;
         bool                m_buildLogScrollToBottom = false;
 
-        ECS* m_ecs;
-        SceneManager* m_sceneManager;
+        void startPlay();
+        void stopPlay();
+        void drawGameWindow();
+
+        void createGameFBO(int w, int h);
+        void resizeGameFBO(int w, int h);
+        void destroyGameFBO();
+
+        // Play mode
+        bool        m_playing = false;
+        bool        m_showGameWindow = false;
+        std::string m_playSnapshotPath;
+
+        unsigned int m_gameFbo = 0;
+        unsigned int m_gameColorTex = 0;
+        unsigned int m_gameDepthRbo = 0;
+        int          m_gameVpWidth = 0;
+        int          m_gameVpHeight = 0;
+
+        ECS* m_ecsRef;
+        SceneManager* m_sceneManagerRef;
     };
 }

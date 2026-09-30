@@ -4,6 +4,7 @@
 #include <Core/Behavior/BehaviorRegistry.h>
 #include <Core/Services.h>
 #include <Graphics/Texture.h>
+#include <Editor/Inspector/EditorFields.h>
 #include <Editor/FilePicker.h>
 #include <imgui.h>
 #include <cstring>
@@ -14,17 +15,17 @@
 
 using namespace Nova::Editor;
 
-InspectorPanel::InspectorPanel(Context* ctx) : m_ctx(ctx)
+InspectorPanel::InspectorPanel(Context* ctx) : m_ctxRef(ctx)
 {
-    m_ecs = Services::Fetch<ECS>();
-    m_contentLoader = Services::Fetch<ContentLoader>();
+    m_ecsRef = Services::Fetch<ECS>();
+    m_contentLoaderRef = Services::Fetch<ContentLoader>();
 
-    m_iconTransform  = m_contentLoader->LoadTexture("assets/icons/move.png");
-    m_iconSprite     = m_contentLoader->LoadTexture("assets/icons/image.png");
-    m_iconCamera     = m_contentLoader->LoadTexture("assets/icons/icon_camera.png");
-    m_iconRigidbody  = m_contentLoader->LoadTexture("assets/icons/atom.png");
-    m_iconTilemap    = m_contentLoader->LoadTexture("assets/icons/grid.png");
-    m_iconScript     = m_contentLoader->LoadTexture("assets/icons/script.png");
+    m_iconTransform  = m_contentLoaderRef->LoadTexture("assets/icons/move.png");
+    m_iconSprite     = m_contentLoaderRef->LoadTexture("assets/icons/image.png");
+    m_iconCamera     = m_contentLoaderRef->LoadTexture("assets/icons/icon_camera.png");
+    m_iconRigidbody  = m_contentLoaderRef->LoadTexture("assets/icons/atom.png");
+    m_iconTilemap    = m_contentLoaderRef->LoadTexture("assets/icons/grid.png");
+    m_iconScript     = m_contentLoaderRef->LoadTexture("assets/icons/script.png");
 }
 
 static void FieldVec2(const char* label, float* v, float speed = 0.1f)
@@ -212,21 +213,39 @@ static void EndPropertyTable()
 
 static void NextRow() { ImGui::TableNextRow(); }
 
+template<typename T>
+void drawComponent(
+    const char* label,
+    T& component, ImTextureID icon,
+    std::function<void()> onRemove)
+{
+    bool removeRequested = false;
+    if (!BeginComponent(label, &removeRequested, icon)) return;
+
+    BeginPropertyTable();
+    EditorFields visitor;
+    component.ReflectFields(visitor);
+    EndPropertyTable();
+    EndComponent();
+
+    if (removeRequested) onRemove();
+}
+
 void InspectorPanel::Draw()
 {
     ImGui::Begin("Inspector");
 
-    if (m_ctx->selectedEntity == -1)
+    if (m_ctxRef->selectedEntity == -1)
     {
         ImGui::TextDisabled("No entity selected");
         ImGui::End();
         return;
     }
 
-    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+    EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
 
     char nameLabel[64];
-    std::snprintf(nameLabel, sizeof(nameLabel), "Entity %d", m_ctx->selectedEntity);
+    std::snprintf(nameLabel, sizeof(nameLabel), "Entity %d", m_ctxRef->selectedEntity);
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
     ImGui::Text("%s", nameLabel);
     ImGui::PopFont();
@@ -234,22 +253,31 @@ void InspectorPanel::Draw()
     ImGui::Spacing();
 
     // draw each component section if the entity has that component
-    if (Transform2D* t = m_ecs->GetComponent<Transform2D>(entity))
-        drawTransform2D(*t);
+    if (Transform2D* t = m_ecsRef->GetComponent<Transform2D>(entity))
+    {
+        ImTextureID iconHandle = m_iconTransform ? (ImTextureID)(intptr_t)m_iconTransform->GetHandle() : 0;
+        drawComponent("Transform2D", *t, iconHandle,
+            [&] { m_ecsRef->RemoveComponent<Transform2D>(entity); });
+    }
 
-    if (Camera2D* c = m_ecs->GetComponent<Camera2D>(entity))
-        drawCamera2D(*c);
+    if (Camera2D* c = m_ecsRef->GetComponent<Camera2D>(entity))
+    {
+        ImTextureID iconHandle = m_iconCamera ? (ImTextureID)(intptr_t)m_iconCamera->GetHandle() : 0;
+		drawComponent("Camera2D", *c, iconHandle,
+			[&] { m_ecsRef->RemoveComponent<Camera2D>(entity); });
+        //drawCamera2D(*c);
+    }
 
-    if (Sprite2D* s = m_ecs->GetComponent<Sprite2D>(entity))
+    if (Sprite2D* s = m_ecsRef->GetComponent<Sprite2D>(entity))
         drawSprite2D(*s);
 
-    if (RigidBody2D* rb = m_ecs->GetComponent<RigidBody2D>(entity))
+    if (RigidBody2D* rb = m_ecsRef->GetComponent<RigidBody2D>(entity))
         drawRigidBody2D(*rb);
 
-    if (Tilemap2D* tm = m_ecs->GetComponent<Tilemap2D>(entity))
+    if (Tilemap2D* tm = m_ecsRef->GetComponent<Tilemap2D>(entity))
         drawTilemap2D(*tm);
 
-    if (BehaviorScript* bs = m_ecs->GetComponent<BehaviorScript>(entity))
+    if (BehaviorScript* bs = m_ecsRef->GetComponent<BehaviorScript>(entity))
         drawBehaviorScript(*bs);
 
     ImGui::Spacing();
@@ -277,7 +305,7 @@ void InspectorPanel::Draw()
 
 void InspectorPanel::drawAddComponentMenu()
 {
-    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+    EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
 
     float btnW = 200.0f;
     ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - btnW) * 0.5f);
@@ -289,26 +317,26 @@ void InspectorPanel::drawAddComponentMenu()
         ImGui::TextDisabled("Components");
         ImGui::Separator();
 
-        if (!m_ecs->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
-            m_ecs->AddComponent<Transform2D>(entity, Transform2D());
+        if (!m_ecsRef->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
+            m_ecsRef->AddComponent<Transform2D>(entity, Transform2D());
 
-        if (!m_ecs->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
-            m_ecs->AddComponent<Camera2D>(entity, Camera2D());
+        if (!m_ecsRef->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
+            m_ecsRef->AddComponent<Camera2D>(entity, Camera2D());
 
-        if (!m_ecs->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
-            m_ecs->AddComponent<Sprite2D>(entity, Sprite2D());
+        if (!m_ecsRef->HasComponent<Sprite2D>(entity) && ImGui::MenuItem("Sprite2D"))
+            m_ecsRef->AddComponent<Sprite2D>(entity, Sprite2D());
 
-        if (!m_ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
-            m_ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
+        if (!m_ecsRef->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Circle)"))
+            m_ecsRef->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM));
 
-        if (!m_ecs->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
-            m_ecs->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
+        if (!m_ecsRef->HasComponent<RigidBody2D>(entity) && ImGui::MenuItem("RigidBody2D (Box)"))
+            m_ecsRef->AddComponent<RigidBody2D>(entity, RigidBody2D(Vector2::ZERO, PHYSICS_PPM, PHYSICS_PPM));
 
-        if (!m_ecs->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
-            m_ecs->AddComponent<Tilemap2D>(entity, Tilemap2D());
+        if (!m_ecsRef->HasComponent<Tilemap2D>(entity) && ImGui::MenuItem("Tilemap2D"))
+            m_ecsRef->AddComponent<Tilemap2D>(entity, Tilemap2D());
 
-        if (!m_ecs->HasComponent<BehaviorScript>(entity) && ImGui::MenuItem("Script"))
-            m_ecs->AddComponent<BehaviorScript>(entity, BehaviorScript());
+        if (!m_ecsRef->HasComponent<BehaviorScript>(entity) && ImGui::MenuItem("Script"))
+            m_ecsRef->AddComponent<BehaviorScript>(entity, BehaviorScript());
 
         ImGui::EndPopup();
     }
@@ -331,7 +359,7 @@ void InspectorPanel::drawTransform2D(Transform2D& t)
     if (removeRequested)
     {
         ECS* m_ecs = Services::Fetch<ECS>();
-        m_ecs->RemoveComponent<Transform2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecs->RemoveComponent<Transform2D>(static_cast<EntityID>(m_ctxRef->selectedEntity));
     }
 }
 
@@ -344,9 +372,9 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
     BeginPropertyTable();
 
     NextRow();
-    bool isMain = c.isMainCamera;
+    bool isMain = c.isMain;
     FieldBool("Main Camera", &isMain);
-    if (isMain != c.isMainCamera) c.isMainCamera = isMain;
+    if (isMain != c.isMain) c.isMain = isMain;
 
     NextRow();
     float zoom = c.GetZoom();
@@ -442,14 +470,14 @@ void InspectorPanel::drawCamera2D(Camera2D& c)
 
     if (removeRequested)
     {
-        m_ecs->RemoveComponent<Camera2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecsRef->RemoveComponent<Camera2D>(static_cast<EntityID>(m_ctxRef->selectedEntity));
     }
 }
 
 void InspectorPanel::drawTexturePathField(Sprite2D& s)
 {
     static char pathBuf[256];
-    std::string currentPath = m_contentLoader->GetTexturePath(s.texture);
+    std::string currentPath = m_contentLoaderRef->GetTexturePath(s.texture);
     std::snprintf(pathBuf, sizeof(pathBuf), "%s", currentPath.c_str());
 
     ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Texture");
@@ -458,7 +486,7 @@ void InspectorPanel::drawTexturePathField(Sprite2D& s)
 
     if (ImGui::InputText("##texPath", pathBuf, sizeof(pathBuf), ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        Texture* loaded = m_contentLoader->LoadTexture(pathBuf);
+        Texture* loaded = m_contentLoaderRef->LoadTexture(pathBuf);
         if (loaded) s.texture = loaded;
     }
 
@@ -506,7 +534,7 @@ void InspectorPanel::drawSprite2D(Sprite2D& s)
 
     if (removeRequested)
     {
-        m_ecs->RemoveComponent<Sprite2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecsRef->RemoveComponent<Sprite2D>(static_cast<EntityID>(m_ctxRef->selectedEntity));
     }
 }
 
@@ -600,7 +628,7 @@ void InspectorPanel::drawRigidBody2D(RigidBody2D& rb)
 
     if (removeRequested)
     {
-        m_ecs->RemoveComponent<RigidBody2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecsRef->RemoveComponent<RigidBody2D>(static_cast<EntityID>(m_ctxRef->selectedEntity));
     }
 }
 
@@ -671,9 +699,9 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
                     fresh.GenerateCollisionData(s_collisionLayer, tileIds);
             }
 
-            EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
-            m_ecs->RemoveComponent<Tilemap2D>(entity);
-            m_ecs->AddComponent<Tilemap2D>(entity, std::move(fresh));
+            EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
+            m_ecsRef->RemoveComponent<Tilemap2D>(entity);
+            m_ecsRef->AddComponent<Tilemap2D>(entity, std::move(fresh));
 
             s_seededFor = std::string(s_mapPathBuf);
         };
@@ -848,7 +876,7 @@ void InspectorPanel::drawTilemap2D(Tilemap2D& tm)
 
     if (removeRequested)
     {
-        m_ecs->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecsRef->RemoveComponent<Tilemap2D>(static_cast<EntityID>(m_ctxRef->selectedEntity));
         s_seededFor.clear();
         s_tilesets.clear();
         s_mapPathBuf[0] = '\0';
@@ -935,7 +963,8 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
     {
         // script bound
         BeginPropertyTable();
-        NextRow(); FieldReadOnly("Script", bs.scriptPath.c_str());
+        NextRow(); FieldReadOnly("Name", bs.behaviorName.c_str());
+        NextRow(); FieldReadOnly("Path", (bs.scriptPath + ".hpp").c_str());
         EndPropertyTable();
 
         if (ImGui::Button("Clear", ImVec2(-1.0f, 0.0f)))
@@ -945,48 +974,55 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
         }
     }
 
+    if (bs.instance)
+    {
+        ImGui::Separator();
+        EditorFields visitor;
+        bs.instance->ReflectFields(visitor);
+    }
+
     EndComponent();
 
     if (removeRequested)
     {
-        m_ecs->RemoveComponent<BehaviorScript>(static_cast<EntityID>(m_ctx->selectedEntity));
+        m_ecsRef->RemoveComponent<BehaviorScript>(static_cast<EntityID>(m_ctxRef->selectedEntity));
     }
 }
 
 void InspectorPanel::generateBehaviorStub(const std::string& path, const std::string& className)
 {
-    std::string hPath = path + ".h";
+    std::string hppPath = path + ".hpp";
     std::string cppPath = path + ".cpp";
 
     // Do not overwrite existing files
-    if (std::ifstream(hPath) || std::ifstream(cppPath))
+    if (std::ifstream(hppPath) || std::ifstream(cppPath))
     {
         Debug::LogWarn("Behavior stub already exists at: %s", path.c_str());
         return;
     }
 
-    std::ofstream h(hPath);
-    if (h.is_open())
+    std::ofstream hpp(hppPath);
+    if (hpp.is_open())
     {
-        h << "#pragma once\n";
-        h << "#include <Core/Behavior/Behavior.h>\n\n";
-        h << "class " << className << " : public Nova::Behavior\n";
-        h << "{\n";
-        h << "public:\n";
-        h << "    const char* GetName() const override { return \"" << className << "\"; }\n\n";
-        h << "    void OnStart()          override {}\n";
-        h << "    void OnUpdate(float dt) override {}\n";
-        h << "    void OnDestroy()        override {}\n";
-        h << "};\n";
+        hpp << "#pragma once\n";
+        hpp << "#include <Core/Behavior/Behavior.h>\n\n";
+        hpp << "class " << className << " : public Nova::Behavior\n";
+        hpp << "{\n";
+        hpp << "public:\n";
+        hpp << "    const char* GetName() const override { return \"" << className << "\"; }\n\n";
+        hpp << "    void OnStart()          override {}\n";
+        hpp << "    void OnUpdate(float dt) override {}\n";
+        hpp << "    void OnDestroy()        override {}\n";
+        hpp << "};\n";
     }
 
     std::ofstream cpp(cppPath);
     if (cpp.is_open())
     {
-        cpp << "#include \"" << className << ".h\"\n";
+        cpp << "#include \"" << className << ".hpp\"\n";
         cpp << "#include <Core/Behavior/BehaviorRegistry.h>\n\n";
         cpp << "REGISTER_BEHAVIOR(" << className << ")\n";
     }
 
-    Debug::LogInfo("[Editor] Generated behavior stub: %s", path.c_str());
+    Debug::LogInfo("[Editor] Generated behavior stub: %s.hpp / %s.cpp", path.c_str(), path.c_str());
 }

@@ -136,7 +136,7 @@ namespace
     nlohmann::json SerializeCamera2D(const Camera2D& c)
     {
         nlohmann::json j;
-        j["isMainCamera"] = c.isMainCamera;
+        j["isMainCamera"] = c.isMain;
         j["zoom"] = c.GetZoom();
 
         std::array<float, 4> boundaries = c.GetBoundaries();

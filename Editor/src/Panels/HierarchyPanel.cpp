@@ -9,13 +9,13 @@
 
 using namespace Nova::Editor;
 
-HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctx(ctx)
+HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctxRef(ctx)
 {
-    m_ecs = Services::Fetch<ECS>(); m_contentLoader = Services::Fetch<ContentLoader>();
+    m_ecsRef = Services::Fetch<ECS>(); m_contentLoaderRef = Services::Fetch<ContentLoader>();
     
-    m_iconEntity = m_contentLoader->LoadTexture("assets/icons/icon_entity.png");
-    m_iconCamera = m_contentLoader->LoadTexture("assets/icons/icon_camera.png");
-    m_iconLight  = m_contentLoader->LoadTexture("assets/icons/icon_light.png");
+    m_iconEntity = m_contentLoaderRef->LoadTexture("assets/icons/icon_entity.png");
+    m_iconCamera = m_contentLoaderRef->LoadTexture("assets/icons/icon_camera.png");
+    m_iconLight  = m_contentLoaderRef->LoadTexture("assets/icons/icon_light.png");
 }
 
 void HierarchyPanel::drawSearchBar()
@@ -34,13 +34,13 @@ void HierarchyPanel::Draw()
     drawSearchBar();
     ImGui::Separator();
 
-    if (m_ctx->activeScene)
+    if (m_ctxRef->activeSceneRef)
         drawEntityList();
     else
         ImGui::TextDisabled("No scene open");
 
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)
-        && m_ctx->selectedEntity == -1)
+        && m_ctxRef->selectedEntity == -1)
         ImGui::OpenPopup("HierarchyContextMenu");
 
     drawContextMenu();
@@ -50,30 +50,30 @@ void HierarchyPanel::Draw()
 
 void HierarchyPanel::createEntity()
 {
-    if (!m_ctx->activeScene) 
+    if (!m_ctxRef->activeSceneRef) 
     {
         printf("[DEBUG]: No active scene\n");
         return;
     }
 
-    EntityID newEntity = m_ecs->CreateEntity();
+    EntityID newEntity = m_ecsRef->CreateEntity();
     printf("[DEBUG]: Created entity ID: %d\n", (int)newEntity);
 
     char name[64];
     std::snprintf(name, sizeof(name), "Entity_%zu",
-        m_ctx->activeScene->GetEntities().size());
+        m_ctxRef->activeSceneRef->GetEntities().size());
 
-    m_ctx->activeScene->AddEntity(newEntity, name);
+    m_ctxRef->activeSceneRef->AddEntity(newEntity, name);
     printf("[DEBUG]: Added entity '%s' to scene, total entities: %zu\n", 
-        name, m_ctx->activeScene->GetEntities().size());
+        name, m_ctxRef->activeSceneRef->GetEntities().size());
 
-    if (m_ctx->scenePanel)
-        m_ctx->scenePanel->MarkSceneAsDirty();
+    if (m_ctxRef->scenePanelRef)
+        m_ctxRef->scenePanelRef->MarkSceneAsDirty();
 }
 
 void HierarchyPanel::drawCreateButton()
 {
-    if (!m_ctx->activeScene) return;
+    if (!m_ctxRef->activeSceneRef) return;
 
     if (ImGui::Button("+ Add Entity"))
         createEntity();
@@ -81,7 +81,7 @@ void HierarchyPanel::drawCreateButton()
 
 void HierarchyPanel::drawEntityList()
 {
-    auto& entities = m_ctx->activeScene->GetEntities();
+    auto& entities = m_ctxRef->activeSceneRef->GetEntities();
 
     for (auto& node : entities)
     {
@@ -98,7 +98,7 @@ void HierarchyPanel::drawEntityList()
                 continue;  // skip entities that don't match
         }
 
-        bool selected = (m_ctx->selectedEntity == static_cast<int>(node.id));
+        bool selected = (m_ctxRef->selectedEntity == static_cast<int>(node.id));
 
         ImGui::PushID(static_cast<int>(node.id));
 
@@ -108,7 +108,7 @@ void HierarchyPanel::drawEntityList()
             ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick,
             ImVec2(0, 24)))
         {
-            m_ctx->selectedEntity = static_cast<int>(node.id);
+            m_ctxRef->selectedEntity = static_cast<int>(node.id);
         }
 
         // Check double click separately on hovered item
@@ -122,7 +122,7 @@ void HierarchyPanel::drawEntityList()
         // Right click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
         {
-            m_ctx->selectedEntity = static_cast<int>(node.id);
+            m_ctxRef->selectedEntity = static_cast<int>(node.id);
             ImGui::OpenPopup("EntityRowMenu");
         }
 
@@ -154,12 +154,12 @@ void HierarchyPanel::drawEntityList()
             {
                 node.name = m_renameBuffer;
                 m_renamingEntity = -1;
-                if (m_ctx->scenePanel)
-                    m_ctx->scenePanel->MarkSceneAsDirty();
+                if (m_ctxRef->scenePanelRef)
+                    m_ctxRef->scenePanelRef->MarkSceneAsDirty();
 
                 // Auto save after rename
-                if (m_ctx->onSaveScene)
-                    m_ctx->onSaveScene();
+                if (m_ctxRef->onSaveScene)
+                    m_ctxRef->onSaveScene();
             }
             if (ImGui::IsKeyPressed(ImGuiKey_Escape))
                 m_renamingEntity = -1;
@@ -189,16 +189,16 @@ void HierarchyPanel::drawEntityList()
             {
                 EntityID idToRemove = node.id;
 
-                m_ecs->DeleteEntity(idToRemove);
+                m_ecsRef->DeleteEntity(idToRemove);
 
-                m_ctx->activeScene->RemoveEntity(idToRemove);
+                m_ctxRef->activeSceneRef->RemoveEntity(idToRemove);
 
-                if (m_ctx->selectedEntity == static_cast<int>(idToRemove))
-                    m_ctx->selectedEntity = -1;
+                if (m_ctxRef->selectedEntity == static_cast<int>(idToRemove))
+                    m_ctxRef->selectedEntity = -1;
 
                 // Mark scene as modified
-                if (m_ctx->scenePanel)
-                    m_ctx->scenePanel->MarkSceneAsDirty();
+                if (m_ctxRef->scenePanelRef)
+                    m_ctxRef->scenePanelRef->MarkSceneAsDirty();
 
                 ImGui::EndPopup();
                 ImGui::PopID();

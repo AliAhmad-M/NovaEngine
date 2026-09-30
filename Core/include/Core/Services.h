@@ -12,27 +12,27 @@ namespace Nova
     public:
         static void Init()
         {
-            if (s_instance)
+            if (s_instanceRef)
                 Debug::LogWarn("Services already initialized");
 
-            s_instance = new Services();
+            s_instanceRef = new Services();
         }
 
         static void Shutdown()
         {
-            delete s_instance;
-            s_instance = nullptr;
+            delete s_instanceRef;
+            s_instanceRef = nullptr;
         }
 
         static Services& Get()
         {
-            if (!s_instance)
+            if (!s_instanceRef)
             {
                 static Services fallback;
                 return fallback;
             }
 
-            return *s_instance;
+            return *s_instanceRef;
         }
 
         template<typename T>
@@ -75,6 +75,6 @@ namespace Nova
         Services& operator=(const Services&) = delete;
 
         std::unordered_map<std::type_index, std::any> m_services;
-        inline static Services* s_instance = nullptr;
+        inline static Services* s_instanceRef = nullptr;
     };
 }

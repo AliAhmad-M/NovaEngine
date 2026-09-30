@@ -21,10 +21,10 @@ namespace Nova
         bool enableYSort = false;
 
     private:
-        Window* m_window;
-        Renderer* m_renderer;
-        Camera2D* m_camera2D;
-        ECS* m_ecs;
+        Window* m_windowRef;
+        Renderer* m_rendererRef;
+        Camera2D* m_camera2DRef;
+        ECS* m_ecsRef;
 
         std::vector<EntityID> m_entities;
         bool zSortingNeeded = false;

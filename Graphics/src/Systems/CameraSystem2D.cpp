@@ -8,23 +8,23 @@ using namespace Nova;
 
 CameraSystem2D::CameraSystem2D() 
 {
-    m_window = Services::Fetch<Window>();
-    m_ecs = Services::Fetch<ECS>();
+    m_windowRef = Services::Fetch<Window>();
+    m_ecsRef = Services::Fetch<ECS>();
 }
 
 void CameraSystem2D::Update(float dt)
 {
     int windowWidth, windowHeight;
-    m_window->GetSize(&windowWidth, &windowHeight);
+    m_windowRef->GetSize(&windowWidth, &windowHeight);
 
     EntityID mainCamEntity = INVALID_ENTITY;
 
     // Find the first camera flagged as main
     for (EntityID e : entities)
     {
-        Camera2D* c = m_ecs->GetComponent<Camera2D>(e);
+        Camera2D* c = m_ecsRef->GetComponent<Camera2D>(e);
         if (!c) continue;
-        if (c->isMainCamera)
+        if (c->isMain)
         {
             mainCamEntity = e;
             break;
@@ -36,7 +36,7 @@ void CameraSystem2D::Update(float dt)
     // Update and register / unregister
     if (mainCamEntity != INVALID_ENTITY)
     {
-        Camera2D* c = m_ecs->GetComponent<Camera2D>(mainCamEntity);
+        Camera2D* c = m_ecsRef->GetComponent<Camera2D>(mainCamEntity);
 
         // Update camera state
         c->SetViewportSize(windowWidth, windowHeight);

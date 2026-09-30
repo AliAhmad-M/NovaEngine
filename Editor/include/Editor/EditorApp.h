@@ -35,8 +35,9 @@ namespace Nova::Editor
         bool m_running            = true;
         bool m_layoutInitialized  = false;
         bool m_openSceneRequested = false;
+        double m_lastFrameTime    = 0.0;
 
-        GLFWwindow* m_window = nullptr;
+        GLFWwindow* m_nativeWindow = nullptr;
 
         Engine m_runtime;
         Context m_ctx;

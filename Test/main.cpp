@@ -15,8 +15,8 @@ int main()
     // Setup scenes
     std::string defaultScene = 
         (std::filesystem::path(PROJECT_DIR) 
-            / "project" 
-            / "scenes" 
+            / "project"
+            / "scenes"
             / "SampleScene.nova"
     ).string();
     SceneManager* sceneManager = Services::Fetch<SceneManager>();

@@ -15,21 +15,21 @@ static const float MAX_Y_RANGE = 100000.0f;
 
 SpriteSystem2D::SpriteSystem2D()
 {
-    m_window = Services::Fetch<Window>();
-    m_renderer = Services::Fetch<Renderer>();
-    m_ecs = Services::Fetch<ECS>();
-    m_camera2D = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
+    m_windowRef = Services::Fetch<Window>();
+    m_rendererRef = Services::Fetch<Renderer>();
+    m_ecsRef = Services::Fetch<ECS>();
+    m_camera2DRef = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
 }
 
 void SpriteSystem2D::Update(float dt)
 {
-    m_camera2D = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
+    m_camera2DRef = Services::Has<Camera2D>() ? Services::Fetch<Camera2D>() : nullptr;
 
     int windowWidth, windowHeight;
-    m_window->GetSize(&windowWidth, &windowHeight);
+    m_windowRef->GetSize(&windowWidth, &windowHeight);
 
-    Vector2 camOffset = m_camera2D ? m_camera2D->GetOffset() : Vector2::ZERO;
-    float zoom = m_camera2D ? m_camera2D->GetZoom() : 1.0f;
+    Vector2 camOffset = m_camera2DRef ? m_camera2DRef->GetOffset() : Vector2::ZERO;
+    float zoom = m_camera2DRef ? m_camera2DRef->GetZoom() : 1.0f;
 
     float cullLeft = camOffset.x - CAMERA_MARGIN;
     float cullRight = camOffset.x + (windowWidth / zoom) + CAMERA_MARGIN;
@@ -41,8 +41,8 @@ void SpriteSystem2D::Update(float dt)
     for (size_t i = 0; i < m_entities.size(); i++)
     {
         EntityID e = m_entities[i];
-        auto* t = m_ecs->GetComponent<Transform2D>(e);
-        auto* s = m_ecs->GetComponent<Sprite2D>(e);
+        auto* t = m_ecsRef->GetComponent<Transform2D>(e);
+        auto* s = m_ecsRef->GetComponent<Sprite2D>(e);
 
         if (!s->texture) continue;
 
@@ -98,7 +98,7 @@ void SpriteSystem2D::Update(float dt)
             depth += (ySortOrigin / MAX_Y_RANGE);
         }
 
-        m_renderer->DrawQuad(
+        m_rendererRef->DrawQuad(
             texHandle,
             { screenX, screenY },
             { screenW, screenH },

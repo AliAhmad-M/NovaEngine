@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="include\Core\Behavior\Behavior.h" />
     <ClInclude Include="include\Core\Behavior\BehaviorRegistry.h" />
+    <ClInclude Include="include\Core\Behavior\Inspectables.h" />
     <ClInclude Include="include\Core\Components.h" />
     <ClInclude Include="include\Core\Components\BehaviorScript.h" />
     <ClInclude Include="include\Core\Components\Transform2D.h" />

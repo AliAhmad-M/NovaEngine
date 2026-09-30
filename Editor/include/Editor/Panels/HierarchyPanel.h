@@ -26,14 +26,14 @@ namespace Nova::Editor
         void createEntity();
         void drawSearchBar();
 
-        Context* m_ctx = nullptr;
+        Context* m_ctxRef = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;
 
         Texture* m_iconEntity;
         Texture* m_iconCamera;
         Texture* m_iconLight;
 
-        ECS* m_ecs;
-        ContentLoader* m_contentLoader;
+        ECS* m_ecsRef;
+        ContentLoader* m_contentLoaderRef;
     };
 }

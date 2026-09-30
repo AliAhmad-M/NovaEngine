@@ -14,7 +14,7 @@ namespace Nova
 		void OnAllEntitiesRemoved() override {}
 
 	private:
-		Window* m_window;
-		ECS* m_ecs;
+		Window* m_windowRef;
+		ECS* m_ecsRef;
 	};
 }

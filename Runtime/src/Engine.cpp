@@ -96,6 +96,16 @@ void Engine::Update()
     }
 }
 
+void Engine::UpdateEditorGame(double dt) 
+{
+    m_inputMap.Update(m_window.GetNativeWindow());
+
+    m_ecs.GetSystem<ScriptSystem>()->Update((float)dt);
+    m_ecs.GetSystem<CameraSystem2D>()->Update((float)dt);
+    m_ecs.GetSystem<RigidBodySystem2D>()->Update((float)dt);
+    m_ecs.GetSystem<TilemapSystem2D>()->Update();
+}
+
 void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, targetFBO);

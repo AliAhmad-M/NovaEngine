@@ -15,8 +15,10 @@ namespace Nova
 	public:
 		bool Init();
 		void Update();
-		void RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight);
 		void Close();
+
+		void UpdateEditorGame(double dt);
+		void RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight);
 
 	private:
 		void renderApplication();

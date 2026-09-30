@@ -1,11 +1,12 @@
 #pragma once
 
 #include <Core/Utilities/Vector2.h>
+#include <Core/Behavior/Inspectables.h>
 #include <cmath>
 
 namespace Nova 
 {
-    /**
+/**
  * @brief Transform data in a 2D plane
  */
     struct Transform2D
@@ -19,6 +20,13 @@ namespace Nova
         {
             this->scale.x = std::max(0.001f, scale.x);
             this->scale.y = std::max(0.001f, scale.y);
+        }
+
+        void ReflectFields(Inspectables& visitor)
+        {
+            visitor.Vec2("Position", &position);
+            visitor.Float("Rotation", &rotation);
+            visitor.Vec2("Scale", &scale);
         }
     };
 }
