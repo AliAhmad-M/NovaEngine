@@ -12,12 +12,12 @@ using namespace Nova::Editor;
 
 HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctxRef(ctx)
 {
-    m_ecs = Services::Fetch<ECS>();
-    m_contentLoader = Services::Fetch<ContentLoader>();
+    m_ecsRef = Services::Fetch<ECS>();
+    m_contentLoaderRef = Services::Fetch<ContentLoader>();
 
-    m_iconEntity = m_contentLoader->LoadTexture("assets/icons/icon_entity.png");
-    m_iconCamera = m_contentLoader->LoadTexture("assets/icons/icon_camera.png");
-    m_iconLight = m_contentLoader->LoadTexture("assets/icons/icon_light.png");
+    m_iconEntity = m_contentLoaderRef->LoadTexture("assets/icons/icon_entity.png");
+    m_iconCamera = m_contentLoaderRef->LoadTexture("assets/icons/icon_camera.png");
+    m_iconLight = m_contentLoaderRef->LoadTexture("assets/icons/icon_light.png");
 }
 
 void HierarchyPanel::drawSearchBar()
@@ -52,16 +52,16 @@ void HierarchyPanel::Draw()
 
 void HierarchyPanel::createEntity(EntityID parentId)
 {
-    if (!m_ctx->activeScene)
+    if (!m_ctxRef->activeSceneRef)
         return;
 
-    EntityID newEntity = m_ecs->CreateEntity();
+    EntityID newEntity = m_ecsRef->CreateEntity();
 
     char name[64];
     std::snprintf(name, sizeof(name), "Entity_%zu",
         m_ctxRef->activeSceneRef->GetEntities().size());
 
-    m_ctx->activeScene->AddEntity(newEntity, name, parentId);
+    m_ctxRef->activeSceneRef->AddEntity(newEntity, name, parentId);
 
     if (m_ctxRef->scenePanelRef)
         m_ctxRef->scenePanelRef->MarkSceneAsDirty();
@@ -79,7 +79,7 @@ void HierarchyPanel::drawEntityList()
 {
     auto& entities = m_ctxRef->activeSceneRef->GetEntities();
 
-    // Draw only root entities — children drawn recursively inside drawEntityNode
+    // Draw only root entities
     for (auto& node : entities)
     {
         if (node.parentId != NO_PARENT) continue;
@@ -100,8 +100,8 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         if (name.find(search) == std::string::npos) return;
     }
 
-    bool selected = (m_ctx->selectedEntity == static_cast<int>(node.id));
-    auto children = m_ctx->activeScene->GetChildren(node.id);
+    bool selected = (m_ctxRef->selectedEntity == static_cast<int>(node.id));
+    auto children = m_ctxRef->activeSceneRef->GetChildren(node.id);
     bool hasChildren = !children.empty();
 
     ImGui::PushID(static_cast<int>(node.id));
@@ -122,7 +122,7 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         ImVec2(0, 24));
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-        m_ctx->selectedEntity = static_cast<int>(node.id);
+        m_ctxRef->selectedEntity = static_cast<int>(node.id);
 
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
     {
@@ -133,7 +133,7 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
     {
-        m_ctx->selectedEntity = static_cast<int>(node.id);
+        m_ctxRef->selectedEntity = static_cast<int>(node.id);
         ImGui::OpenPopup("EntityRowMenu");
     }
 
@@ -155,9 +155,9 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
             EntityID draggedId = *(const EntityID*)payload->Data;
             if (draggedId != node.id)
             {
-                m_ctx->activeScene->SetParent(draggedId, node.id);
-                if (m_ctx->scenePanel)
-                    m_ctx->scenePanel->MarkSceneAsDirty();
+                m_ctxRef->activeSceneRef->SetParent(draggedId, node.id);
+                if (m_ctxRef->scenePanelRef)
+                    m_ctxRef->scenePanelRef->MarkSceneAsDirty();
             }
         }
         ImGui::EndDragDropTarget();
@@ -176,13 +176,13 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
 
     if (m_iconEntity && m_iconEntity->GetHandle())
     {
-        ImGui::ImageWithBg(
+        ImGui::Image(
             (ImTextureID)(intptr_t)m_iconEntity->GetHandle(),
             ImVec2(20, 20),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            ImVec4(0, 0, 0, 0),  // transparent background
-            tint                  // tint color
+            tint,
+            ImVec4(0, 0, 0, 0)
         );
         ImGui::SameLine();
     }
@@ -199,10 +199,10 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         {
             node.name = m_renameBuffer;
             m_renamingEntity = -1;
-            if (m_ctx->scenePanel)
-                m_ctx->scenePanel->MarkSceneAsDirty();
-            if (m_ctx->onSaveScene)
-                m_ctx->onSaveScene();
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+            if (m_ctxRef->onSaveScene)
+                m_ctxRef->onSaveScene();
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
             m_renamingEntity = -1;
@@ -234,9 +234,9 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
 
         if (node.parentId != NO_PARENT && ImGui::MenuItem("Unparent"))
         {
-            m_ctx->activeScene->SetParent(node.id, NO_PARENT);
-            if (m_ctx->scenePanel)
-                m_ctx->scenePanel->MarkSceneAsDirty();
+            m_ctxRef->activeSceneRef->SetParent(node.id, NO_PARENT);
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
             ImGui::CloseCurrentPopup();
         }
 
@@ -245,12 +245,12 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         if (ImGui::MenuItem("Delete"))
         {
             EntityID idToRemove = node.id;
-            m_ecs->DeleteEntity(idToRemove);
-            m_ctx->activeScene->RemoveEntity(idToRemove);
-            if (m_ctx->selectedEntity == static_cast<int>(idToRemove))
-                m_ctx->selectedEntity = -1;
-            if (m_ctx->scenePanel)
-                m_ctx->scenePanel->MarkSceneAsDirty();
+            m_ecsRef->DeleteEntity(idToRemove);
+            m_ctxRef->activeSceneRef->RemoveEntity(idToRemove);
+            if (m_ctxRef->selectedEntity == static_cast<int>(idToRemove))
+                m_ctxRef->selectedEntity = -1;
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
             ImGui::EndPopup();
             if (open) ImGui::TreePop();
             ImGui::PopID();

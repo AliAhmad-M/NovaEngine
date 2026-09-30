@@ -852,11 +852,11 @@ void ScenePanel::MarkSceneAsDirty()
 
 void ScenePanel::drawGizmo()
 {
-    if (m_ctx->selectedEntity == -1) return;
-    if (!m_ctx->activeScene) return;
+    if (m_ctxRef->selectedEntity == -1) return;
+    if (!m_ctxRef->activeSceneRef) return;
 
     ECS* ecs = Services::Fetch<ECS>();
-    EntityID entity = static_cast<EntityID>(m_ctx->selectedEntity);
+    EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
 
     Transform2D* transform = ecs->GetComponent<Transform2D>(entity);
     if (!transform) return;
@@ -899,9 +899,7 @@ void ScenePanel::drawGizmo()
         0,0,0,1
     };
 
-    // Build entity transform matrix (translation, rotation in DEGREES, scale).
-    // NOTE: if Transform2D::rotation is stored in radians, multiply by 57.29578f here
-    // and by 0.01745329f when writing back below.
+    // Build entity transform matrix
     float translation[3] = { transform->position.x, transform->position.y, 0.0f };
     float rotation[3] = { 0.0f, 0.0f, transform->rotation };
     float scale[3] = { transform->scale.x, transform->scale.y, 1.0f };
@@ -912,7 +910,7 @@ void ScenePanel::drawGizmo()
     // Draw gizmo
     ImGuizmo::Manipulate(view, proj, m_gizmoOp, m_gizmoMode, matrix);
 
-    // If gizmo was used, write back only the component matching the active operation
+    // If gizmo was used, update component
     if (ImGuizmo::IsUsing())
     {
         float newT[3], newR[3], newS[3];
@@ -933,8 +931,8 @@ void ScenePanel::drawGizmo()
             transform->scale.y = newS[1];
         }
 
-        if (m_ctx->scenePanel)
-            m_ctx->scenePanel->MarkSceneAsDirty();
+        if (m_ctxRef->scenePanelRef)
+            m_ctxRef->scenePanelRef->MarkSceneAsDirty();
     }
 }
 

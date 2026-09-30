@@ -131,7 +131,7 @@ bool EditorApp::Init()
 {
     // Init runtime
     m_runtime.Init();
-    m_window = Services::Fetch<Window>()->GetNativeWindow();
+    m_nativeWindow = Services::Fetch<Window>()->GetNativeWindow();
 
     // Initialize ImGui
     IMGUI_CHECKVERSION();
@@ -159,7 +159,7 @@ bool EditorApp::Init()
     m_sceneSerializer = std::make_unique<SceneSerializer>();
 
     // Set scene panel reference in context for dirty marking
-    m_ctx.scenePanel = m_scenePanel.get();
+    m_ctx.scenePanelRef = m_scenePanel.get();
 
     m_ctx.onSaveScene = [this]() { saveActiveScene(); };
 
@@ -213,8 +213,8 @@ void EditorApp::Run()
             });
 
         // Render scene into FBO
-        int vpW = m_scenePanel->GetViewportWidth();
-        int vpH = m_scenePanel->GetViewportHeight();
+        int vpW = m_scenePanel->GetSceneViewportWidth();
+        int vpH = m_scenePanel->GetSceneViewportHeight();
         if (vpW > 0 && vpH > 0)
         {
             Services::Register<Camera2D>(&m_scenePanel->GetEditorCamera());
