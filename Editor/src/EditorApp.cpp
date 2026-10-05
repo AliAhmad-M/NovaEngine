@@ -29,99 +29,109 @@ static void applyTheme()
 
     // Rounding
     style.WindowRounding = 0.0f;
-    style.ChildRounding = 0.0f;
-    style.FrameRounding = 2.0f;
-    style.GrabRounding = 2.0f;
-    style.PopupRounding = 2.0f;
-    style.ScrollbarRounding = 2.0f;
-    style.TabRounding = 2.0f;
+    style.ChildRounding = 6.0f;
+    style.FrameRounding = 6.0f;
+    style.PopupRounding = 8.0f;
+    style.GrabRounding = 6.0f;
+    style.ScrollbarRounding = 12.0f;
+    style.TabRounding = 6.0f;
 
     // Sizing
-    style.WindowPadding = ImVec2(8.0f, 8.0f);
-    style.FramePadding = ImVec2(4.0f, 3.0f);
-    style.ItemSpacing = ImVec2(8.0f, 4.0f);
-    style.ItemInnerSpacing = ImVec2(4.0f, 4.0f);
-    style.IndentSpacing = 16.0f;
-    style.ScrollbarSize = 12.0f;
-    style.GrabMinSize = 8.0f;
+    style.WindowPadding = ImVec2(10.0f, 10.0f);
+    style.FramePadding = ImVec2(8.0f, 5.0f);
+    style.ItemSpacing = ImVec2(8.0f, 6.0f);
+    style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
+    style.IndentSpacing = 18.0f;
+    style.ScrollbarSize = 10.0f;
+    style.GrabMinSize = 10.0f;
+
+    // Borders
     style.WindowBorderSize = 1.0f;
+    style.ChildBorderSize = 0.0f;
+    style.PopupBorderSize = 1.0f;
     style.FrameBorderSize = 0.0f;
     style.TabBorderSize = 0.0f;
 
-    // Colors
+    style.WindowMenuButtonPosition = ImGuiDir_None;
+    style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
+
+    // Palette
+    auto rgb = [](int r, int g, int b, float a = 1.0f)
+        {
+            return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a);
+        };
+
+    const ImVec4 accent = rgb(66, 150, 255);
+    const ImVec4 accentHover = rgb(92, 168, 255);
+    const ImVec4 accentActive = rgb(46, 128, 235);
+
     ImVec4* c = style.Colors;
 
-    // Backgrounds
-    c[ImGuiCol_WindowBg] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
-    c[ImGuiCol_ChildBg] = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
-    c[ImGuiCol_PopupBg] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+    // Surfaces
+    c[ImGuiCol_WindowBg] = rgb(36, 38, 43);
+    c[ImGuiCol_ChildBg] = rgb(31, 33, 37);
+    c[ImGuiCol_PopupBg] = rgb(40, 42, 48);
 
-    // Borders
-    c[ImGuiCol_Border] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
-    c[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    c[ImGuiCol_Border] = rgb(24, 25, 29);
+    c[ImGuiCol_BorderShadow] = rgb(0, 0, 0, 0.0f);
 
-    // Frame (inputs, checkboxes)
-    c[ImGuiCol_FrameBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-    c[ImGuiCol_FrameBgHovered] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
-    c[ImGuiCol_FrameBgActive] = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
+    // Inputs
+    c[ImGuiCol_FrameBg] = rgb(26, 27, 31);
+    c[ImGuiCol_FrameBgHovered] = rgb(33, 35, 40);
+    c[ImGuiCol_FrameBgActive] = rgb(40, 43, 50);
 
-    // Title bars
-    c[ImGuiCol_TitleBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-    c[ImGuiCol_TitleBgActive] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
-    c[ImGuiCol_TitleBgCollapsed] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-
-    // Menu bar
-    c[ImGuiCol_MenuBarBg] = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
+    // Title
+    c[ImGuiCol_TitleBg] = rgb(26, 27, 31);
+    c[ImGuiCol_TitleBgActive] = rgb(31, 33, 37);
+    c[ImGuiCol_TitleBgCollapsed] = rgb(26, 27, 31);
+    c[ImGuiCol_MenuBarBg] = rgb(31, 33, 37);
 
     // Scrollbar
-    c[ImGuiCol_ScrollbarBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-    c[ImGuiCol_ScrollbarGrab] = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-    c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.42f, 0.42f, 0.42f, 1.00f);
-    c[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+    c[ImGuiCol_ScrollbarBg] = rgb(0, 0, 0, 0.0f);
+    c[ImGuiCol_ScrollbarGrab] = rgb(70, 74, 84);
+    c[ImGuiCol_ScrollbarGrabHovered] = rgb(90, 95, 107);
+    c[ImGuiCol_ScrollbarGrabActive] = rgb(110, 116, 130);
 
-    // Checkmark and slider
-    c[ImGuiCol_CheckMark] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
-    c[ImGuiCol_SliderGrab] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
-    c[ImGuiCol_SliderGrabActive] = ImVec4(0.56f, 0.78f, 1.00f, 1.00f);
+    // Accent controls
+    c[ImGuiCol_CheckMark] = accent;
+    c[ImGuiCol_SliderGrab] = accent;
+    c[ImGuiCol_SliderGrabActive] = accentHover;
 
     // Buttons
-    c[ImGuiCol_Button] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-    c[ImGuiCol_ButtonHovered] = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-    c[ImGuiCol_ButtonActive] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
+    c[ImGuiCol_Button] = rgb(58, 62, 71);
+    c[ImGuiCol_ButtonHovered] = rgb(72, 77, 88);
+    c[ImGuiCol_ButtonActive] = accentActive;
 
-    // Headers (TreeNode, CollapsingHeader, Selectable)
-    c[ImGuiCol_Header] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-    c[ImGuiCol_HeaderHovered] = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-    c[ImGuiCol_HeaderActive] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
+    // Headers
+    c[ImGuiCol_Header] = rgb(66, 150, 255, 0.32f);
+    c[ImGuiCol_HeaderHovered] = rgb(255, 255, 255, 0.07f);
+    c[ImGuiCol_HeaderActive] = rgb(66, 150, 255, 0.50f);
 
-    // Separator
-    c[ImGuiCol_Separator] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
-    c[ImGuiCol_SeparatorHovered] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
-    c[ImGuiCol_SeparatorActive] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
+    // Separators / docking splitters
+    c[ImGuiCol_Separator] = rgb(24, 25, 29);
+    c[ImGuiCol_SeparatorHovered] = accent;
+    c[ImGuiCol_SeparatorActive] = accentHover;
 
-    // Resize grip
-    c[ImGuiCol_ResizeGrip] = ImVec4(0.44f, 0.70f, 1.00f, 0.20f);
-    c[ImGuiCol_ResizeGripHovered] = ImVec4(0.44f, 0.70f, 1.00f, 0.67f);
-    c[ImGuiCol_ResizeGripActive] = ImVec4(0.44f, 0.70f, 1.00f, 0.95f);
+    c[ImGuiCol_ResizeGrip] = rgb(66, 150, 255, 0.15f);
+    c[ImGuiCol_ResizeGripHovered] = rgb(66, 150, 255, 0.60f);
+    c[ImGuiCol_ResizeGripActive] = rgb(66, 150, 255, 0.90f);
 
     // Tabs
-    c[ImGuiCol_Tab] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
-    c[ImGuiCol_TabHovered] = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-    c[ImGuiCol_TabActive] = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
-    c[ImGuiCol_TabUnfocused] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-    c[ImGuiCol_TabUnfocusedActive] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+    c[ImGuiCol_Tab] = rgb(31, 33, 37);
+    c[ImGuiCol_TabHovered] = rgb(58, 62, 71);
+    c[ImGuiCol_TabActive] = rgb(46, 49, 56);
+    c[ImGuiCol_TabUnfocused] = rgb(31, 33, 37);
+    c[ImGuiCol_TabUnfocusedActive] = rgb(40, 43, 49);
 
     // Docking
-    c[ImGuiCol_DockingPreview] = ImVec4(0.44f, 0.70f, 1.00f, 0.70f);
-    c[ImGuiCol_DockingEmptyBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
+    c[ImGuiCol_DockingPreview] = rgb(66, 150, 255, 0.45f);
+    c[ImGuiCol_DockingEmptyBg] = rgb(22, 23, 26);
 
     // Text
-    c[ImGuiCol_Text] = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
-    c[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-
-    // Highlight
-    c[ImGuiCol_TextSelectedBg] = ImVec4(0.44f, 0.70f, 1.00f, 0.35f);
-    c[ImGuiCol_NavHighlight] = ImVec4(0.44f, 0.70f, 1.00f, 1.00f);
+    c[ImGuiCol_Text] = rgb(224, 227, 233);
+    c[ImGuiCol_TextDisabled] = rgb(120, 126, 140);
+    c[ImGuiCol_TextSelectedBg] = rgb(66, 150, 255, 0.35f);
+    c[ImGuiCol_NavHighlight] = accent;
 }
 
 EditorApp::EditorApp() = default;
@@ -140,6 +150,15 @@ bool EditorApp::Init()
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
+    io.ConfigDragClickToInputText = true;
+
+    ImFont* font = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf", 20.0f);
+    if (!font)
+    {
+        Debug::LogError("Failed to load editor font, using default");
+        io.Fonts->AddFontDefault();
+    }
 
     ImGui_ImplGlfw_InitForOpenGL(m_nativeWindow, true);
     ImGui_ImplOpenGL3_Init("#version 330");

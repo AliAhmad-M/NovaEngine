@@ -20,12 +20,19 @@ namespace Nova::Editor
         int  m_renamingEntity = -1;
         char m_renameBuffer[128] = {};
         char m_searchBuffer[128] = {};
+        int  m_pendingDelete = -1;
+        bool m_hasPendingCreate = false;
+        EntityID m_pendingCreateParent = NO_PARENT;
+
+
         void drawEntityList();
         void drawContextMenu();
         void drawCreateButton();
         void createEntity(EntityID parentId = NO_PARENT);
         void drawEntityNode(SceneEntity& node, std::vector<SceneEntity>& entities);
         void drawSearchBar();
+        void processPending();
+        void deleteEntityRecursive(EntityID id);
 
         Context* m_ctxRef = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;

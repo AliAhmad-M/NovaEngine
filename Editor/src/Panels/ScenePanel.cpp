@@ -876,13 +876,11 @@ void ScenePanel::drawGizmo()
     Vector2 camOffset = m_editorCamera.GetOffset();
 
     // Build orthographic projection matrix
-    float halfW = (viewportSize.x * 0.5f) / zoom;
-    float halfH = (viewportSize.y * 0.5f) / zoom;
 
-    float left = camOffset.x - halfW;
-    float right = camOffset.x + halfW;
-    float top = camOffset.y - halfH;
-    float bottom = camOffset.y + halfH;
+    float left = camOffset.x;
+    float right = camOffset.x + viewportSize.x / zoom;
+    float top = camOffset.y;
+    float bottom = camOffset.y + viewportSize.y / zoom;
 
     float proj[16] = {
         2.0f / (right - left),  0,                  0,  0,

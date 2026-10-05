@@ -13,7 +13,7 @@ namespace Nova::Editor
     {
         EntityID    id = 0;
         std::string name;
-        EntityID    parentId = NO_PARENT;  // add this
+        EntityID    parentId = NO_PARENT;
     };
 
     struct SceneCamera

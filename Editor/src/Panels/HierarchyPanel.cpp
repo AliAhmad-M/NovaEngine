@@ -41,6 +41,8 @@ void HierarchyPanel::Draw()
     else
         ImGui::TextDisabled("No scene open");
 
+    processPending();
+
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)
         && m_ctxRef->selectedEntity == -1)
         ImGui::OpenPopup("HierarchyContextMenu");
@@ -87,8 +89,7 @@ void HierarchyPanel::drawEntityList()
     }
 }
 
-void HierarchyPanel::drawEntityNode(SceneEntity& node,
-    std::vector<SceneEntity>& entities)
+void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>& entities)
 {
     // Apply search filter
     if (m_searchBuffer[0] != '\0')
@@ -100,28 +101,38 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         if (name.find(search) == std::string::npos) return;
     }
 
+    constexpr float rowH = 24.0f;
+    constexpr float iconSize = 24.0f;
+    constexpr float iconGap = 6.0f;
+
     bool selected = (m_ctxRef->selectedEntity == static_cast<int>(node.id));
     auto children = m_ctxRef->activeSceneRef->GetChildren(node.id);
     bool hasChildren = !children.empty();
 
     ImGui::PushID(static_cast<int>(node.id));
 
-    ImVec2 rowPos = ImGui::GetCursorPos();
-
     ImGuiTreeNodeFlags treeFlags =
         ImGuiTreeNodeFlags_OpenOnArrow |
         ImGuiTreeNodeFlags_SpanAvailWidth |
+        ImGuiTreeNodeFlags_FramePadding |
         ImGuiTreeNodeFlags_AllowOverlap;
 
     if (selected)     treeFlags |= ImGuiTreeNodeFlags_Selected;
     if (!hasChildren) treeFlags |= ImGuiTreeNodeFlags_Leaf;
 
-    // Invisible selectable as full row background
-    ImGui::Selectable("##bg", selected,
-        ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick,
-        ImVec2(0, 24));
+    // Pad vertically so the node is exactly rowH tall
+    float padY = (rowH - ImGui::GetFontSize()) * 0.5f;
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+        ImVec2(ImGui::GetStyle().FramePadding.x, padY));
+    bool open = ImGui::TreeNodeEx("##node", treeFlags);
+    ImGui::PopStyleVar();
 
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+    // Grab the row rect immediately
+    ImVec2 rMin = ImGui::GetItemRectMin();
+    ImVec2 rMax = ImGui::GetItemRectMax();
+
+    // Selection
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
         m_ctxRef->selectedEntity = static_cast<int>(node.id);
 
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -132,13 +143,10 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
     }
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-    {
         m_ctxRef->selectedEntity = static_cast<int>(node.id);
-        ImGui::OpenPopup("EntityRowMenu");
-    }
 
     // Drag source
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+    if (ImGui::BeginDragDropSource())
     {
         EntityID dragId = node.id;
         ImGui::SetDragDropPayload("ENTITY_ID", &dragId, sizeof(EntityID));
@@ -146,11 +154,10 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         ImGui::EndDragDropSource();
     }
 
-    // Drop target — drop onto entity to parent it
+    // Drop target
     if (ImGui::BeginDragDropTarget())
     {
-        if (const ImGuiPayload* payload =
-            ImGui::AcceptDragDropPayload("ENTITY_ID"))
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_ID"))
         {
             EntityID draggedId = *(const EntityID*)payload->Data;
             if (draggedId != node.id)
@@ -163,35 +170,62 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         ImGui::EndDragDropTarget();
     }
 
-    // Draw tree node arrow + icon + name on same row
-    ImGui::SetCursorPos(rowPos);
-    std::string hiddenLabel = "##node_" + std::to_string(node.id);
-    bool open = ImGui::TreeNodeEx(hiddenLabel.c_str(), treeFlags);
+    // Context menu
+    if (ImGui::BeginPopupContextItem("EntityRowMenu"))
+    {
+        ImGui::TextDisabled("%s", node.name.c_str());
+        ImGui::Separator();
 
-    ImGui::SameLine();
+        if (ImGui::MenuItem("Rename"))
+        {
+            m_renamingEntity = static_cast<int>(node.id);
+            std::strncpy(m_renameBuffer, node.name.c_str(), sizeof(m_renameBuffer));
+            m_renameBuffer[sizeof(m_renameBuffer) - 1] = '\0';
+        }
 
-    ImVec4 tint = selected
-        ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
-        : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+        if (ImGui::MenuItem("Create Child Entity"))
+        {
+            m_hasPendingCreate = true;
+            m_pendingCreateParent = node.id;
+        }
+
+        if (node.parentId != NO_PARENT && ImGui::MenuItem("Unparent"))
+        {
+            m_ctxRef->activeSceneRef->SetParent(node.id, NO_PARENT);
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Delete"))
+            m_pendingDelete = static_cast<int>(node.id);
+
+        ImGui::EndPopup();
+    }
+
+    // Icon + label, centered on the row
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    float cy = (rMin.y + rMax.y) * 0.5f;
+    float x = rMin.x + ImGui::GetTreeNodeToLabelSpacing();
 
     if (m_iconEntity && m_iconEntity->GetHandle())
     {
-        ImGui::Image(
+        ImU32 tint = selected ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(153, 153, 153, 255);
+        dl->AddImage(
             (ImTextureID)(intptr_t)m_iconEntity->GetHandle(),
-            ImVec2(20, 20),
-            ImVec2(0, 0),
-            ImVec2(1, 1),
-            tint,
-            ImVec4(0, 0, 0, 0)
-        );
-        ImGui::SameLine();
+            ImVec2(x, cy - iconSize * 0.5f),
+            ImVec2(x + iconSize, cy + iconSize * 0.5f),
+            ImVec2(0, 0), ImVec2(1, 1), tint);
+        x += iconSize + iconGap;
     }
 
-    ImGui::SetCursorPosY(rowPos.y + 4.0f);
-
-    // Rename input or label
     if (m_renamingEntity == static_cast<int>(node.id))
     {
+        ImVec2 next = ImGui::GetCursorScreenPos();   // where the next row starts
+        ImGui::SetCursorScreenPos(ImVec2(x, cy - ImGui::GetFrameHeight() * 0.5f));
+
         ImGui::SetNextItemWidth(150.0f);
         ImGui::SetKeyboardFocusHere();
         if (ImGui::InputText("##rename", m_renameBuffer, sizeof(m_renameBuffer),
@@ -206,61 +240,16 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node,
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
             m_renamingEntity = -1;
+
+        ImGui::SetCursorScreenPos(next);
     }
     else
     {
-        ImGui::Text("%s", node.name.c_str());
+        dl->AddText(ImVec2(x, cy - ImGui::GetFontSize() * 0.5f),
+            ImGui::GetColorU32(ImGuiCol_Text), node.name.c_str());
     }
 
-    // Context menu
-    if (ImGui::BeginPopup("EntityRowMenu"))
-    {
-        ImGui::TextDisabled("%s", node.name.c_str());
-        ImGui::Separator();
-
-        if (ImGui::MenuItem("Rename"))
-        {
-            m_renamingEntity = static_cast<int>(node.id);
-            std::strncpy(m_renameBuffer, node.name.c_str(), sizeof(m_renameBuffer));
-            m_renameBuffer[sizeof(m_renameBuffer) - 1] = '\0';
-            ImGui::CloseCurrentPopup();
-        }
-
-        if (ImGui::MenuItem("Create Child Entity"))
-        {
-            createEntity(node.id);
-            ImGui::CloseCurrentPopup();
-        }
-
-        if (node.parentId != NO_PARENT && ImGui::MenuItem("Unparent"))
-        {
-            m_ctxRef->activeSceneRef->SetParent(node.id, NO_PARENT);
-            if (m_ctxRef->scenePanelRef)
-                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::Separator();
-
-        if (ImGui::MenuItem("Delete"))
-        {
-            EntityID idToRemove = node.id;
-            m_ecsRef->DeleteEntity(idToRemove);
-            m_ctxRef->activeSceneRef->RemoveEntity(idToRemove);
-            if (m_ctxRef->selectedEntity == static_cast<int>(idToRemove))
-                m_ctxRef->selectedEntity = -1;
-            if (m_ctxRef->scenePanelRef)
-                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
-            ImGui::EndPopup();
-            if (open) ImGui::TreePop();
-            ImGui::PopID();
-            return;
-        }
-
-        ImGui::EndPopup();
-    }
-
-    // Draw children recursively
+    // Children
     if (open)
     {
         for (auto& child : entities)
@@ -280,4 +269,41 @@ void HierarchyPanel::drawContextMenu()
             createEntity(NO_PARENT);
         ImGui::EndPopup();
     }
+}
+
+void HierarchyPanel::processPending()
+{
+    if (m_pendingDelete != -1)
+    {
+        deleteEntityRecursive(static_cast<EntityID>(m_pendingDelete));
+        m_pendingDelete = -1;
+
+        if (m_ctxRef->scenePanelRef)
+            m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+    }
+
+    if (m_hasPendingCreate)
+    {
+        createEntity(m_pendingCreateParent);
+        m_hasPendingCreate = false;
+    }
+}
+
+void HierarchyPanel::deleteEntityRecursive(EntityID id)
+{
+    auto& entities = m_ctxRef->activeSceneRef->GetEntities();
+
+    std::vector<EntityID> children;
+    for (auto& e : entities)
+        if (e.parentId == id)
+            children.push_back(e.id);
+
+    for (EntityID c : children)
+        deleteEntityRecursive(c);
+
+    m_ecsRef->DeleteEntity(id);
+    m_ctxRef->activeSceneRef->RemoveEntity(id);
+
+    if (m_ctxRef->selectedEntity == static_cast<int>(id))
+        m_ctxRef->selectedEntity = -1;
 }

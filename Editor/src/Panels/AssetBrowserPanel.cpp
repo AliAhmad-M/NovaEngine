@@ -161,64 +161,84 @@ void AssetBrowserPanel::DrawToolbar()
     ImGui::SliderFloat("##iconSize", &m_iconSize, 32.0f, 96.0f, "%.0f");
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Icon size");
 }
+
 void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
 {
-    if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root)) return;
+    std::error_code ec;
+    if (!std::filesystem::is_directory(root, ec)) return;
 
     auto tmp = root;
-    if (!tmp.has_filename() || tmp.filename().empty())
+    if (!tmp.has_filename())
         tmp = tmp.parent_path();
     std::string label = tmp.filename().string();
     if (label.empty()) label = tmp.string();
+
+    // Collect subdirectories once
+    std::vector<std::filesystem::path> subDirs;
+    for (const auto& e : std::filesystem::directory_iterator(root, ec))
+        if (e.is_directory(ec))
+            subDirs.push_back(e.path());
+    std::sort(subDirs.begin(), subDirs.end());
+
+    constexpr float rowH = 22.0f;
+    constexpr float iconSize = 16.0f;
+    constexpr float iconGap = 6.0f;
+
     bool isCurrentDir = (root == m_currentPath);
 
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-    if (isCurrentDir)
-        flags |= ImGuiTreeNodeFlags_Selected;
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_SpanAvailWidth |
+        ImGuiTreeNodeFlags_FramePadding;
+    if (isCurrentDir)     flags |= ImGuiTreeNodeFlags_Selected;
+    if (subDirs.empty())  flags |= ImGuiTreeNodeFlags_Leaf;
 
-    bool hasSubDirs = false;
-    for (const auto& e : std::filesystem::directory_iterator(root))
-        if (e.is_directory()) { hasSubDirs = true; break; }
+    // Path-based ID so two folders with the same name can't collide
+    ImGui::PushID(root.string().c_str());
 
-    if (!hasSubDirs)
-        flags |= ImGuiTreeNodeFlags_Leaf;
+    // Make the node exactly rowH tall
+    float padY = (rowH - ImGui::GetFontSize()) * 0.5f;
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+        ImVec2(ImGui::GetStyle().FramePadding.x, padY));
+    bool open = ImGui::TreeNodeEx("##node", flags);
+    ImGui::PopStyleVar();
 
-    // Draw arrow only with hidden label
-    std::string hiddenLabel = "##tree_" + label;
-    bool open = ImGui::TreeNodeEx(hiddenLabel.c_str(), flags);
+    ImVec2 rMin = ImGui::GetItemRectMin();
+    ImVec2 rMax = ImGui::GetItemRectMax();
 
-    // Draw icon and label on same line after arrow
-    ImGui::SameLine();
-
-    if (m_iconFolderNew && m_iconFolderNew->GetHandle())
-    {
-        ImGui::Image(
-            (ImTextureID)(intptr_t)m_iconFolderNew->GetHandle(),
-            ImVec2(16, 16),
-            ImVec2(0, 0),
-            ImVec2(1, 1)
-        );
-        ImGui::SameLine();
-    }
-
-    // Selectable as the clickable label
-    bool clicked = ImGui::Selectable(label.c_str(), isCurrentDir,
-        ImGuiSelectableFlags_None, ImVec2(0, 16));
-
-    if (clicked)
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
     {
         m_currentPath = root;
         Refresh();
     }
 
+    // Icon + label centered on the row
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    float cy = (rMin.y + rMax.y) * 0.5f;
+    float x = rMin.x + ImGui::GetTreeNodeToLabelSpacing();
+
+    if (m_iconFolderNew && m_iconFolderNew->GetHandle())
+    {
+        dl->AddImage(
+            (ImTextureID)(intptr_t)m_iconFolderNew->GetHandle(),
+            ImVec2(x, cy - iconSize * 0.5f),
+            ImVec2(x + iconSize, cy + iconSize * 0.5f));
+        x += iconSize + iconGap;
+    }
+
+    dl->AddText(ImVec2(x, cy - ImGui::GetFontSize() * 0.5f),
+        ImGui::GetColorU32(ImGuiCol_Text), label.c_str());
+
     if (open)
     {
-        for (const auto& e : std::filesystem::directory_iterator(root))
-            if (e.is_directory())
-                DrawDirectoryTree(e.path());
+        for (const auto& sub : subDirs)
+            DrawDirectoryTree(sub);
         ImGui::TreePop();
     }
+
+    ImGui::PopID();
 }
+
 void AssetBrowserPanel::DrawContentGrid()
 {
     float cellSize = m_iconSize + 16.0f;
@@ -327,7 +347,7 @@ void AssetBrowserPanel::DrawContentGrid()
 
         ImGui::PopID();
 
-        ++column;
+        column++;
         if (column < cols)
             ImGui::SameLine();
         else
