@@ -196,3 +196,47 @@ void EditorFields::String(const char* name, std::function<std::string()> get, st
         set(v);
     EndRow();
 }
+
+void EditorFields::Path(const char* label, std::string* path, const char* filterExt)
+{
+    ImGui::TableNextRow();
+    ImGui::PushID(label);
+
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(label);
+
+    ImGui::TableSetColumnIndex(1);
+    ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+
+    char buf[512];
+    std::snprintf(buf, sizeof(buf), "%s", path->c_str());
+    if (ImGui::InputText("##v", buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue))
+        *path = buf;
+
+    ImGui::SameLine();
+    if (ImGui::SmallButton("...") && requestPicker)
+    {
+        requestPicker("##pickerPath", filterExt,
+            [path](const std::string& picked) { *path = picked; });
+    }
+
+    ImGui::PopID();
+}
+
+void EditorFields::Group(const char* label, std::function<void()> body)
+{
+    Header(label);
+    body();
+}
+
+void EditorFields::Button(const char* label, std::function<void()> onClick)
+{
+    ImGui::TableNextRow();
+    ImGui::PushID(label);
+
+    ImGui::TableSetColumnIndex(1);
+    if (ImGui::Button(label, ImVec2(-1.0f, 0.0f)) && onClick)
+        onClick();
+
+    ImGui::PopID();
+}

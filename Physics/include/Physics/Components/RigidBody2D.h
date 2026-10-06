@@ -453,6 +453,65 @@ namespace Nova
             if (B2_IS_NON_NULL(body)) b2Body_SetAngularVelocity(body, radPerSec);
         }
 
+        void ReflectFields(Inspectables& visitor)
+        {
+            visitor.Vec2("Center Offset", &centerOffset);
+
+            if (m_shape == Shape2D::CIRCLE)
+            {
+                visitor.Float("Radius",
+                    [this] { return GetRadius(); },
+                    [this](float v) { SetRadius(v); },
+                    0.5f);
+            }
+            else
+            {
+                visitor.Float("Width",
+                    [this] { return GetFullWidth(); },
+                    [this](float v) { SetDimensions(v, GetFullHeight()); },
+                    0.5f);
+
+                visitor.Float("Height",
+                    [this] { return GetFullHeight(); },
+                    [this](float v) { SetDimensions(GetFullWidth(), v); },
+                    0.5f);
+            }
+
+            visitor.Bool("Static",
+                [this] { return IsStatic(); },
+                [this](bool v) { SetStatic(v); });
+
+            visitor.Bool("Sensor",
+                [this] { return IsSensor(); },
+                [this](bool v) { SetSensor(v); });
+
+            visitor.Float("Density",
+                [this] { return GetDensity(); },
+                [this](float v) { SetDensity(v); });
+
+            visitor.Float("Restitution",
+                [this] { return GetRestitution(); },
+                [this](float v) { SetRestitution(v); },
+                0.01f, 0.0f, 1.0f);
+
+            visitor.Float("Friction",
+                [this] { return GetFriction(); },
+                [this](float v) { SetFriction(v); },
+                0.01f, 0.0f, 1.0f);
+
+            visitor.Bool("Lock Rotation",
+                [this] { return LockRotation(); },
+                [this](bool v) { SetLockRotation(v); });
+
+            visitor.Float("Linear Damping",
+                [this] { return GetLinearDamping(); },
+                [this](float v) { SetLinearDamping(v); });
+
+            visitor.Float("Angular Damping",
+                [this] { return GetAngularDamping(); },
+                [this](float v) { SetAngularDamping(v); });
+        }
+
     private:
         void synchronizeMassData()
         {

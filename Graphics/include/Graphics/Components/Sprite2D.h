@@ -2,6 +2,7 @@
 #include <Graphics/Texture.h>
 #include <Core/Debug.h>
 #include <Core/Utilities/Rectangle.h>
+#include <Core/Behavior/Inspectables.h>
 #include <unordered_map>
 #include <vector>
 #include <string>
@@ -26,6 +27,7 @@ namespace Nova
     struct Sprite2D
     {
         Texture* texture = nullptr;
+        std::string texturePath;
 
         Rectangle src;  // Sprite src rect
         Rectangle dst;  // Sprite dst rect
@@ -139,6 +141,24 @@ namespace Nova
          * @return Height of one frame in pixels.
          */
         int GetFrameHeight() const { return texture ? texture->GetFrameHeight(vframes) : 0; }
+
+
+        void ReflectFields(Inspectables& visitor)
+        {
+            visitor.Path("Texture", &texturePath, ".png");
+
+            visitor.Int("H Frames", &hframes);
+            visitor.Int("V Frames", &vframes);
+            visitor.Int("Frame", &frame);
+
+            visitor.Bool("Flip H", &fliph);
+            visitor.Bool("Flip V", &flipv);
+
+            visitor.Float("Y Sort Origin", &ySortOrigin);
+            visitor.Bool("Apply Y Sort", &applyYSort);
+
+            visitor.Int("Z Index", &zIndex);
+        }
 
     private:
         std::string m_animation = "none";

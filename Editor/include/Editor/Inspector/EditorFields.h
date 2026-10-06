@@ -30,6 +30,16 @@ namespace Nova::Editor
         void String(const char* name, std::string* value) override;
         void String(const char* name, std::function<std::string()> get, std::function<void(std::string)> set) override;
 
+        using PickerFn = std::function<void(const char* popupId, const char* ext,
+            std::function<void(const std::string&)> onConfirm)>;
+        PickerFn requestPicker;
+
+        void Path(const char* label, std::string* path, const char* filterExt) override;
+
+        void Group(const char* label, std::function<void()> body) override;
+
+        void Button(const char* label, std::function<void()> onClick) override;
+
     private:
         static void BeginRow(const char* name);
         static void EndRow();

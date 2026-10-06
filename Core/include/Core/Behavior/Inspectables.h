@@ -33,5 +33,11 @@ namespace Nova
 
         virtual void String(const char* name, std::string* value) = 0;
         virtual void String(const char* name, std::function<std::string()> get, std::function<void(std::string)> set) = 0;
+        
+        virtual void Path(const char* label, std::string* path, const char* filterExt) = 0;
+
+        virtual void Group(const char* label, std::function<void()> body) { body(); }
+
+        virtual void Button(const char* label, std::function<void()> onClick) {}
     };
 }

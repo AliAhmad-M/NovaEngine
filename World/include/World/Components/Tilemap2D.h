@@ -46,6 +46,15 @@ namespace Nova
 
 	struct Tilemap2D
 	{
+		int collisionLayer = 0;
+		std::string collisionGids;		// comma-separated, e.g. "1,2,5"
+		std::string pendingTexturePath;	// Path for tileset to be addded
+		int pendingFirstgid = -1;
+
+		bool NeedsRebuild() const { return m_dirty; }
+		void MarkRebuildNeeded() { m_dirty = true; }
+		void ClearRebuildFlag() { m_dirty = false; }
+
 		Tilemap2D(int tileW = 16, int tileH = 16)
 		{
 			m_tileW = std::max(1, tileW);
@@ -228,6 +237,85 @@ namespace Nova
 			m_tilesetSources.push_back({ texturePath, firstgid });
 		}
 
+		void ReflectFields(Inspectables& visitor)
+		{
+			char buf[64];
+
+			std::snprintf(buf, sizeof(buf), "%d x %d", m_mapW, m_mapH);
+			visitor.ReadOnly("Map size", buf);
+
+			std::snprintf(buf, sizeof(buf), "%zu regions", m_collisionRegions.size());
+			visitor.ReadOnly("Collision", buf);
+
+			std::snprintf(buf, sizeof(buf), "%zu entities", m_childEntities.size());
+			visitor.ReadOnly("Children", buf);
+
+			for (size_t i = 0; i < m_layers.size(); i++)
+			{
+				std::snprintf(buf, sizeof(buf), "Layer %zu", i);
+				visitor.ReadOnly(buf, m_layers[i].name.empty() ? "(unnamed)" : m_layers[i].name.c_str());
+			}
+
+			visitor.Header("Map");
+
+			visitor.Path("Path", &m_sourceMapPath, ".json"); // picker changes are marked dirty by the inspector
+
+			int oldW = m_tileW, oldH = m_tileH;
+			visitor.Int("Tile W", &m_tileW);
+			visitor.Int("Tile H", &m_tileH);
+			m_tileW = std::max(1, m_tileW);
+			m_tileH = std::max(1, m_tileH);
+			if (m_tileW != oldW || m_tileH != oldH) m_dirty = true;
+
+			visitor.Group("Tilesets", [&]
+				{
+					int removeIdx = -1;
+
+					for (int i = 0; i < (int)m_tilesetSources.size(); i++)
+					{
+						std::string n = std::to_string(i);
+						TilesetSource2D& src = m_tilesetSources[i];
+						std::string oldTex = src.texturePath;
+						int oldGid = src.firstgid;
+
+						visitor.Path(("Texture " + n).c_str(), &src.texturePath, ".png");
+						visitor.Int(("First GID " + n).c_str(), &src.firstgid);
+						visitor.Button(("Remove##" + n).c_str(), [&removeIdx, i] { removeIdx = i; });
+
+						if (src.texturePath != oldTex || src.firstgid != oldGid) m_dirty = true;
+					}
+
+					if (removeIdx >= 0)
+					{
+						m_tilesetSources.erase(m_tilesetSources.begin() + removeIdx);
+						m_dirty = true;
+					}
+
+					visitor.Path("New Texture", &pendingTexturePath, ".png");
+					visitor.Int("New First GID", &pendingFirstgid);
+					visitor.ReadOnly("", "First GID: -1 = auto");
+					visitor.Button("Add Tileset", [this]
+						{
+							if (pendingTexturePath.empty()) return;
+							m_tilesetSources.push_back({ pendingTexturePath, pendingFirstgid });
+							pendingTexturePath.clear();
+							pendingFirstgid = -1;
+							m_dirty = true;
+						});
+				});
+
+			visitor.Header("Collision");
+
+			int oldLayer = collisionLayer;
+			std::string oldGids = collisionGids;
+			visitor.Int("Layer", &collisionLayer);
+			visitor.String("GIDs", &collisionGids);
+			visitor.ReadOnly("", "Comma-separated e.g. 1,2,5");
+			collisionLayer = std::max(0, collisionLayer);
+			if (collisionLayer != oldLayer || collisionGids != oldGids) m_dirty = true;
+		}
+
+
 	private:
 		int addTilesetInternal(const Texture* tileset, int firstgid)
 		{
@@ -389,6 +477,8 @@ namespace Nova
 				}
 			}
 		}
+
+		bool m_dirty = false;
 
 		int m_mapW = 0;
 		int m_mapH = 0;
