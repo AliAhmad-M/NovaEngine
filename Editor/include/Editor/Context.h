@@ -1,25 +1,27 @@
 #pragma once
+
 #include <Editor/Scene/Scene.h>
+#include <Editor/Project/ProjectManager.h>
+
 #include <string>
 #include <functional>
 
-namespace Nova::Editor 
+namespace Nova::Editor
 {
-	class ScenePanel;
+    class ScenePanel;
 
-	// Shared context across multiple panels
-	struct Context
-	{
-		int selectedEntity = -1;
-		std::string activeScenePath;
+    struct Context
+    {
+        int selectedEntity = -1;
+        std::string activeScenePath;
 
-		// Reference to currently focused scene in editor
-		Scene* activeSceneRef = nullptr;
+        // Currently focused scene reference
+        Scene* activeSceneRef = nullptr;
 
-		// Reference to scene panel for marking dirty state
-		ScenePanel* scenePanelRef = nullptr;
+        // Function to save scene
+        std::function<void()> onSaveScene;
 
-		// Callback to trigger save from any panel
-		std::function<void()> onSaveScene;
-	};
+        // Scene panel reference
+        ScenePanel* scenePanelRef = nullptr;
+    };
 }

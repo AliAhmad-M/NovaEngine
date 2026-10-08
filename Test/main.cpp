@@ -17,7 +17,7 @@ int main()
         (std::filesystem::path(PROJECT_DIR) 
             / "project"
             / "scenes"
-            / "SampleScene.nova"
+            / "SampleScene.nvsn"
     ).string();
     SceneManager* sceneManager = Services::Fetch<SceneManager>();
     sceneManager->ChangeScene(defaultScene);

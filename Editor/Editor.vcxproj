@@ -151,6 +151,9 @@
     <ClCompile Include="src\Panels\InputMapPanel.cpp" />
     <ClCompile Include="src\Panels\InspectorPanel.cpp" />
     <ClCompile Include="src\Panels\ScenePanel.cpp" />
+    <ClCompile Include="src\Project\ProjectLauncher.cpp" />
+    <ClCompile Include="src\Project\ProjectManager.cpp" />
+    <ClCompile Include="src\Project\ScriptHost.cpp" />
     <ClCompile Include="src\Scene\SceneSerializer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -163,6 +166,9 @@
     <ClInclude Include="include\Editor\Panels\InputMapPanel.h" />
     <ClInclude Include="include\Editor\Panels\InspectorPanel.h" />
     <ClInclude Include="include\Editor\Panels\ScenePanel.h" />
+    <ClInclude Include="include\Editor\Project\ProjectLauncher.h" />
+    <ClInclude Include="include\Editor\Project\ProjectManager.h" />
+    <ClInclude Include="include\Editor\Project\ScriptHost.h" />
     <ClInclude Include="include\Editor\Scene\Scene.h" />
     <ClInclude Include="include\Editor\Scene\SceneSerializer.h" />
   </ItemGroup>

@@ -6,6 +6,9 @@
 #include <GLFW/glfw3.h>
 #include <Runtime/Engine.h>
 #include <Editor/Context.h>
+#include <Editor/Project/ProjectManager.h>
+#include <Editor/Project/ProjectLauncher.h>
+#include <Editor/Project/ScriptHost.h>
 #include <Editor/Panels/AssetBrowserPanel.h>
 #include <Editor/Panels/HierarchyPanel.h>
 #include <Editor/Panels/InspectorPanel.h>
@@ -33,6 +36,11 @@ namespace Nova::Editor
         void saveActiveScene();  // Helper to save the current scene
         void markSceneDirty();   // Helper to mark active scene as dirty/modified
 
+        void openProject(const std::string& dir);
+        void closeProject();
+        void buildScripts();
+        void pollScriptBuild();
+        void createDefaultMainScene(const ProjectInfo& project);
 
         bool m_running            = true;
         bool m_layoutInitialized  = false;
@@ -45,6 +53,10 @@ namespace Nova::Editor
 
         Engine m_runtime;
         Context m_ctx;
+        ProjectManager m_projects;
+        ScriptHost m_scripts;
+        std::unique_ptr<ProjectLauncher> m_launcher;
+
         std::unique_ptr<SceneSerializer> m_sceneSerializer;
 
         static constexpr float kHierarchyWidthRatio = 0.18f;
@@ -56,6 +68,6 @@ namespace Nova::Editor
         std::unique_ptr<HierarchyPanel>    m_hierarchyPanel;
         std::unique_ptr<InspectorPanel>    m_inspectorPanel;
         std::unique_ptr<ScenePanel>        m_scenePanel;
-        std::string m_scenesPath = "../Test/project/scenes";
+        std::string m_scenesPath;
     };
 }

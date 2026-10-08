@@ -1,14 +1,14 @@
 #include <Editor/Panels/ScenePanel.h>
 #include <Editor/Scene/SceneSerializer.h>
+#include <Editor/Project/ProjectManager.h>
 #include <Core/Services.h>
-
+#include <Core/Components.h>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
 #include <filesystem>
 #include <glad/glad.h>
 #include <Windows.h>
-#include <Core/Components.h>
 
 using namespace Nova;
 using namespace Nova::Editor;
@@ -105,214 +105,431 @@ void ScenePanel::destroyFBO()
 
 void ScenePanel::buildAndRunGame()
 {
-    if (m_building) return;
+    if (m_building)
+        return;
+
+    ProjectManager* pm =
+        Services::Fetch<ProjectManager>();
+
+    if (!pm || !pm->HasProject())
+    {
+        Debug::LogError(
+            "[Build] No project is currently open.");
+        return;
+    }
+
+    const ProjectInfo& project =
+        pm->Current();
+
+    const std::filesystem::path root =
+        std::filesystem::absolute(project.root);
+
+    const std::filesystem::path buildDir =
+        std::filesystem::absolute(project.build);
+
+    const std::filesystem::path sdkDir =
+        std::filesystem::absolute(
+            ProjectManager::SdkDir());
+
+    const std::string configuration = "Release";
+
+    const std::filesystem::path exePath =
+        buildDir /
+        "bin" /
+        configuration /
+        "Game.exe";
+
+    std::error_code ec;
+    std::filesystem::create_directories(
+        buildDir,
+        ec);
+
+    if (ec)
+    {
+        Debug::LogError(
+            "[Build] Failed to create build directory: %s",
+            ec.message().c_str());
+        return;
+    }
 
     m_building = true;
     m_showBuildLog = true;
 
     {
-        std::lock_guard<std::mutex> lock(m_buildLogMutex);
+        std::lock_guard<std::mutex> lock(
+            m_buildLogMutex);
+
         m_buildLog.clear();
-        m_buildLog += "Nova Build Started\n";
+        m_buildLog +=
+            "Nova Build Started\n";
+
+        m_buildLog +=
+            "Project: " +
+            root.string() +
+            "\n";
+
+        m_buildLog +=
+            "Output: " +
+            exePath.string() +
+            "\n\n";
     }
 
-    std::string slnPath = std::filesystem::absolute(
-        std::filesystem::current_path() / ".." / "NovaEngine.sln"
-    ).string();
-
-    // Test project file
-    std::string vcxprojPath = std::filesystem::absolute(
-        std::filesystem::current_path() / ".." / "Test" / "Test.vcxproj"
-    ).string();
-
-    const std::string configuration = "Release";
-    const std::string platform = "x64";
-
-    std::thread([this, slnPath, vcxprojPath, configuration, platform]()
+    std::thread(
+        [this,
+        root,
+        buildDir,
+        sdkDir,
+        exePath,
+        configuration]()
         {
-            std::string msbuild = findMSBuild();
-            if (msbuild.empty())
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "[ERROR] Could not locate MSBuild via vswhere. Is Visual Studio installed?\n";
-                m_buildLogScrollToBottom = true;
-                m_building = false;
-                return;
-            }
-
-            // Resolve the output exe path
-            std::string exePath = std::filesystem::absolute(
-                std::filesystem::current_path() / ".." / "Test" 
-                / "bin" / "x64" / "Release" / "Output" / "Test.exe"
-            ).string();
-
-            if (exePath.empty())
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "[ERROR] Could not resolve TargetPath for the Test project.\n";
-                m_buildLogScrollToBottom = true;
-                m_building = false;
-                return;
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "Resolved target exe: " + exePath + "\n";
-                m_buildLogScrollToBottom = true;
-            }
-
-            // Snapshot the exe's last-write-time
-            std::error_code fsErr;
-            bool hadPreviousExe = std::filesystem::exists(exePath, fsErr);
-            std::filesystem::file_time_type previousWriteTime{};
-            if (hadPreviousExe)
-                previousWriteTime = std::filesystem::last_write_time(exePath, fsErr);
-
-            // Run the actual build
-            SECURITY_ATTRIBUTES sa{};
-            sa.nLength = sizeof(sa);
-            sa.bInheritHandle = TRUE;
-
-            HANDLE hReadPipe = nullptr;
-            HANDLE hWritePipe = nullptr;
-            CreatePipe(&hReadPipe, &hWritePipe, &sa, 0);
-            SetHandleInformation(hReadPipe, HANDLE_FLAG_INHERIT, 0);
-
-            STARTUPINFOA si{};
-            si.cb = sizeof(si);
-            si.hStdOutput = hWritePipe;
-            si.hStdError = hWritePipe;
-            si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-            si.wShowWindow = SW_HIDE;
-
-            PROCESS_INFORMATION pi{};
-
-            std::string cmdLine = "\"" + msbuild + "\" \"" + slnPath + "\" /t:Test /p:Configuration="
-                + configuration + ";Platform=" + platform + " /m";
-
-            // Run with CWD
-            std::string slnDir = std::filesystem::path(slnPath).parent_path().string();
-
-            bool launched = CreateProcessA(
-                nullptr,
-                cmdLine.data(),
-                nullptr, nullptr,
-                TRUE,
-                CREATE_NO_WINDOW,
-                nullptr,
-                slnDir.c_str(),
-                &si, &pi
-            );
-
-            CloseHandle(hWritePipe);
-
-            if (!launched)
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "[ERROR] Failed to launch msbuild. Is it on PATH?\n";
-                m_buildLogScrollToBottom = true;
-                m_building = false;
-                CloseHandle(hReadPipe);
-                return;
-            }
-
-            // Read pipe output
-            char buf[512];
-            DWORD bytesRead = 0;
-            while (ReadFile(hReadPipe, buf, sizeof(buf) - 1, &bytesRead, nullptr) && bytesRead > 0)
-            {
-                buf[bytesRead] = '\0';
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += buf;
-                m_buildLogScrollToBottom = true;
-            }
-
-            CloseHandle(hReadPipe);
-
-			// Wait for the build process to finish and get its exit code
-            WaitForSingleObject(pi.hProcess, INFINITE);
-
-            DWORD exitCode = 0;
-            GetExitCodeProcess(pi.hProcess, &exitCode);
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                if (exitCode == 0)
-                    m_buildLog += "\nBuild Succeeded\n";
-                else
-                    m_buildLog += "\nBuild FAILED (exit code " + std::to_string(exitCode) + ")\n";
-                m_buildLogScrollToBottom = true;
-            }
-
-            if (exitCode != 0)
-            {
-                m_building = false;
-                return;
-            }
-
-            // Verify that the exe was rewritten
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "Attempting to launch: " + exePath + "\n";
-                m_buildLogScrollToBottom = true;
-            }
-
-            if (!std::filesystem::exists(exePath, fsErr))
-            {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "[ERROR] Exe not found at resolved TargetPath after a successful build.\n";
-                m_buildLog += "        This means MSBuild reported success but didn't produce the expected output — check the log above.\n";
-                m_buildLogScrollToBottom = true;
-                m_building = false;
-                return;
-            }
-
-            if (hadPreviousExe)
-            {
-                auto newWriteTime = std::filesystem::last_write_time(exePath, fsErr);
-                if (!fsErr && newWriteTime == previousWriteTime)
+            auto appendLog =
+                [this](const std::string& text)
                 {
-                    std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                    m_buildLog += "[WARNING] MSBuild reported success but the exe's timestamp did NOT change.\n";
-                    m_buildLog += "          You are about to launch a STALE binary. This usually means:\n";
-                    m_buildLog += "            - the /t:Test target name doesn't match the project actually containing main.cpp, or\n";
-                    m_buildLog += "            - the build considered everything already up to date incorrectly.\n";
-                    m_buildLog += "          Try a full rebuild (msbuild /t:Test:Rebuild) from a terminal to confirm.\n";
+                    std::lock_guard<std::mutex> lock(
+                        m_buildLogMutex);
+
+                    m_buildLog += text;
                     m_buildLogScrollToBottom = true;
+                };
+
+            /*
+                Configure the project with CMake.
+
+                Only specify the Visual Studio generator
+                the first time. Existing build directories
+                already know their generator.
+            */
+
+            bool alreadyConfigured =
+                std::filesystem::exists(
+                    buildDir / "CMakeCache.txt");
+
+            std::string configureCmd =
+                "cmake"
+                " -S \"" +
+                root.string() +
+                "\""
+                " -B \"" +
+                buildDir.string() +
+                "\""
+                " -DNOVA_SDK_DIR=\"" +
+                sdkDir.string() +
+                "\"";
+
+            if (!alreadyConfigured)
+            {
+                configureCmd +=
+                    " -G \"Visual Studio 17 2022\""
+                    " -A x64";
+            }
+
+            appendLog(
+                "\n[Configure]\n" +
+                configureCmd +
+                "\n\n");
+
+            {
+                SECURITY_ATTRIBUTES sa{};
+                sa.nLength =
+                    sizeof(sa);
+                sa.bInheritHandle = TRUE;
+
+                HANDLE hRead = nullptr;
+                HANDLE hWrite = nullptr;
+
+                if (!CreatePipe(
+                    &hRead,
+                    &hWrite,
+                    &sa,
+                    0))
+                {
+                    appendLog(
+                        "[ERROR] Failed to create pipe.\n");
+
+                    m_building = false;
+                    return;
+                }
+
+                SetHandleInformation(
+                    hRead,
+                    HANDLE_FLAG_INHERIT,
+                    0);
+
+                STARTUPINFOA si{};
+                si.cb = sizeof(si);
+                si.hStdOutput = hWrite;
+                si.hStdError = hWrite;
+                si.dwFlags =
+                    STARTF_USESTDHANDLES |
+                    STARTF_USESHOWWINDOW;
+                si.wShowWindow = SW_HIDE;
+
+                PROCESS_INFORMATION pi{};
+
+                std::string cmdLine =
+                    configureCmd;
+
+                bool launched =
+                    CreateProcessA(
+                        nullptr,
+                        cmdLine.data(),
+                        nullptr,
+                        nullptr,
+                        TRUE,
+                        CREATE_NO_WINDOW,
+                        nullptr,
+                        root.string().c_str(),
+                        &si,
+                        &pi);
+
+                CloseHandle(hWrite);
+
+                if (!launched)
+                {
+                    appendLog(
+                        "[ERROR] Failed to run CMake configure.\n");
+
+                    CloseHandle(hRead);
+                    m_building = false;
+                    return;
+                }
+
+                char buffer[512];
+                DWORD bytesRead = 0;
+
+                while (ReadFile(
+                    hRead,
+                    buffer,
+                    sizeof(buffer) - 1,
+                    &bytesRead,
+                    nullptr) &&
+                    bytesRead > 0)
+                {
+                    buffer[bytesRead] = '\0';
+                    appendLog(buffer);
+                }
+
+                CloseHandle(hRead);
+
+                WaitForSingleObject(
+                    pi.hProcess,
+                    INFINITE);
+
+                DWORD exitCode = 0;
+
+                GetExitCodeProcess(
+                    pi.hProcess,
+                    &exitCode);
+
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+
+                if (exitCode != 0)
+                {
+                    appendLog(
+                        "\n[ERROR] CMake configure failed.\n");
+
+                    m_building = false;
+                    return;
                 }
             }
 
+            /*
+                Build the actual Game executable.
+            */
+
+            const std::string buildCmd =
+                "cmake"
+                " --build \"" +
+                buildDir.string() +
+                "\""
+                " --config " +
+                configuration +
+                " --target Game";
+
+            appendLog(
+                "\n[Build]\n" +
+                buildCmd +
+                "\n\n");
+
             {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "Launching Game\n";
-                m_buildLogScrollToBottom = true;
+                SECURITY_ATTRIBUTES sa{};
+                sa.nLength =
+                    sizeof(sa);
+                sa.bInheritHandle = TRUE;
+
+                HANDLE hRead = nullptr;
+                HANDLE hWrite = nullptr;
+
+                if (!CreatePipe(
+                    &hRead,
+                    &hWrite,
+                    &sa,
+                    0))
+                {
+                    appendLog(
+                        "[ERROR] Failed to create pipe.\n");
+
+                    m_building = false;
+                    return;
+                }
+
+                SetHandleInformation(
+                    hRead,
+                    HANDLE_FLAG_INHERIT,
+                    0);
+
+                STARTUPINFOA si{};
+                si.cb = sizeof(si);
+                si.hStdOutput = hWrite;
+                si.hStdError = hWrite;
+                si.dwFlags =
+                    STARTF_USESTDHANDLES |
+                    STARTF_USESHOWWINDOW;
+                si.wShowWindow = SW_HIDE;
+
+                PROCESS_INFORMATION pi{};
+
+                std::string cmdLine =
+                    buildCmd;
+
+                bool launched =
+                    CreateProcessA(
+                        nullptr,
+                        cmdLine.data(),
+                        nullptr,
+                        nullptr,
+                        TRUE,
+                        CREATE_NO_WINDOW,
+                        nullptr,
+                        root.string().c_str(),
+                        &si,
+                        &pi);
+
+                CloseHandle(hWrite);
+
+                if (!launched)
+                {
+                    appendLog(
+                        "[ERROR] Failed to run CMake build.\n");
+
+                    CloseHandle(hRead);
+                    m_building = false;
+                    return;
+                }
+
+                char buffer[512];
+                DWORD bytesRead = 0;
+
+                while (ReadFile(
+                    hRead,
+                    buffer,
+                    sizeof(buffer) - 1,
+                    &bytesRead,
+                    nullptr) &&
+                    bytesRead > 0)
+                {
+                    buffer[bytesRead] = '\0';
+                    appendLog(buffer);
+                }
+
+                CloseHandle(hRead);
+
+                WaitForSingleObject(
+                    pi.hProcess,
+                    INFINITE);
+
+                DWORD exitCode = 0;
+
+                GetExitCodeProcess(
+                    pi.hProcess,
+                    &exitCode);
+
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+
+                if (exitCode != 0)
+                {
+                    appendLog(
+                        "\nBuild FAILED.\n");
+
+                    m_building = false;
+                    return;
+                }
             }
+
+            /*
+                Build succeeded. Verify the executable.
+            */
+
+            if (!std::filesystem::exists(
+                exePath))
+            {
+                appendLog(
+                    "\n[ERROR] Build succeeded but "
+                    "Game.exe was not found at:\n" +
+                    exePath.string() +
+                    "\n");
+
+                m_building = false;
+                return;
+            }
+
+            appendLog(
+                "\nBuild Succeeded.\n"
+                "Launching:\n" +
+                exePath.string() +
+                "\n");
+
+            /*
+                Launch the user's actual project.
+            */
 
             STARTUPINFOA runSi{};
             runSi.cb = sizeof(runSi);
+
             PROCESS_INFORMATION runPi{};
-            std::string runCmd = "\"" + exePath + "\"";
 
-            bool ok = CreateProcessA(nullptr, runCmd.data(), nullptr, nullptr,
-                FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &runSi, &runPi);
+            std::string runCmd =
+                "\"" +
+                exePath.string() +
+                "\"";
 
-            if (!ok)
+            bool launched =
+                CreateProcessA(
+                    nullptr,
+                    runCmd.data(),
+                    nullptr,
+                    nullptr,
+                    FALSE,
+                    CREATE_NEW_CONSOLE,
+                    nullptr,
+                    root.string().c_str(),
+                    &runSi,
+                    &runPi);
+
+            if (!launched)
             {
-                std::lock_guard<std::mutex> lock(m_buildLogMutex);
-                m_buildLog += "[ERROR] CreateProcessA failed. Error code: " + std::to_string(GetLastError()) + "\n";
-                m_buildLogScrollToBottom = true;
+                appendLog(
+                    "[ERROR] Failed to launch Game.exe. "
+                    "Error code: " +
+                    std::to_string(
+                        GetLastError()) +
+                    "\n");
             }
             else
             {
-                if (runPi.hProcess) CloseHandle(runPi.hProcess);
-                if (runPi.hThread)  CloseHandle(runPi.hThread);
+                CloseHandle(
+                    runPi.hProcess);
+
+                CloseHandle(
+                    runPi.hThread);
             }
 
             m_building = false;
 
-        }).detach();
+        })
+        .detach();
 }
 
 void ScenePanel::drawBuildLog()
@@ -403,9 +620,7 @@ void ScenePanel::drawTabBar()
             }
             else
             {
-                std::filesystem::path dir = std::filesystem::absolute(
-                    std::filesystem::current_path() / ".." / "Test" / "project" / "scenes");
-                m_ctxRef->activeScenePath = (dir / (tab.name + ".nova")).string();
+                m_ctxRef->activeScenePath.clear();
             }
             m_ctxRef->activeSceneRef = tab.scene.get();
             ImGui::EndTabItem();
@@ -432,7 +647,7 @@ void ScenePanel::startPlay()
     }
 
     m_playSnapshotPath =
-        (std::filesystem::temp_directory_path() / "nova_play_snapshot.nova").string();
+        (std::filesystem::temp_directory_path() / "nova_play_snapshot.nvsn").string();
 
     SceneSerializer* serializer = Services::Fetch<SceneSerializer>();
     if (!serializer || !serializer->Save(*m_ctxRef->activeSceneRef, m_playSnapshotPath))
@@ -721,7 +936,7 @@ void ScenePanel::drawSceneViewport()
         if (wheel != 0.0f)
         {
             float oldZoom = m_editorCamera.GetZoom();
-            float newZoom = max(0.1f, min(oldZoom * (1.0f + wheel * 0.1f), 10.0f));
+            float newZoom = std::max(0.1f, std::min(oldZoom * (1.0f + wheel * 0.1f), 10.0f));
             m_editorCamera.SetZoom(newZoom);
         }
     }
@@ -794,16 +1009,40 @@ void ScenePanel::Draw()
 
 void ScenePanel::newScene()
 {
-    int  idx = (int)m_sceneTabs.size();
+    int idx = static_cast<int>(m_sceneTabs.size());
+
     char name[64];
-    std::snprintf(name, sizeof(name), "Untitled_%d", idx);
+    std::snprintf(
+        name,
+        sizeof(name),
+        "Untitled_%d",
+        idx);
 
     SceneTab tab;
     tab.name = name;
     tab.isDirty = true;
     tab.scene = std::make_unique<Scene>(name);
 
-    m_sceneTabs.push_back(std::move(tab));
+    ProjectManager* pm =
+        Services::Fetch<ProjectManager>();
+
+    if (pm && pm->HasProject())
+    {
+        const ProjectInfo& project =
+            pm->Current();
+
+        tab.filePath =
+            (project.scenes /
+                (tab.name + ".nvsn"))
+            .lexically_normal()
+            .string();
+
+        tab.scene->SetFilePath(
+            tab.filePath);
+    }
+
+    m_sceneTabs.push_back(
+        std::move(tab));
 }
 
 void ScenePanel::closeScene(int index)

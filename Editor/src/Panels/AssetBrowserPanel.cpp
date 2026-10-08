@@ -19,29 +19,19 @@ AssetBrowserPanel::AssetBrowserPanel(Context* ctx)
     m_iconScript  = m_contentLoaderRef->LoadTexture("assets/icons/icon_script.png");
     m_iconFont    = m_contentLoaderRef->LoadTexture("assets/icons/icon_font.png");
     m_iconFolderNew = m_contentLoaderRef->LoadTexture("assets/icons/folder.png");
-
-    // Default to the project's assets folder
-    m_rootPath = std::filesystem::path("../Test/project/");
-    m_currentPath = m_rootPath;
-
-    // Create the directory if it doesn't exist
-    if (!std::filesystem::exists(m_rootPath))
-        std::filesystem::create_directories(m_rootPath);
-
-    Refresh();
 }
 
-AssetType AssetBrowserPanel::ClassifyExtension(const std::string& ext) const
+AssetType AssetBrowserPanel::classifyExtension(const std::string& ext) const
 {
     if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ||
         ext == ".bmp" || ext == ".tga")  return AssetType::Texture;
-    if (ext == ".jso" || ext == ".nova") return AssetType::Scene;
+    if (ext == ".jso" || ext == ".nvsn") return AssetType::Scene;
     if (ext == ".ttf" || ext == ".otf")  return AssetType::Font;
     if (ext == ".wav" || ext == ".ogg" || ext == ".mp3") return AssetType::Audio;
     return AssetType::Unknown;
 }
 
-const char* AssetBrowserPanel::AssetTypeIcon(AssetType t) const
+const char* AssetBrowserPanel::assetTypeIcon(AssetType t) const
 {
     switch (t)
     {
@@ -53,7 +43,7 @@ const char* AssetBrowserPanel::AssetTypeIcon(AssetType t) const
     }
 }
 
-GLuint AssetBrowserPanel::GetEntryIcon(const AssetEntry& entry) const
+GLuint AssetBrowserPanel::getEntryIcon(const AssetEntry& entry) const
 {
     if (entry.isDirectory) 
         return m_iconFolder ? m_iconFolder->GetHandle() : 0;
@@ -73,7 +63,7 @@ GLuint AssetBrowserPanel::GetEntryIcon(const AssetEntry& entry) const
     }
 }
 
-void AssetBrowserPanel::Refresh()
+void AssetBrowserPanel::refresh()
 {
     m_entries.clear();
 
@@ -92,7 +82,7 @@ void AssetBrowserPanel::Refresh()
             std::string ext = entry.path().extension().string();
             // Lowercase the extension for consistent matching
             std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-            a.type = ClassifyExtension(ext);
+            a.type = classifyExtension(ext);
         }
 
         m_entries.push_back(std::move(a));
@@ -111,25 +101,33 @@ void AssetBrowserPanel::Draw()
 {
     ImGui::Begin("Asset Browser");
 
-    DrawToolbar();
+    drawToolbar();
     ImGui::Separator();
 
     // Directory file tree and grid
     float leftWidth = 160.0f;
     ImGui::BeginChild("##DirTree", ImVec2(leftWidth, 0), true);
-    DrawDirectoryTree(m_rootPath);
+    drawDirectoryTree(m_rootPath);
     ImGui::EndChild();
 
     ImGui::SameLine();
 
     ImGui::BeginChild("##ContentGrid", ImVec2(0, 0), false);
-    DrawContentGrid();
+    drawContentGrid();
     ImGui::EndChild();
 
     ImGui::End();
 }
 
-void AssetBrowserPanel::DrawToolbar()
+void AssetBrowserPanel::SetRoot(const std::filesystem::path& root)
+{
+    m_rootPath = root;
+    m_currentPath = root;
+    m_selectedFile.clear();
+    refresh();
+}
+
+void AssetBrowserPanel::drawToolbar()
 {
     // Back button
     bool canGoUp = (m_currentPath != m_rootPath);
@@ -137,13 +135,13 @@ void AssetBrowserPanel::DrawToolbar()
     if (ImGui::Button("<##back"))
     {
         m_currentPath = m_currentPath.parent_path();
-        Refresh();
+        refresh();
     }
     if (!canGoUp) ImGui::EndDisabled();
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Go up one directory");
 
     ImGui::SameLine();
-    if (ImGui::Button("Refresh")) Refresh();
+    if (ImGui::Button("Refresh")) refresh();
 
     ImGui::SameLine();
     // Breadcrumb
@@ -162,7 +160,7 @@ void AssetBrowserPanel::DrawToolbar()
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Icon size");
 }
 
-void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
+void AssetBrowserPanel::drawDirectoryTree(const std::filesystem::path& root)
 {
     std::error_code ec;
     if (!std::filesystem::is_directory(root, ec)) return;
@@ -209,7 +207,7 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
     {
         m_currentPath = root;
-        Refresh();
+        refresh();
     }
 
     // Icon + label centered on the row
@@ -232,14 +230,14 @@ void AssetBrowserPanel::DrawDirectoryTree(const std::filesystem::path& root)
     if (open)
     {
         for (const auto& sub : subDirs)
-            DrawDirectoryTree(sub);
+            drawDirectoryTree(sub);
         ImGui::TreePop();
     }
 
     ImGui::PopID();
 }
 
-void AssetBrowserPanel::DrawContentGrid()
+void AssetBrowserPanel::drawContentGrid()
 {
     float cellSize = m_iconSize + 16.0f;
     float panelWidth = ImGui::GetContentRegionAvail().x;
@@ -256,7 +254,7 @@ void AssetBrowserPanel::DrawContentGrid()
                 continue;
         }
 
-        GLuint iconTex = GetEntryIcon(entry);
+        GLuint iconTex = getEntryIcon(entry);
         if (iconTex == 0) continue;  // Skip rendering if no valid texture
 
         ImGui::PushID(entry.path.c_str());
@@ -339,7 +337,7 @@ void AssetBrowserPanel::DrawContentGrid()
             if (iconClicked && entry.isDirectory)
             {
                 m_currentPath = std::filesystem::path(entry.path);
-                Refresh();
+                refresh();
                 ImGui::PopID();
                 break;
             }

@@ -167,6 +167,16 @@ bool EditorApp::Init()
 
     io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf", 18.0f);
 
+    // Initialize project manager and launcher
+    m_projects.LoadRecent();
+    Services::Register<ProjectManager>(&m_projects);
+    m_launcher = std::make_unique<ProjectLauncher>();
+
+    m_scripts.onBeforeUnload = [this]()
+    {
+        // TO DO: iterate every entity with a BehaviorScript and drop the instance
+    };
+
     // Load panels
     m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
     m_inspectorPanel = std::make_unique<InspectorPanel>(&m_ctx);
@@ -177,7 +187,7 @@ bool EditorApp::Init()
     // Initialize scene serializer
     m_sceneSerializer = std::make_unique<SceneSerializer>();
 
-    // Set scene panel reference in context for dirty marking
+    // Set scene panel reference
     m_ctx.scenePanelRef = m_scenePanel.get();
 
     m_ctx.onSaveScene = [this]() { saveActiveScene(); };
@@ -192,10 +202,21 @@ void EditorApp::Run()
         glfwPollEvents();
 
         beginFrame();
+
+        if (!m_projects.HasProject())
+        {
+            m_launcher->Draw(m_projects, [this](const std::string& p) { openProject(p); });
+            endFrame();
+            continue;
+        }
+
+        pollScriptBuild();
+
         drawMenuBar();   // draw menu bar
         buildLayout();   // then dockspace
 
         ImGuiIO& io = ImGui::GetIO();
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_B)) buildScripts();
 
         // Save scene
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
@@ -205,7 +226,7 @@ void EditorApp::Run()
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_N))
             m_scenePanel->newScene();
 
-        // Open scene shortcut (menu item sets the same flag)
+        // Open scene shortcut
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O))
             m_openScenePicker = true;
 
@@ -225,7 +246,7 @@ void EditorApp::Run()
             m_openScenePicker = false;
         }
 
-        DrawFilePicker("##OpenScenePicker", m_scenesPath, ".nova",
+        DrawFilePicker("##OpenScenePicker", m_scenesPath, ".nvsn",
             [this](const std::string& path)
             {
                 m_scenePanel->OpenSceneTab(path);
@@ -370,12 +391,34 @@ void EditorApp::drawMenuBar()
         if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
             saveActiveScene();
 
+        if (ImGui::MenuItem("Close Project")) closeProject();
+
         ImGui::Separator();
 
         if (ImGui::MenuItem("Exit"))
             m_running = false;
 
         ImGui::EndMenu();
+
+        if (ImGui::BeginMenu("Project"))
+        {
+            if (ImGui::MenuItem("Build Scripts", "Ctrl+B", false, !m_scripts.IsBuilding()))
+                buildScripts();
+
+#ifdef _WIN32
+            if (ImGui::MenuItem("Open in Visual Studio"))
+            {
+                auto sln = m_projects.Current().build / (m_projects.Current().name + ".sln");
+                if (std::filesystem::exists(sln))
+                    std::system(("start \"\" \"" + sln.string() + "\"").c_str());
+                else
+                    Debug::LogWarn("No .sln yet, run Build Scripts once first");
+            }
+            if (ImGui::MenuItem("Show Project Folder"))
+                std::system(("explorer \"" + m_projects.Current().root.string() + "\"").c_str());
+#endif
+            ImGui::EndMenu();
+        }
     }
 
     if (ImGui::BeginMenu("Edit"))
@@ -431,5 +474,78 @@ void EditorApp::markSceneDirty()
     if (m_ctx.scenePanelRef)
     {
         m_ctx.scenePanelRef->MarkSceneAsDirty();
+    }
+}
+
+void EditorApp::openProject(const std::string& dir)
+{
+    std::string err;
+    m_scripts.Unload();
+
+    if (!m_projects.Open(dir, err)) { m_launcher->SetError(err); return; }
+
+    const ProjectInfo& p = m_projects.Current();
+    createDefaultMainScene(p);
+
+    m_scenesPath = p.scenes.string();
+    m_ctx.selectedEntity = -1;
+
+    m_assetBrowserPanel->SetRoot(p.root);
+    m_scenePanel->newScene();
+
+    m_scripts.Load(p);
+}
+
+void EditorApp::closeProject()
+{
+    m_scripts.Unload();
+    m_projects.Close();
+    m_ctx.selectedEntity = -1;
+}
+
+void EditorApp::buildScripts()
+{
+    if (m_scenePanel->IsPlaying()) { Debug::LogWarn("Stop play mode before rebuilding scripts"); return; }
+    if (m_scripts.IsBuilding())    return;
+
+    Debug::LogInfo("[Scripts] Building...");
+    m_scripts.BuildAsync(m_projects.Current());
+}
+
+void EditorApp::pollScriptBuild()
+{
+    if (m_scenePanel->IsPlaying()) return;
+
+    std::string log;
+    bool ok = false;
+    if (!m_scripts.PollBuild(log, ok)) return;
+
+    if (!ok) { Debug::LogError("[Scripts] Build failed:\n%s", log.c_str()); return; }
+
+    m_scripts.Unload();
+    if (m_scripts.Load(m_projects.Current()))
+        Debug::LogInfo("[Scripts] Reloaded");
+    else
+        Debug::LogError("[Scripts] Built, but failed to load the DLL");
+}
+
+void EditorApp::createDefaultMainScene(
+    const ProjectInfo& project)
+{
+    const std::filesystem::path mainPath =
+        project.scenes / "Main.nvsn";
+
+    if (std::filesystem::exists(mainPath))
+        return;
+
+    Scene mainScene("Main");
+    mainScene.SetFilePath(mainPath.string());
+
+    if (!m_sceneSerializer->Save(
+        mainScene,
+        mainPath.string()))
+    {
+        Debug::LogError(
+            "Failed to create default Main.nvsn");
     }
 }

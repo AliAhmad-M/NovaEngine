@@ -28,18 +28,19 @@ namespace Nova::Editor
 
         void Draw();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
+        void SetRoot(const std::filesystem::path& root);
 
         const std::string& GetLastSelectedPath() const { return m_lastSelectedPath; }
 
     private:
-        void Refresh();
-        void DrawToolbar();
-        void DrawDirectoryTree(const std::filesystem::path& root);
-        void DrawContentGrid();
+        void refresh();
+        void drawToolbar();
+        void drawDirectoryTree(const std::filesystem::path& root);
+        void drawContentGrid();
 
-        AssetType   ClassifyExtension(const std::string& ext) const;
-        const char* AssetTypeIcon(AssetType t) const;
-        GLuint      GetEntryIcon(const AssetEntry& entry) const;
+        AssetType   classifyExtension(const std::string& ext) const;
+        const char* assetTypeIcon(AssetType t) const;
+        GLuint      getEntryIcon(const AssetEntry& entry) const;
 
         Context* m_ctxRef = nullptr;
         ImGuiWindowFlags         m_windowFlags = 0;

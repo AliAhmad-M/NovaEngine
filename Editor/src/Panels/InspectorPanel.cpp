@@ -428,7 +428,7 @@ void InspectorPanel::Draw()
     if (m_pickerOpen && m_pendingPicker.has_value())
     {
         auto& req = *m_pendingPicker;
-        std::string path = "../Test/project";
+        std::string path = Services::Fetch<ProjectManager>()->Current().root.string();
         if (!DrawFilePicker(req.popupId, path, req.filterExt, req.onConfirm))
         {
             m_pendingPicker.reset();
