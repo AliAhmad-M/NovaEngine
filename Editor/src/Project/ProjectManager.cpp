@@ -2,6 +2,7 @@
 
 #include <Editor/Project/ProjectManager.h>
 
+#include <Windows.h>
 #include <algorithm>
 #include <chrono>
 #include <cctype>
@@ -156,8 +157,9 @@ fs::path ProjectManager::ConfigDir()
 
 fs::path ProjectManager::SdkDir()
 {
-    // The SDK is installed next to the editor's working directory
-    return fs::absolute(fs::current_path() / "sdk");
+    wchar_t buf[MAX_PATH];
+    DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
+    return fs::path(std::wstring(buf, n)).parent_path() / "sdk";
 }
 
 void ProjectManager::LoadRecent()
@@ -429,7 +431,7 @@ bool ProjectManager::Open(
     p.scripts = root / "scripts";
     p.build = root / "build";
 
-    // Allow older projects to be opened and upgraded automatically.
+    // Allow older projects to be opened and upgraded
     fs::create_directories(p.assets, ec);
     if (ec)
     {

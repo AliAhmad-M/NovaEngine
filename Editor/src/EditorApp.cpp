@@ -266,17 +266,17 @@ void EditorApp::Run()
         m_lastFrameTime = currentTime;
         if (dt > 0.1f) dt = 1.0f / 60.0f;
 
-        if (m_scenePanel->IsPlaying())
-        {
-            m_runtime.UpdateEditorGame(dt);
+        //if (m_scenePanel->IsPlaying())
+        //{
+        //    m_runtime.UpdateEditorGame(dt);
 
-            int gvpW = m_scenePanel->GetGameViewportWidth();
-            int gvpH = m_scenePanel->GetGameViewportHeight();
-            if (gvpW > 0 && gvpH > 0)
-            {
-                m_runtime.RenderEditorFrame(m_scenePanel->GetGameFBOId(), gvpW, gvpH);
-            }
-        }
+        //    int gvpW = m_scenePanel->GetGameViewportWidth();
+        //    int gvpH = m_scenePanel->GetGameViewportHeight();
+        //    if (gvpW > 0 && gvpH > 0)
+        //    {
+        //        m_runtime.RenderEditorFrame(m_scenePanel->GetGameFBOId(), gvpW, gvpH);
+        //    }
+        //}
 
         endFrame();
     }
@@ -505,7 +505,7 @@ void EditorApp::closeProject()
 
 void EditorApp::buildScripts()
 {
-    if (m_scenePanel->IsPlaying()) { Debug::LogWarn("Stop play mode before rebuilding scripts"); return; }
+    //if (m_scenePanel->IsPlaying()) { Debug::LogWarn("Stop play mode before rebuilding scripts"); return; }
     if (m_scripts.IsBuilding())    return;
 
     Debug::LogInfo("[Scripts] Building...");
@@ -514,7 +514,7 @@ void EditorApp::buildScripts()
 
 void EditorApp::pollScriptBuild()
 {
-    if (m_scenePanel->IsPlaying()) return;
+    //if (m_scenePanel->IsPlaying()) return;
 
     std::string log;
     bool ok = false;

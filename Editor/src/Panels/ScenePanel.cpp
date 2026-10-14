@@ -13,59 +13,6 @@
 using namespace Nova;
 using namespace Nova::Editor;
 
-static std::string findMSBuild()
-{
-    const char* vswhere =
-        R"(C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe)";
-
-    std::string cmd =
-        std::string("\"") + vswhere + "\" -latest -requires Microsoft.Component.MSBuild"
-        " -find MSBuild\\**\\Bin\\MSBuild.exe";
-
-    SECURITY_ATTRIBUTES sa{};
-    sa.nLength = sizeof(sa);
-    sa.bInheritHandle = TRUE;
-
-    HANDLE hRead = nullptr, hWrite = nullptr;
-    CreatePipe(&hRead, &hWrite, &sa, 0);
-    SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0);
-
-    STARTUPINFOA si{};
-    si.cb = sizeof(si);
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-
-    PROCESS_INFORMATION pi{};
-    std::string cmdLine = "cmd.exe /c \"" + cmd + "\"";
-
-    if (!CreateProcessA(nullptr, cmdLine.data(), nullptr, nullptr,
-        TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
-    {
-        CloseHandle(hWrite);
-        CloseHandle(hRead);
-        return {};
-    }
-
-    CloseHandle(hWrite);
-    WaitForSingleObject(pi.hProcess, 5000);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    char buf[512]{};
-    DWORD bytesRead = 0;
-    ReadFile(hRead, buf, sizeof(buf) - 1, &bytesRead, nullptr);
-    CloseHandle(hRead);
-
-    std::string path(buf, bytesRead);
-    // Strip trailing newline/whitespace
-    while (!path.empty() && (path.back() == '\n' || path.back() == '\r' || path.back() == ' '))
-        path.pop_back();
-
-    return path;
-}
-
 void ScenePanel::createFBO(int w, int h)
 {
     m_vpWidth = w;
@@ -140,9 +87,10 @@ void ScenePanel::buildAndRunGame()
         "Game.exe";
 
     std::error_code ec;
-    std::filesystem::create_directories(
-        buildDir,
-        ec);
+    if (std::filesystem::exists(buildDir, ec)) {
+        std::filesystem::remove_all(buildDir, ec);
+    }
+    std::filesystem::create_directories(buildDir, ec);
 
     if (ec)
     {
@@ -192,36 +140,13 @@ void ScenePanel::buildAndRunGame()
                     m_buildLogScrollToBottom = true;
                 };
 
-            /*
-                Configure the project with CMake.
+            // Configure the project
 
-                Only specify the Visual Studio generator
-                the first time. Existing build directories
-                already know their generator.
-            */
-
-            bool alreadyConfigured =
-                std::filesystem::exists(
-                    buildDir / "CMakeCache.txt");
-
-            std::string configureCmd =
+                        std::string configureCmd =
                 "cmake"
-                " -S \"" +
-                root.string() +
-                "\""
-                " -B \"" +
-                buildDir.string() +
-                "\""
-                " -DNOVA_SDK_DIR=\"" +
-                sdkDir.string() +
-                "\"";
-
-            if (!alreadyConfigured)
-            {
-                configureCmd +=
-                    " -G \"Visual Studio 17 2022\""
-                    " -A x64";
-            }
+                " -S \"" + root.string() + "\""
+                " -B \"" + buildDir.string() + "\""
+                " -DNOVA_SDK_DIR=\"" + sdkDir.string() + "\"";
 
             appendLog(
                 "\n[Configure]\n" +
@@ -334,18 +259,15 @@ void ScenePanel::buildAndRunGame()
                 }
             }
 
-            /*
-                Build the actual Game executable.
-            */
-
+            // Build the actual executable
+            
             const std::string buildCmd =
                 "cmake"
                 " --build \"" +
                 buildDir.string() +
                 "\""
                 " --config " +
-                configuration +
-                " --target Game";
+                configuration;
 
             appendLog(
                 "\n[Build]\n" +
@@ -481,9 +403,30 @@ void ScenePanel::buildAndRunGame()
                 exePath.string() +
                 "\n");
 
-            /*
-                Launch the user's actual project.
-            */
+
+            // Copy vcpkg DLLs next to Game.exe
+            {
+                std::error_code cec;
+                for (const auto& triplet :
+                    std::filesystem::directory_iterator(sdkDir / "vcpkg_installed", cec))
+                {
+                    const auto binDir = triplet.path() / "bin";
+                    if (!std::filesystem::is_directory(binDir, cec))
+                        continue;
+
+                    for (const auto& f : std::filesystem::directory_iterator(binDir, cec))
+                    {
+                        if (f.path().extension() == ".dll")
+                            std::filesystem::copy_file(
+                                f.path(),
+                                exePath.parent_path() / f.path().filename(),
+                                std::filesystem::copy_options::skip_existing,
+                                cec);
+                    }
+                }
+            }
+
+            // Launch the user's actual project
 
             STARTUPINFOA runSi{};
             runSi.cb = sizeof(runSi);
@@ -636,138 +579,85 @@ void ScenePanel::drawTabBar()
     ImGui::EndTabBar();
 }
 
-void ScenePanel::startPlay()
-{
-    if (m_playing || m_building) return;
-
-    if (!m_ctxRef->activeSceneRef)
-    {
-        Debug::LogError("Cannot play: no active scene");
-        return;
-    }
-
-    m_playSnapshotPath =
-        (std::filesystem::temp_directory_path() / "nova_play_snapshot.nvsn").string();
-
-    SceneSerializer* serializer = Services::Fetch<SceneSerializer>();
-    if (!serializer || !serializer->Save(*m_ctxRef->activeSceneRef, m_playSnapshotPath))
-    {
-        Debug::LogError("Failed to snapshot scene before play");
-        m_playSnapshotPath.clear();
-        return;
-    }
-
-    m_playing = true;
-    m_showGameWindow = true;
-}
-
-void ScenePanel::stopPlay()
-{
-    if (!m_playing) return;
-
-    m_playing = false;
-
-    if (!m_playSnapshotPath.empty() && m_ctxRef->activeSceneRef)
-    {
-        std::vector<LoadedEntity> loaded;
-        m_ecsRef->DeleteAllEntities();
-
-        if (m_sceneManagerRef->GetLoader()->Load(m_playSnapshotPath, &loaded))
-        {
-            m_ctxRef->activeSceneRef->GetEntities().clear();
-            for (const auto& e : loaded)
-                m_ctxRef->activeSceneRef->AddEntity(e.id, e.name);
-        }
-        else
-        {
-            Debug::LogError("Failed to restore scene after play");
-        }
-
-        std::error_code ec;
-        std::filesystem::remove(m_playSnapshotPath, ec);
-        m_playSnapshotPath.clear();
-    }
-}
-
-void ScenePanel::createGameFBO(int w, int h)
-{
-    m_gameVpWidth = w;
-    m_gameVpHeight = h;
-
-    glGenFramebuffers(1, &m_gameFbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_gameFbo);
-
-    glGenTextures(1, &m_gameColorTex);
-    glBindTexture(GL_TEXTURE_2D, m_gameColorTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_gameColorTex, 0);
-
-    glGenRenderbuffers(1, &m_gameDepthRbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, m_gameDepthRbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_gameDepthRbo);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void ScenePanel::resizeGameFBO(int w, int h)
-{
-    destroyGameFBO();
-    createGameFBO(w, h);
-}
-
-void ScenePanel::destroyGameFBO()
-{
-    if (m_gameDepthRbo) { glDeleteRenderbuffers(1, &m_gameDepthRbo); m_gameDepthRbo = 0; }
-    if (m_gameColorTex) { glDeleteTextures(1, &m_gameColorTex); m_gameColorTex = 0; }
-    if (m_gameFbo) { glDeleteFramebuffers(1, &m_gameFbo); m_gameFbo = 0; }
-    m_gameVpWidth = m_gameVpHeight = 0;
-}
-
-void ScenePanel::drawGameWindow()
-{
-    if (!m_showGameWindow) return;
-
-    bool open = m_showGameWindow;
-
-    ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Game", &open))
-    {
-        ImGui::End();
-        if (!open && m_playing) stopPlay();
-        m_showGameWindow = open;
-        return;
-    }
-
-    ImGui::TextColored(m_playing ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-        m_playing ? "Playing" : "Stopped");
-
-    ImVec2 viewSize = ImGui::GetContentRegionAvail();
-    int w = (int)viewSize.x;
-    int h = (int)viewSize.y;
-
-    if (w > 0 && h > 0)
-    {
-        // Resize
-        if (w != m_gameVpWidth || h != m_gameVpHeight)
-            resizeGameFBO(w, h);
-
-        if (m_gameColorTex)
-        {
-            ImGui::Image((ImTextureID)(intptr_t)m_gameColorTex, viewSize,
-                ImVec2(0, 1), ImVec2(1, 0));
-        }
-    }
-
-    ImGui::End();
-
-    if (!open && m_playing)
-        stopPlay();
-
-    m_showGameWindow = open;
-}
+//void ScenePanel::createGameFBO(int w, int h)
+//{
+//    m_gameVpWidth = w;
+//    m_gameVpHeight = h;
+//
+//    glGenFramebuffers(1, &m_gameFbo);
+//    glBindFramebuffer(GL_FRAMEBUFFER, m_gameFbo);
+//
+//    glGenTextures(1, &m_gameColorTex);
+//    glBindTexture(GL_TEXTURE_2D, m_gameColorTex);
+//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_gameColorTex, 0);
+//
+//    glGenRenderbuffers(1, &m_gameDepthRbo);
+//    glBindRenderbuffer(GL_RENDERBUFFER, m_gameDepthRbo);
+//    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+//    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_gameDepthRbo);
+//
+//    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+//}
+//
+//void ScenePanel::resizeGameFBO(int w, int h)
+//{
+//    destroyGameFBO();
+//    createGameFBO(w, h);
+//}
+//
+//void ScenePanel::destroyGameFBO()
+//{
+//    if (m_gameDepthRbo) { glDeleteRenderbuffers(1, &m_gameDepthRbo); m_gameDepthRbo = 0; }
+//    if (m_gameColorTex) { glDeleteTextures(1, &m_gameColorTex); m_gameColorTex = 0; }
+//    if (m_gameFbo) { glDeleteFramebuffers(1, &m_gameFbo); m_gameFbo = 0; }
+//    m_gameVpWidth = m_gameVpHeight = 0;
+//}
+//
+//void ScenePanel::drawGameWindow()
+//{
+//    if (!m_showGameWindow) return;
+//
+//    bool open = m_showGameWindow;
+//
+//    ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
+//    if (!ImGui::Begin("Game", &open))
+//    {
+//        ImGui::End();
+//        if (!open && m_playing) stopPlay();
+//        m_showGameWindow = open;
+//        return;
+//    }
+//
+//    ImGui::TextColored(m_playing ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+//        m_playing ? "Playing" : "Stopped");
+//
+//    ImVec2 viewSize = ImGui::GetContentRegionAvail();
+//    int w = (int)viewSize.x;
+//    int h = (int)viewSize.y;
+//
+//    if (w > 0 && h > 0)
+//    {
+//        // Resize
+//        if (w != m_gameVpWidth || h != m_gameVpHeight)
+//            resizeGameFBO(w, h);
+//
+//        if (m_gameColorTex)
+//        {
+//            ImGui::Image((ImTextureID)(intptr_t)m_gameColorTex, viewSize,
+//                ImVec2(0, 1), ImVec2(1, 0));
+//        }
+//    }
+//
+//    ImGui::End();
+//
+//    if (!open && m_playing)
+//        stopPlay();
+//
+//    m_showGameWindow = open;
+//}
 
 void ScenePanel::drawSceneToolBar()
 {
@@ -778,27 +668,8 @@ void ScenePanel::drawSceneToolBar()
         newScene();
     ImGui::SameLine();
 
-    if (m_playing)
-    {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.25f, 0.25f, 1.0f));
-        if (ImGui::SmallButton("Stop"))
-            stopPlay();
-        ImGui::PopStyleColor();
-    }
-    else if (m_building)
-    {
-        ImGui::BeginDisabled();
-        ImGui::SmallButton("> Play");
-        ImGui::EndDisabled();
-    }
-    else
-    {
-        if (ImGui::SmallButton("> Play"))
-            startPlay();
-    }
-    ImGui::SameLine();
 
-    if (m_building || m_playing)
+    if (m_building)
     {
         ImGui::BeginDisabled();
         ImGui::SmallButton(m_building ? "Building..." : "> Build");
@@ -990,7 +861,7 @@ ScenePanel::ScenePanel(Context* ctx)
 ScenePanel::~ScenePanel()
 {
     destroyFBO();
-    destroyGameFBO();
+    // destroyGameFBO();
 }
 
 void ScenePanel::Draw()
@@ -1004,7 +875,7 @@ void ScenePanel::Draw()
     ImGui::End();
 
     drawBuildLog();
-    drawGameWindow();
+    // drawGameWindow();
 }
 
 void ScenePanel::newScene()
