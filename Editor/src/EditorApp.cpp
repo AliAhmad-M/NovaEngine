@@ -399,26 +399,26 @@ void EditorApp::drawMenuBar()
             m_running = false;
 
         ImGui::EndMenu();
+    }
 
-        if (ImGui::BeginMenu("Project"))
-        {
-            if (ImGui::MenuItem("Build Scripts", "Ctrl+B", false, !m_scripts.IsBuilding()))
-                buildScripts();
+    if (ImGui::BeginMenu("Project"))
+    {
+        if (ImGui::MenuItem("Build Scripts", "Ctrl+B", false, !m_scripts.IsBuilding()))
+            buildScripts();
 
 #ifdef _WIN32
-            if (ImGui::MenuItem("Open in Visual Studio"))
-            {
-                auto sln = m_projects.Current().build / (m_projects.Current().name + ".sln");
-                if (std::filesystem::exists(sln))
-                    std::system(("start \"\" \"" + sln.string() + "\"").c_str());
-                else
-                    Debug::LogWarn("No .sln yet, run Build Scripts once first");
-            }
-            if (ImGui::MenuItem("Show Project Folder"))
-                std::system(("explorer \"" + m_projects.Current().root.string() + "\"").c_str());
-#endif
-            ImGui::EndMenu();
+        if (ImGui::MenuItem("Open in Visual Studio"))
+        {
+            auto sln = m_projects.Current().build / (m_projects.Current().name + ".sln");
+            if (std::filesystem::exists(sln))
+                std::system(("start \"\" \"" + sln.string() + "\"").c_str());
+            else
+                Debug::LogWarn("No .sln yet, run Build Scripts once first");
         }
+        if (ImGui::MenuItem("Show Project Folder"))
+            std::system(("explorer \"" + m_projects.Current().root.string() + "\"").c_str());
+#endif
+        ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Edit"))

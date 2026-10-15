@@ -380,9 +380,7 @@ void ScenePanel::buildAndRunGame()
                 }
             }
 
-            /*
-                Build succeeded. Verify the executable.
-            */
+            // Verify executable on successful build
 
             if (!std::filesystem::exists(
                 exePath))
