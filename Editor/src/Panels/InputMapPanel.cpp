@@ -47,7 +47,7 @@ const InputMapPanel::KeyEntry InputMapPanel::s_keys[] =
     { nullptr, 0 }
 };
 
-InputMapPanel::InputMapPanel(Context* ctx) : m_ctx(ctx)
+InputMapPanel::InputMapPanel(EditorContext* ctx) : m_ctx(ctx)
 {
     m_inputMap = Services::Fetch<InputMap>();
 }

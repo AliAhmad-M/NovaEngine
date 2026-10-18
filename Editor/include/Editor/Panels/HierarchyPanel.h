@@ -11,7 +11,7 @@ namespace Nova::Editor
     class HierarchyPanel
     {
     public:
-        explicit HierarchyPanel(Context* ctx);
+        explicit HierarchyPanel(EditorContext* ctx);
 
         void Draw();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
@@ -20,8 +20,6 @@ namespace Nova::Editor
         int  m_renamingEntity = -1;
         char m_renameBuffer[128] = {};
         char m_searchBuffer[128] = {};
-        int  m_pendingDelete = -1;
-        bool m_hasPendingCreate = false;
         EntityID m_pendingCreateParent = NO_PARENT;
 
 
@@ -34,7 +32,25 @@ namespace Nova::Editor
         void processPending();
         void deleteEntityRecursive(EntityID id);
 
-        Context* m_ctxRef = nullptr;
+        enum class DropZone { Into, Before, After };
+        enum class PendingType { None, Create, Delete, Move };
+
+        struct PendingAction
+        {
+            PendingType type = PendingType::None;
+            EntityID    id = 0;
+            EntityID    target = 0;             // Move only
+            DropZone    zone = DropZone::Into;  // Move only
+        };
+
+        PendingAction m_pending;
+
+        bool wouldCreateCycle(EntityID id, EntityID newParent);
+        int  findIndex(EntityID id);
+        bool findSibling(EntityID id, int dir, EntityID& out);
+        bool applyMove(const PendingAction& m);
+
+        EditorContext* m_ctxRef = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;
 
         Texture* m_iconEntity;

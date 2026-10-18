@@ -121,6 +121,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Core\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Platform\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Graphics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Physics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Runtime\bin\$(Platform)\$(Configuration)\Output;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Core.lib;Platform.lib;Graphics.lib;Physics.lib;Runtime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call "$(SolutionDir)stage_sdk.bat" $(Configuration)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -140,6 +143,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Core\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Platform\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Graphics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Physics\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)Runtime\bin\$(Platform)\$(Configuration)\Output;$(SolutionDir)World\bin\$(Platform)\$(Configuration)\Output;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Core.lib;Platform.lib;Graphics.lib;Physics.lib;World.lib;Runtime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call "$(SolutionDir)stage_sdk.bat" $(Configuration)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

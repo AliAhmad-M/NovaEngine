@@ -29,13 +29,13 @@ namespace Nova
         Texture* texture = nullptr;
         std::string texturePath;
 
-        Rectangle src;  // Sprite src rect
-        Rectangle dst;  // Sprite dst rect
-
         int frame = 0;   // Current frame
 		int zIndex = 0;  // Rendering layer depth
         int hframes = 1; // Total frames in one row
         int vframes = 1; // Total frames in one column
+
+        Rectangle src;  // Sprite src rect
+        Rectangle dst;  // Sprite dst rect
 
         // Animation map
         std::unordered_map<std::string, Sprite2DAnimationData> animations{};

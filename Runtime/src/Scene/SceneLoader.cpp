@@ -62,9 +62,6 @@ namespace
             BoundaryValueFromJson(j["boundaries"]["down"])
         };
         c.SetBoundaries(boundaries);
-
-        c.SetViewportSize(j["viewport"]["width"].get<int>(),
-            j["viewport"]["height"].get<int>());
         c.SetOffset({ j["offset"]["x"].get<float>(), j["offset"]["y"].get<float>() });
         return c;
     }

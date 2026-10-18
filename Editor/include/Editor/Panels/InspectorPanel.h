@@ -16,7 +16,7 @@ namespace Nova::Editor
     class InspectorPanel
     {
     public:
-        explicit InspectorPanel(Context* ctx);
+        explicit InspectorPanel(EditorContext* ctx);
 
         void Draw();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
@@ -41,7 +41,7 @@ namespace Nova::Editor
         void drawBehaviorScript(BehaviorScript& sc);
         void generateBehaviorStub(const std::string& path, const std::string& className);
 
-        Context* m_ctxRef;
+        EditorContext* m_ctxRef;
         ImGuiWindowFlags m_windowFlags = 0;
 
         ECS* m_ecsRef;

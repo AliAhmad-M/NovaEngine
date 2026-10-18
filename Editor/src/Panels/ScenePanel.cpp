@@ -3,6 +3,7 @@
 #include <Editor/Project/ProjectManager.h>
 #include <Core/Services.h>
 #include <Core/Components.h>
+#include <Platform/Window.h>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
@@ -68,6 +69,10 @@ void ScenePanel::buildAndRunGame()
     const ProjectInfo& project =
         pm->Current();
 
+    // Save scene before building
+    if (m_ctxRef->onSaveScene)
+        m_ctxRef->onSaveScene();
+
     const std::filesystem::path root =
         std::filesystem::absolute(project.root);
 
@@ -101,8 +106,6 @@ void ScenePanel::buildAndRunGame()
     }
 
     m_building = true;
-    m_showBuildLog = true;
-
     {
         std::lock_guard<std::mutex> lock(
             m_buildLogMutex);
@@ -475,10 +478,8 @@ void ScenePanel::buildAndRunGame()
 
 void ScenePanel::drawBuildLog()
 {
-    if (!m_showBuildLog) return;
-
     ImGui::SetNextWindowSize(ImVec2(700, 400), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Build Output", &m_showBuildLog))
+    if (!ImGui::Begin("Build Output"))
     {
         ImGui::End();
         return;
@@ -500,9 +501,6 @@ void ScenePanel::drawBuildLog()
         std::lock_guard<std::mutex> lock(m_buildLogMutex);
         m_buildLog.clear();
     }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Close"))
-        m_showBuildLog = false;
 
     ImGui::Separator();
 
@@ -663,7 +661,7 @@ void ScenePanel::drawSceneToolBar()
     ImGui::SameLine();
 
     if (ImGui::SmallButton("+ New Scene"))
-        newScene();
+        NewScene();
     ImGui::SameLine();
 
 
@@ -679,9 +677,6 @@ void ScenePanel::drawSceneToolBar()
             buildAndRunGame();
     }
     ImGui::SameLine();
-
-    if (ImGui::SmallButton("Build Log"))
-        m_showBuildLog = !m_showBuildLog;
 
     // Gizmo toolbar
     ImGui::SameLine();
@@ -789,8 +784,10 @@ void ScenePanel::drawSceneViewport()
         ImVec2(1, 0)
     );
 
-    drawSelectionOutline();
-    drawGizmo();
+    const ImVec2 imgMin = ImGui::GetItemRectMin();
+    const ImVec2 imgSize = ImGui::GetItemRectSize();
+
+    DrawGizmo();
 
     if (ImGui::IsItemHovered())
     {
@@ -812,6 +809,11 @@ void ScenePanel::drawSceneViewport()
 
     if (m_showGrid && m_vpWidth > 0 && m_vpHeight > 0)
         drawGrid();
+
+    if (m_showGrid && m_vpWidth > 0 && m_vpHeight > 0)
+        drawGrid();
+
+    DrawViewOutlines(imgMin, imgSize);
 }
 
 void ScenePanel::panEditorCamera(float dx, float dy)
@@ -848,7 +850,7 @@ void ScenePanel::onTabChanged(int index)
     }
 }
 
-ScenePanel::ScenePanel(Context* ctx)
+ScenePanel::ScenePanel(EditorContext* ctx)
     : m_ctxRef(ctx)
 {
     m_editorCamera.isMain = true;
@@ -876,7 +878,7 @@ void ScenePanel::Draw()
     // drawGameWindow();
 }
 
-void ScenePanel::newScene()
+void ScenePanel::NewScene()
 {
     int idx = static_cast<int>(m_sceneTabs.size());
 
@@ -958,7 +960,7 @@ void ScenePanel::MarkSceneAsDirty()
         m_sceneTabs[m_activeTab].isDirty = true;
 }
 
-void ScenePanel::drawGizmo()
+void ScenePanel::DrawGizmo()
 {
     if (m_ctxRef->selectedEntity == -1) return;
     if (!m_ctxRef->activeSceneRef) return;
@@ -983,13 +985,12 @@ void ScenePanel::drawGizmo()
     float zoom = m_editorCamera.GetZoom();
     Vector2 camOffset = m_editorCamera.GetOffset();
 
-    // Build orthographic projection matrix
-
     float left = camOffset.x;
     float right = camOffset.x + viewportSize.x / zoom;
     float top = camOffset.y;
     float bottom = camOffset.y + viewportSize.y / zoom;
 
+    // Orthographic projection matrix
     float proj[16] = {
         2.0f / (right - left),  0,                  0,  0,
         0,                  2.0f / (top - bottom),   0,  0,
@@ -1042,7 +1043,28 @@ void ScenePanel::drawGizmo()
     }
 }
 
-void ScenePanel::drawSelectionOutline()
+void ScenePanel::DrawViewOutlines(ImVec2 imgMin, ImVec2 imgSize)
 {
-    // TODO: implement selection outline
+    Window* window = Services::Fetch<Window>();
+    if (!window) return;
+
+    const float   zoom = m_editorCamera.GetZoom();
+    const Vector2 off = m_editorCamera.GetOffset();
+
+    auto toScreen = [&](float wx, float wy)
+        {
+            return ImVec2(imgMin.x + (wx - off.x) * zoom,
+                imgMin.y + (wy - off.y) * zoom);
+        };
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->PushClipRect(imgMin, ImVec2(imgMin.x + imgSize.x, imgMin.y + imgSize.y), true);
+
+    // Default editor camera boundary
+    const float winW = (float)window->GetWidth();
+    const float winH = (float)window->GetHeight();
+    dl->AddRect(toScreen(0.0f, 0.0f), toScreen(winW, winH),
+        IM_COL32(255, 255, 100, 160), 0.0f, 0, 2.0f);
+
+    dl->PopClipRect();
 }

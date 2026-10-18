@@ -6,7 +6,9 @@
 #include <Graphics/Texture.h>
 #include <Editor/Inspector/EditorFields.h>
 #include <Editor/FilePicker.h>
+#include <Editor/Panels/ScenePanel.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <cstring>
 #include <cmath>
 #include <array>
@@ -15,7 +17,7 @@
 
 using namespace Nova::Editor;
 
-InspectorPanel::InspectorPanel(Context* ctx) : m_ctxRef(ctx)
+InspectorPanel::InspectorPanel(EditorContext* ctx) : m_ctxRef(ctx)
 {
     m_ecsRef = Services::Fetch<ECS>();
     m_contentLoaderRef = Services::Fetch<ContentLoader>();
@@ -254,6 +256,9 @@ void InspectorPanel::Draw()
     ImGui::Separator();
     ImGui::Spacing();
 
+    ImGuiContext& g = *ImGui::GetCurrentContext();
+    const bool editedBefore = g.ActiveIdHasBeenEditedThisFrame;
+
     // draw each component section if the entity has that component
     if (Transform2D* t = m_ecsRef->GetComponent<Transform2D>(entity))
     {
@@ -434,6 +439,13 @@ void InspectorPanel::Draw()
             m_pendingPicker.reset();
             m_pickerOpen = false;
         }
+    }
+
+    // If components have been modified, mark scene as dirty
+    if (!editedBefore && g.ActiveIdHasBeenEditedThisFrame)
+    {
+        if (m_ctxRef->scenePanelRef)
+			m_ctxRef->scenePanelRef->MarkSceneAsDirty();
     }
 
     ImGui::End();

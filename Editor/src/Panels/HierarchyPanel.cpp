@@ -10,7 +10,7 @@
 
 using namespace Nova::Editor;
 
-HierarchyPanel::HierarchyPanel(Context* ctx) : m_ctxRef(ctx)
+HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctxRef(ctx)
 {
     m_ecsRef = Services::Fetch<ECS>();
     m_contentLoaderRef = Services::Fetch<ContentLoader>();
@@ -157,15 +157,36 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
     // Drop target
     if (ImGui::BeginDragDropTarget())
     {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_ID"))
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_ID",
+            ImGuiDragDropFlags_AcceptBeforeDelivery |
+            ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+
+        if (payload)
         {
             EntityID draggedId = *(const EntityID*)payload->Data;
-            if (draggedId != node.id)
+
+            float t = (ImGui::GetMousePos().y - rMin.y) / (rMax.y - rMin.y);
+            DropZone zone = DropZone::Into;
+            if (t < 0.25f)
+                zone = DropZone::Before;
+            else if (t > 0.75f && !(open && hasChildren)) 
+                zone = DropZone::After;
+
+            EntityID newParent = (zone == DropZone::Into) ? node.id : node.parentId;
+            bool valid = draggedId != node.id && !wouldCreateCycle(draggedId, newParent);
+
+            ImU32 col = valid ? IM_COL32(66, 150, 255, 255) : IM_COL32(255, 80, 80, 255);
+            ImDrawList* fg = ImGui::GetForegroundDrawList();
+            if (zone == DropZone::Into)
+                fg->AddRect(rMin, rMax, col, 4.0f, 0, 2.0f);
+            else
             {
-                m_ctxRef->activeSceneRef->SetParent(draggedId, node.id);
-                if (m_ctxRef->scenePanelRef)
-                    m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+                float y = (zone == DropZone::Before) ? rMin.y : rMax.y;
+                fg->AddLine(ImVec2(rMin.x, y), ImVec2(rMax.x, y), col, 2.0f);
             }
+
+            if (valid && payload->IsDelivery())
+                m_pending = { PendingType::Move, draggedId, node.id, zone };
         }
         ImGui::EndDragDropTarget();
     }
@@ -185,7 +206,7 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
 
         if (ImGui::MenuItem("Create Child Entity"))
         {
-            m_hasPendingCreate = true;
+            m_pending = { PendingType::Create, node.id };
             m_pendingCreateParent = node.id;
         }
 
@@ -196,10 +217,17 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
                 m_ctxRef->scenePanelRef->MarkSceneAsDirty();
         }
 
+        EntityID sibling;
+        if (ImGui::MenuItem("Move Up", nullptr, false, findSibling(node.id, -1, sibling)))
+            m_pending = { PendingType::Move, node.id, sibling, DropZone::Before };
+
+        if (ImGui::MenuItem("Move Down", nullptr, false, findSibling(node.id, +1, sibling)))
+            m_pending = { PendingType::Move, node.id, sibling, DropZone::After };
+
         ImGui::Separator();
 
         if (ImGui::MenuItem("Delete"))
-            m_pendingDelete = static_cast<int>(node.id);
+            m_pending = { PendingType::Delete, node.id };
 
         ImGui::EndPopup();
     }
@@ -273,20 +301,34 @@ void HierarchyPanel::drawContextMenu()
 
 void HierarchyPanel::processPending()
 {
-    if (m_pendingDelete != -1)
-    {
-        deleteEntityRecursive(static_cast<EntityID>(m_pendingDelete));
-        m_pendingDelete = -1;
+    if (m_pending.type == PendingType::None) return;
 
-        if (m_ctxRef->scenePanelRef)
-            m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+    PendingAction a = m_pending;
+    m_pending = {};
+
+    bool changed = false;
+
+    switch (a.type)
+    {
+    case PendingType::Delete:
+        deleteEntityRecursive(a.id);
+        changed = true;
+        break;
+
+    case PendingType::Create:
+        createEntity(a.id);
+        break;
+
+    case PendingType::Move:
+        changed = applyMove(a);
+        break;
+
+    default:
+        break;
     }
 
-    if (m_hasPendingCreate)
-    {
-        createEntity(m_pendingCreateParent);
-        m_hasPendingCreate = false;
-    }
+    if (changed && m_ctxRef->scenePanelRef)
+        m_ctxRef->scenePanelRef->MarkSceneAsDirty();
 }
 
 void HierarchyPanel::deleteEntityRecursive(EntityID id)
@@ -306,4 +348,83 @@ void HierarchyPanel::deleteEntityRecursive(EntityID id)
 
     if (m_ctxRef->selectedEntity == static_cast<int>(id))
         m_ctxRef->selectedEntity = -1;
+}
+
+int HierarchyPanel::findIndex(EntityID id)
+{
+    auto& entities = m_ctxRef->activeSceneRef->GetEntities();
+    for (int i = 0; i < (int)entities.size(); ++i)
+        if (entities[i].id == id) return i;
+    return -1;
+}
+
+bool HierarchyPanel::wouldCreateCycle(EntityID id, EntityID newParent)
+{
+    if (newParent == NO_PARENT) return false;
+    if (newParent == id) return true;
+
+    auto& entities = m_ctxRef->activeSceneRef->GetEntities();
+    EntityID cur = newParent;
+
+    for (size_t steps = 0; steps <= entities.size(); ++steps)
+    {
+        if (cur == NO_PARENT) return false;
+        if (cur == id) return true;
+
+        int idx = findIndex(cur);
+        if (idx < 0) return false;
+        cur = entities[idx].parentId;
+    }
+    return true;
+}
+
+bool HierarchyPanel::findSibling(EntityID id, int dir, EntityID& out)
+{
+    auto& entities = m_ctxRef->activeSceneRef->GetEntities();
+    int idx = findIndex(id);
+    if (idx < 0) return false;
+
+    EntityID parent = entities[idx].parentId;
+    for (int i = idx + dir; i >= 0 && i < (int)entities.size(); i += dir)
+    {
+        if (entities[i].parentId == parent)
+        {
+            out = entities[i].id;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool HierarchyPanel::applyMove(const PendingAction& m)
+{
+    Scene* scene = m_ctxRef->activeSceneRef;
+    if (!scene || m.id == m.target) return false;
+
+    if (m.zone == DropZone::Into)
+    {
+        if (wouldCreateCycle(m.id, m.target)) return false;
+        scene->SetParent(m.id, m.target);
+        return true;
+    }
+
+    auto& entities = scene->GetEntities();
+    int targetIdx = findIndex(m.target);
+    if (targetIdx < 0 || findIndex(m.id) < 0) return false;
+
+    EntityID newParent = entities[targetIdx].parentId;
+    if (wouldCreateCycle(m.id, newParent)) return false;
+
+    // Fix the order
+    if (entities[findIndex(m.id)].parentId != newParent)
+        scene->SetParent(m.id, newParent);
+
+    int from = findIndex(m.id);
+    SceneEntity moved = std::move(entities[from]);
+    entities.erase(entities.begin() + from);
+
+    int to = findIndex(m.target);   // re-find
+    entities.insert(entities.begin() + (m.zone == DropZone::After ? to + 1 : to),
+        std::move(moved));
+    return true;
 }

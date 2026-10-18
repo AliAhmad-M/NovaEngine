@@ -10,7 +10,7 @@ namespace Nova::Editor
 {
     class ScenePanel;
 
-    struct Context
+    struct EditorContext
     {
         int selectedEntity = -1;
         std::string activeScenePath;

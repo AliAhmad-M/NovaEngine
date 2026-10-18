@@ -7,7 +7,7 @@
 
 using namespace Nova::Editor;
 
-AssetBrowserPanel::AssetBrowserPanel(Context* ctx)
+AssetBrowserPanel::AssetBrowserPanel(EditorContext* ctx)
     : m_ctxRef(ctx)
 {
     m_contentLoaderRef = Services::Fetch<ContentLoader>();

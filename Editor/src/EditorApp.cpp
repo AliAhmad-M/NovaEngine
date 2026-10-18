@@ -224,7 +224,7 @@ void EditorApp::Run()
 
         // New scene
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_N))
-            m_scenePanel->newScene();
+            m_scenePanel->NewScene();
 
         // Open scene shortcut
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O))
@@ -355,20 +355,21 @@ void EditorApp::buildLayout()
         ImGuiID dockBottom = 0;
         ImGuiID dockCenter = 0;
 
-        // Step 1 - split right (Inspector, full height)
+        // Split right (Inspector, full height)
         ImGui::DockBuilderSplitNode(dockID, ImGuiDir_Right, kInspectorWidthRatio, &dockRight, &dockCenter);
 
-        // Step 2 - split bottom (Asset Browser, spans Hierarchy + Scene)
+        // Split bottom (Asset Browser, spans Hierarchy + Scene)
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Down, kAssetBrowserHeightRatio, &dockBottom, &dockCenter);
 
-        // Step 3 - split left (Hierarchy) from remaining top area
+        // Split left (Hierarchy, Build Output) from remaining top area
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Left, kHierarchyWidthRatio, &dockLeft, &dockCenter);
 
-        // Assign panels - names must match ImGui::Begin() strings exactly
+        // Assign panels
         ImGui::DockBuilderDockWindow("Hierarchy", dockLeft);
         ImGui::DockBuilderDockWindow("Scene", dockCenter);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
         ImGui::DockBuilderDockWindow("Asset Browser", dockBottom);
+        ImGui::DockBuilderDockWindow("Build Output", dockBottom);
 
         ImGui::DockBuilderFinish(dockID);
     }
@@ -383,7 +384,7 @@ void EditorApp::drawMenuBar()
     if (ImGui::BeginMenu("File"))
     {
         if (ImGui::MenuItem("New Scene", "Ctrl+N"))
-            m_scenePanel->newScene();
+            m_scenePanel->NewScene();
 
         if (ImGui::MenuItem("Open Scene", "Ctrl+O"))
             m_openScenePicker = true;
@@ -491,7 +492,7 @@ void EditorApp::openProject(const std::string& dir)
     m_ctx.selectedEntity = -1;
 
     m_assetBrowserPanel->SetRoot(p.root);
-    m_scenePanel->newScene();
+    m_scenePanel->NewScene();
 
     m_scripts.Load(p);
 }

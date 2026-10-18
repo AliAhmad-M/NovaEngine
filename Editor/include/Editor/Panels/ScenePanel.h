@@ -25,18 +25,18 @@ namespace Nova::Editor
     class ScenePanel
     {
     public:
-        ScenePanel(Context* ctx);
+        ScenePanel(EditorContext* ctx);
         ~ScenePanel();
 
         void Draw();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
+        void NewScene();
         void OpenSceneTab(const std::string& filePath);
         void MarkSceneAsSaved();
         void MarkSceneAsDirty();
-        void drawGizmo();              
-        void drawSelectionOutline();
-        void newScene();
+        void DrawGizmo();              
+        void DrawViewOutlines(ImVec2 imgMin, ImVec2 imgSize);
 
         unsigned int GetSceneFBOId()          const { return m_fbo; }
         unsigned int GetSceneColorTexture()   const { return m_colorTex; }
@@ -75,7 +75,7 @@ namespace Nova::Editor
         // Converts a screen-space ImGui delta into world-space and applies it to the editor camera
         void panEditorCamera(float dx, float dy);
 
-        Context* m_ctxRef = nullptr;
+        EditorContext* m_ctxRef = nullptr;
 
         ImGuiWindowFlags      m_windowFlags = 0;
         std::vector<SceneTab> m_sceneTabs;
@@ -97,7 +97,6 @@ namespace Nova::Editor
         std::string         m_buildLog;
         std::mutex          m_buildLogMutex;
         std::atomic<bool>   m_building{ false };
-        bool                m_showBuildLog = false;
         bool                m_buildLogScrollToBottom = false;
 
         //// Play mode

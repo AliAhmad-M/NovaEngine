@@ -147,12 +147,6 @@ namespace
             {"down",  BoundaryValueToJson(boundaries[3])}
         };
 
-        int vpW, vpH;
-        c.GetViewPortSize(vpW, vpH);
-        j["viewport"] = nlohmann::json{ {"width", vpW}, {"height", vpH} };
-
-        // Offset is derived/clamped state, not authored data, but is stored
-        // for convenience so a reloaded camera starts where it was left.
         j["offset"] = Vec2ToJson(c.GetOffset());
 
         return j;

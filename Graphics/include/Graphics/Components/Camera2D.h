@@ -34,10 +34,6 @@ namespace Nova
 
             fields.Header("View");
             fields.Float("Zoom", [this] { return GetZoom(); }, [this](float v) { SetZoom(v); }, 0.01f);
-            fields.Int("Viewport Width", [this] { int w, h; GetViewPortSize(w, h); return w; },
-                [this](int v) { int w, h; GetViewPortSize(w, h); SetViewportSize(v, h); });
-            fields.Int("Viewport Height", [this] { int w, h; GetViewPortSize(w, h); return h; },
-                [this](int v) { int w, h; GetViewPortSize(w, h); SetViewportSize(w, v); });
 
             fields.Header("Boundaries");
             fields.Float("Left Bound", [this] { return GetBoundaries()[0]; },

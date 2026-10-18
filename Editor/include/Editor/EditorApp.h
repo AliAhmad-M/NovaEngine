@@ -52,7 +52,7 @@ namespace Nova::Editor
         GLFWwindow* m_nativeWindow = nullptr;
 
         Engine m_runtime;
-        Context m_ctx;
+        EditorContext m_ctx;
         ProjectManager m_projects;
         ScriptHost m_scripts;
         std::unique_ptr<ProjectLauncher> m_launcher;

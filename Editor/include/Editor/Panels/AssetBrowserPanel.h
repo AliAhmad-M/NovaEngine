@@ -24,7 +24,7 @@ namespace Nova::Editor
     class AssetBrowserPanel
     {
     public:
-        explicit AssetBrowserPanel(Context* ctx);
+        explicit AssetBrowserPanel(EditorContext* ctx);
 
         void Draw();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
@@ -42,7 +42,7 @@ namespace Nova::Editor
         const char* assetTypeIcon(AssetType t) const;
         GLuint      getEntryIcon(const AssetEntry& entry) const;
 
-        Context* m_ctxRef = nullptr;
+        EditorContext* m_ctxRef = nullptr;
         ImGuiWindowFlags         m_windowFlags = 0;
         std::filesystem::path    m_rootPath;
         std::filesystem::path    m_currentPath;

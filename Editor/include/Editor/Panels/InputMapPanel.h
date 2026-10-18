@@ -11,7 +11,7 @@ namespace Nova::Editor
     class InputMapPanel
     {
     public:
-        explicit InputMapPanel(Context* ctx);
+        explicit InputMapPanel(EditorContext* ctx);
         void Draw(bool& open);
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
@@ -25,7 +25,7 @@ namespace Nova::Editor
         const char* glfwKeyName(int key) const;
         int         nameToGlfwKey(const char* name) const;
 
-        Context* m_ctx = nullptr;
+        EditorContext* m_ctx = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;
         InputMap* m_inputMap = nullptr;
 
