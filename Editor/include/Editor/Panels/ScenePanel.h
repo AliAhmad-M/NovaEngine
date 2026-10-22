@@ -37,6 +37,7 @@ namespace Nova::Editor
         void drawGizmo();              
         void drawSelectionOutline();
         void newScene();
+        void buildAndRunGame();
 
         unsigned int GetSceneFBOId()          const { return m_fbo; }
         unsigned int GetSceneColorTexture()   const { return m_colorTex; }
@@ -65,7 +66,6 @@ namespace Nova::Editor
         void onTabChanged(int newIndex);
 
         void closeScene(int index);
-        void buildAndRunGame();
         void drawBuildLog();
 
         void createFBO(int w, int h);

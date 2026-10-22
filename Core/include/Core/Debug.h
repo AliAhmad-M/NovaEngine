@@ -1,43 +1,34 @@
 #pragma once
+#include <string>
+#include <vector>
+#include <mutex>
 
-namespace Nova 
+namespace Nova
 {
-	class Debug
-	{
-	public:
-		/**
-		 * @brief Logs a generic message on the console, adds newline
-		 * @param format The C-style format string
-		 * @param ... Additional arguments to be formatted
-		 */
-		static void Log(const char* format, ...);
+    enum class LogLevel { Log, Info, Warn, Error };
 
-		/**
-		 * @brief Logs an informative message on the console, adds newline
-		 * @param format The C-style format string
-		 * @param ... Additional arguments to be formatted
-		 */
-		static void LogInfo(const char* format, ...);
+    struct LogEntry
+    {
+        LogLevel    level;
+        std::string message;
+    };
 
-		/**
-		 * @brief Logs a non fatal warn message on the console, adds newline
-		 * @param format The C-style format string
-		 * @param ... Additional arguments to be formatted
-		 */
-		static void LogWarn(const char* format, ...);
+    class Debug
+    {
+    public:
+        static void Log(const char* format, ...);
+        static void LogInfo(const char* format, ...);
+        static void LogWarn(const char* format, ...);
+        static void LogError(const char* format, ...);
+        static void LogErrorAndExit(const char* format, ...);
 
-		/**
-		 * @brief Logs a fatal error message on the console, adds newline
-		 * @param format The C-style format string
-		 * @param ... Additional arguments to be formatted
-		 */
-		static void LogError(const char* format, ...);
+        // Console panel access
+        static const std::vector<LogEntry>& GetEntries() { return s_entries; }
+        static void Clear() { s_entries.clear(); }
 
-		/**
-		 * @brief Logs a fatal error message on the console, adds newline, calls exit(1)
-		 * @param format The C-style format string
-		 * @param ... Additional arguments to be formatted
-		 */
-		static void LogErrorAndExit(const char* format, ...);
-	};
+    private:
+        static void pushEntry(LogLevel level, const char* format, va_list args);
+        static std::vector<LogEntry> s_entries;
+        static std::mutex            s_mutex;
+    };
 }

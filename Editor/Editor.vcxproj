@@ -147,6 +147,7 @@
     <ClCompile Include="src\FilePicker.cpp" />
     <ClCompile Include="src\Inspector\EditorFields.cpp" />
     <ClCompile Include="src\Panels\AssetBrowserPanel.cpp" />
+    <ClCompile Include="src\Panels\ConsolePanel.cpp" />
     <ClCompile Include="src\Panels\HierarchyPanel.cpp" />
     <ClCompile Include="src\Panels\InputMapPanel.cpp" />
     <ClCompile Include="src\Panels\InspectorPanel.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="include\Editor\Inspector\EditorFields.h" />
     <ClInclude Include="include\Editor\Panels\AssetBrowserPanel.h" />
     <ClInclude Include="include\Editor\Context.h" />
+    <ClInclude Include="include\Editor\Panels\ConsolePanel.h" />
     <ClInclude Include="include\Editor\Panels\HierarchyPanel.h" />
     <ClInclude Include="include\Editor\Panels\InputMapPanel.h" />
     <ClInclude Include="include\Editor\Panels\InspectorPanel.h" />

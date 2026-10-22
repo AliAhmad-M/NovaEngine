@@ -143,6 +143,7 @@ bool EditorApp::Init()
     m_runtime.Init();
     m_nativeWindow = Services::Fetch<Window>()->GetNativeWindow();
 
+
     // Initialize ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -183,6 +184,7 @@ bool EditorApp::Init()
     m_assetBrowserPanel = std::make_unique<AssetBrowserPanel>(&m_ctx);
     m_scenePanel = std::make_unique<ScenePanel>(&m_ctx);
     m_inputMapPanel = std::make_unique<InputMapPanel>(&m_ctx);
+    m_consolePanel = std::make_unique<ConsolePanel>(&m_ctx);
 
     // Initialize scene serializer
     m_sceneSerializer = std::make_unique<SceneSerializer>();
@@ -230,11 +232,6 @@ void EditorApp::Run()
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_O))
             m_openScenePicker = true;
 
-        // Draw panels
-        m_hierarchyPanel->Draw();
-        m_inspectorPanel->Draw();
-        m_assetBrowserPanel->Draw();
-        m_scenePanel->Draw();
 
         if (m_showInputMap)
             m_inputMapPanel->Draw(m_showInputMap);
@@ -245,6 +242,12 @@ void EditorApp::Run()
             ImGui::OpenPopup("##OpenScenePicker");
             m_openScenePicker = false;
         }
+
+        if (m_showHierarchy)    m_hierarchyPanel->Draw();
+        if (m_showInspector)    m_inspectorPanel->Draw();
+        if (m_showAssetBrowser) m_assetBrowserPanel->Draw();
+        if (m_scenePanel)       m_scenePanel->Draw();
+        if (m_showConsole)      m_consolePanel->Draw();
 
         DrawFilePicker("##OpenScenePicker", m_scenesPath, ".nvsn",
             [this](const std::string& path)
@@ -361,14 +364,19 @@ void EditorApp::buildLayout()
         // Step 2 - split bottom (Asset Browser, spans Hierarchy + Scene)
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Down, kAssetBrowserHeightRatio, &dockBottom, &dockCenter);
 
+
         // Step 3 - split left (Hierarchy) from remaining top area
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Left, kHierarchyWidthRatio, &dockLeft, &dockCenter);
 
-        // Assign panels - names must match ImGui::Begin() strings exactly
+        // Step 4 - split the bottom area for Console
+        ImGuiID dockBottomRight = 0;
+        ImGui::DockBuilderSplitNode(dockBottom, ImGuiDir_Right, 0.4f, &dockBottomRight, &dockBottom);
+
         ImGui::DockBuilderDockWindow("Hierarchy", dockLeft);
         ImGui::DockBuilderDockWindow("Scene", dockCenter);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
         ImGui::DockBuilderDockWindow("Asset Browser", dockBottom);
+        ImGui::DockBuilderDockWindow("Console", dockBottomRight);
 
         ImGui::DockBuilderFinish(dockID);
     }
@@ -380,67 +388,168 @@ void EditorApp::drawMenuBar()
 {
     if (!ImGui::BeginMainMenuBar()) return;
 
+    // File menu
     if (ImGui::BeginMenu("File"))
     {
-        if (ImGui::MenuItem("New Scene", "Ctrl+N"))
-            m_scenePanel->newScene();
-
-        if (ImGui::MenuItem("Open Scene", "Ctrl+O"))
-            m_openScenePicker = true;
-
+        if (ImGui::MenuItem("New Project"))
+        {
+            // TODO: new project
+        }
+        if (ImGui::MenuItem("Open Project"))
+        {
+            // TODO: open project
+        }
+        ImGui::Separator();
         if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
             saveActiveScene();
-
-        if (ImGui::MenuItem("Close Project")) closeProject();
-
+        if (ImGui::MenuItem("Save Scene As"))
+        {
+            // TODO: save as
+        }
         ImGui::Separator();
-
         if (ImGui::MenuItem("Exit"))
             m_running = false;
 
         ImGui::EndMenu();
-
-        if (ImGui::BeginMenu("Project"))
-        {
-            if (ImGui::MenuItem("Build Scripts", "Ctrl+B", false, !m_scripts.IsBuilding()))
-                buildScripts();
-
-#ifdef _WIN32
-            if (ImGui::MenuItem("Open in Visual Studio"))
-            {
-                auto sln = m_projects.Current().build / (m_projects.Current().name + ".sln");
-                if (std::filesystem::exists(sln))
-                    std::system(("start \"\" \"" + sln.string() + "\"").c_str());
-                else
-                    Debug::LogWarn("No .sln yet, run Build Scripts once first");
-            }
-            if (ImGui::MenuItem("Show Project Folder"))
-                std::system(("explorer \"" + m_projects.Current().root.string() + "\"").c_str());
-#endif
-            ImGui::EndMenu();
-        }
     }
 
+    // Edit menu
     if (ImGui::BeginMenu("Edit"))
     {
+        if (ImGui::MenuItem("Undo", "Ctrl+Z"))
+        {
+            // TODO: undo
+        }
+        if (ImGui::MenuItem("Redo", "Ctrl+Y"))
+        {
+            // TODO: redo
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("Preferences"))
+        {
+            // TODO: preferences window
+        }
+        ImGui::Separator();
         if (ImGui::MenuItem("Input Map"))
             m_showInputMap = true;
 
         ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("View"))
+    // Project menu
+    if (ImGui::BeginMenu("Project"))
     {
-        if (ImGui::MenuItem("Hierarchy", nullptr, true)) {}
-        if (ImGui::MenuItem("Inspector", nullptr, true)) {}
-        if (ImGui::MenuItem("Asset Browser", nullptr, true)) {}
-        if (ImGui::MenuItem("Console", nullptr, true)) {}
+        if (ImGui::BeginMenu("Project Settings"))
+        {
+            if (ImGui::MenuItem("Input Map"))
+                m_showInputMap = true;
+            if (ImGui::MenuItem("Physics Defaults"))
+            {
+                // TODO: physics settings
+            }
+            if (ImGui::MenuItem("Resolution"))
+            {
+                // TODO: resolution settings
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::MenuItem("Export Variables Overview"))
+        {
+            // TODO: export variables
+        }
+        if (ImGui::MenuItem("Reload Scripts"))
+        {
+            // TODO: reload scripts
+        }
+
+        ImGui::EndMenu();
+    }
+
+    // Scene menu
+    if (ImGui::BeginMenu("Scene"))
+    {
+        if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+            m_scenePanel->newScene();
+        if (ImGui::MenuItem("Open Scene", "Ctrl+O"))
+            m_openScenePicker = true;
+        ImGui::Separator();
+        if (ImGui::MenuItem("Add Entity"))
+        {
+            // TODO: add entity from menu
+        }
+        if (ImGui::MenuItem("Instance Prefab"))
+        {
+            // TODO: prefab system
+        }
+
+        ImGui::EndMenu();
+    }
+
+    // Build menu
+    if (ImGui::BeginMenu("Build"))
+    {
+        if (ImGui::MenuItem("Run Game"))
+        {
+            // TODO: run without building
+        }
+        if (ImGui::MenuItem("Build and Run"))
+            m_scenePanel->buildAndRunGame();
+
+        ImGui::EndMenu();
+    }
+
+    // Window menu
+    if (ImGui::BeginMenu("Window"))
+    {
+        if (ImGui::MenuItem("Hierarchy", nullptr, m_showHierarchy))
+            m_showHierarchy = !m_showHierarchy;
+        if (ImGui::MenuItem("Inspector", nullptr, m_showInspector))
+            m_showInspector = !m_showInspector;
+        if (ImGui::MenuItem("Console", nullptr, m_showConsole))
+            m_showConsole = !m_showConsole;
+        if (ImGui::MenuItem("Asset Browser", nullptr, m_showAssetBrowser))
+            m_showAssetBrowser = !m_showAssetBrowser;
+
+        ImGui::EndMenu();
+    }
+
+    // Help menu
+    if (ImGui::BeginMenu("Help"))
+    {
+        if (ImGui::MenuItem("Docs"))
+        {
+            // TODO: open docs site
+        }
+        if (ImGui::MenuItem("About"))
+            m_showAbout = true;
+
         ImGui::EndMenu();
     }
 
     ImGui::EndMainMenuBar();
-}
 
+    // About dialog
+    if (m_showAbout)
+    {
+        ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(600, 300), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("About##dialog", &m_showAbout))
+        {
+            ImGui::Text("Nova Engine");
+            ImGui::Spacing();
+            ImGui::TextDisabled("A 2D game engine built with C++ and OpenGL");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::Text("Version: 0.1.0");
+            ImGui::Text("Built with ImGui, GLFW, GLAD, JoltPhysics");
+            ImGui::Spacing();
+            if (ImGui::Button("Close", ImVec2(80, 0)))
+                m_showAbout = false;
+        }
+        ImGui::End();
+    }
+}
 void EditorApp::saveActiveScene()
 {
     if (!m_ctx.activeSceneRef || !m_sceneSerializer)

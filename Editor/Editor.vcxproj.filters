@@ -54,6 +54,9 @@
     <ClCompile Include="src\Project\ScriptHost.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Panels\ConsolePanel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Editor\EditorApp.h">
@@ -96,6 +99,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Editor\Project\ScriptHost.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Editor\Panels\ConsolePanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

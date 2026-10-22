@@ -15,6 +15,7 @@
 #include <Editor/Panels/ScenePanel.h>
 #include <Editor/Scene/SceneSerializer.h>
 #include <Editor/Panels/InputMapPanel.h>
+#include <Editor/Panels/ConsolePanel.h>
 
 namespace Nova::Editor 
 {
@@ -49,6 +50,13 @@ namespace Nova::Editor
         bool m_openScenePicker = false;
         double m_lastFrameTime    = 0.0;
 
+        // Panel visibility toggles
+        bool m_showHierarchy = true;
+        bool m_showInspector = true;
+        bool m_showConsole = true;
+        bool m_showAssetBrowser = true;
+        bool m_showAbout = false;
+
         GLFWwindow* m_nativeWindow = nullptr;
 
         Engine m_runtime;
@@ -68,6 +76,7 @@ namespace Nova::Editor
         std::unique_ptr<HierarchyPanel>    m_hierarchyPanel;
         std::unique_ptr<InspectorPanel>    m_inspectorPanel;
         std::unique_ptr<ScenePanel>        m_scenePanel;
+        std::unique_ptr<ConsolePanel> m_consolePanel;
         std::string m_scenesPath;
     };
 }
