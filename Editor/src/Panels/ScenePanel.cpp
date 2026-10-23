@@ -145,7 +145,7 @@ void ScenePanel::buildAndRunGame()
 
             // Configure the project
 
-                        std::string configureCmd =
+            std::string configureCmd =
                 "cmake"
                 " -S \"" + root.string() + "\""
                 " -B \"" + buildDir.string() + "\""
@@ -263,7 +263,7 @@ void ScenePanel::buildAndRunGame()
             }
 
             // Build the actual executable
-            
+
             const std::string buildCmd =
                 "cmake"
                 " --build \"" +

@@ -35,7 +35,7 @@ namespace Nova::Editor
         void OpenSceneTab(const std::string& filePath);
         void MarkSceneAsSaved();
         void MarkSceneAsDirty();
-        void DrawGizmo();              
+        void DrawGizmo();
         void DrawViewOutlines(ImVec2 imgMin, ImVec2 imgSize);
 
         unsigned int GetSceneFBOId()          const { return m_fbo; }
@@ -80,16 +80,16 @@ namespace Nova::Editor
         ImGuiWindowFlags      m_windowFlags = 0;
         std::vector<SceneTab> m_sceneTabs;
 
-        int m_activeTab     = -1;
+        int m_activeTab = -1;
         int m_lastActiveTab = -1;
 
         unsigned int m_fbo = 0;
         unsigned int m_colorTex = 0;
         unsigned int m_depthRbo = 0;
-        int          m_vpWidth  = 0;
+        int          m_vpWidth = 0;
         int          m_vpHeight = 0;
 
-        Camera2D m_editorCamera;   // editor-owned, never touches ECS
+        Camera2D m_editorCamera;
 
         bool m_showGrid = true;
         int  m_gridSize = 32;
