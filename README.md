@@ -1,8 +1,6 @@
 # Nova Engine
 
-Nova Engine is a work-in-progress game engine written in C++ that aims to support both 2D and 3D game development, with functional 2D capabilities and 3D development planned as part of its ongoing evolution. The engine includes a custom Entity Component System (ECS), an OpenGL-based graphics subsystem, physics integration, and a graphical editor built with Dear ImGui.
-
-**Status:** Work in progress. The 2D functionality along with the editor is operational, but the engine is not yet a stable, plug-and-play release and requires manual setup and configuration.
+Nova Engine is a work-in-progress game engine written in C++ that aims to support both 2D and 3D game development, with functional 2D capabilities and 3D development planned as part of its ongoing evolution. The engine includes a custom Entity Component System (ECS), an OpenGL-based graphics subsystem, physics integration, and a graphical editor built with Dear ImGui. The 2D functionality along with the editor is operational, but the engine is not yet a stable, plug-and-play release and requires manual setup and configuration.
 
 ## Features
 
@@ -49,8 +47,4 @@ The engine uses a custom ECS implementation based on paginated sparse sets and s
 
 ## Current Status
 
-Nova Engine is under active development. Its 2D functionality supports creating and running games through the editor, including scene editing, component configuration, physics, camera functionality, and imported tilemaps.
-
-The broader goal is to develop a more complete 2D and 3D game engine. **3D functionality remains a work in progress** and should not be considered available in a stable form.
-
-The current project is primarily intended for experimentation, learning, and continued development of engine architecture. Getting it running on another machine may require additional manual configuration.
+Nova Engine is under active development. Its 2D functionality supports creating and running games through the editor, including scene editing, component configuration, physics, camera functionality, and imported tilemaps. The broader goal is to develop a more complete 2D and 3D game engine. **3D functionality remains a work in progress** and should not be considered available in a stable form. The current project is primarily intended for experimentation, learning, and continued development of engine architecture. Getting it running on another machine may require additional manual configuration.
