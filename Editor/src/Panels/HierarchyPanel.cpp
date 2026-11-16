@@ -31,19 +31,28 @@ void HierarchyPanel::Draw()
 {
     ImGui::Begin("Hierarchy");
 
-    drawCreateButton();
-    ImGui::Spacing();
-    drawSearchBar();
-    ImGui::Separator();
-
     if (m_ctxRef->activeSceneRef)
+    {
+        drawCreateButton();
+        ImGui::Spacing();
+        drawSearchBar();
+        ImGui::Separator();
         drawEntityList();
+    }
     else
-        ImGui::TextDisabled("No scene open");
+    {
+        ImVec2 avail = ImGui::GetContentRegionAvail();
+        float textH = ImGui::GetTextLineHeight() * 2.0f;
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (avail.y - textH) * 0.4f);
+        const char* msg = "No scene open";
+        float textW = ImGui::CalcTextSize(msg).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail.x - textW) * 0.5f);
+        ImGui::TextDisabled("%s", msg);
+    }
 
     processPending();
 
-    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)
+    if (m_ctxRef->activeSceneRef && ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)
         && m_ctxRef->selectedEntity == -1)
         ImGui::OpenPopup("HierarchyContextMenu");
 
@@ -73,7 +82,7 @@ void HierarchyPanel::drawCreateButton()
 {
     if (!m_ctxRef->activeSceneRef) return;
 
-    if (ImGui::Button("+ Add Entity"))
+    if (ImGui::Button("+ Add Entity", ImVec2(-1.0f, 26.0f)))
         createEntity(NO_PARENT);
 }
 

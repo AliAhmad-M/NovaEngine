@@ -6,6 +6,7 @@
 #include <Graphics/Texture.h>
 #include <Editor/Inspector/EditorFields.h>
 #include <Editor/FilePicker.h>
+#include <Editor/AssetPath.h>
 #include <Editor/Panels/ScenePanel.h>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -14,6 +15,8 @@
 #include <array>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+#include <filesystem>
 
 using namespace Nova::Editor;
 
@@ -30,97 +33,21 @@ InspectorPanel::InspectorPanel(EditorContext* ctx) : m_ctxRef(ctx)
     m_iconScript     = m_contentLoaderRef->LoadTexture("assets/icons/script.png");
 }
 
-static void FieldVec2(const char* label, float* v, float speed = 0.1f)
+static void PropLabel(const char* label)
 {
-    ImGui::PushID(label);
-
     ImGui::TableSetColumnIndex(0);
+    ImGui::AlignTextToFramePadding();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.68f, 0.70f, 0.74f, 1.0f));
     ImGui::TextUnformatted(label);
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-        {
-            v[0] += ImGui::GetIO().MouseDelta.x * speed;
-            v[1] += ImGui::GetIO().MouseDelta.x * speed;
-        }
-    }
-
+    ImGui::PopStyleColor();
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
-    ImGui::InputFloat2("##v", v, "%.3f");
-
-    ImGui::PopID();
-}
-
-
-static void FieldFloat(const char* label, float* v, float speed = 0.01f,
-    float vmin = 0.0f, float vmax = 0.0f)
-{
-    ImGui::PushID(label);
-
-    ImGui::TableSetColumnIndex(0);
-    ImGui::TextUnformatted(label);
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-            *v += ImGui::GetIO().MouseDelta.x * speed;
-    }
-
-    ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
-    ImGui::InputFloat("##v", v, 0.0f, 0.0f, "%.3f");  // 0,0 hides +- buttons
-
-    ImGui::PopID();
-}
-
-static void FieldInt(const char* label, int* v, float speed = 1.0f,
-    int vmin = 0, int vmax = 0)
-{
-    ImGui::PushID(label);
-
-    ImGui::TableSetColumnIndex(0);
-    ImGui::TextUnformatted(label);
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-            *v += (int)(ImGui::GetIO().MouseDelta.x * speed);
-    }
-
-    ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
-    ImGui::InputInt("##v", v, 0, 0);  // 0,0 hides +- buttons
-
-    ImGui::PopID();
-}
-
-static void FieldBool(const char* label, bool* v)
-{
-    ImGui::PushID(label);
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
-    ImGui::TableSetColumnIndex(1);
-    ImGui::Checkbox("##v", v);
-    ImGui::PopID();
-}
-
-static void FieldString(const char* label, char* buf, size_t bufSize)
-{
-    ImGui::PushID(label);
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
-    ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-1.0f);
-    ImGui::InputText("##v", buf, bufSize);
-    ImGui::PopID();
 }
 
 static void FieldReadOnly(const char* label, const char* value)
 {
     ImGui::PushID(label);
-    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(label);
-    ImGui::TableSetColumnIndex(1);
-    ImGui::TextUnformatted(value);
+    PropLabel(label);
+    ImGui::TextDisabled("%s", value);
     ImGui::PopID();
 }
 
@@ -136,13 +63,18 @@ static bool BeginComponent(const char* name, bool* removeRequested = nullptr,
         ImGuiTreeNodeFlags_AllowOverlap |
         ImGuiTreeNodeFlags_FramePadding;
 
-    // Draw the arrow/frame only (empty label) so we control icon + text placement ourselves
+    // Draw the arrow/frame only
     bool open = ImGui::TreeNodeEx("##header", flags);
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.15f, 0.16f, 0.19f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.19f, 0.20f, 0.24f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.19f, 0.20f, 0.24f, 1.0f));
+    ImGui::PopStyleColor(3);
 
     float lineHeight = ImGui::GetFrameHeight();
     float textHeight = ImGui::GetTextLineHeight();
 
-    // Icon comes right after the arrow
+    // Icon comes after the arrow
     ImGui::SameLine();
     if (icon)
     {
@@ -153,18 +85,22 @@ static bool BeginComponent(const char* name, bool* removeRequested = nullptr,
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (lineHeight - iconSize) * 0.5f);
     }
 
-    // Label after the icon, vertically centered in the row
+    // Label after the icon
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (lineHeight - textHeight) * 0.5f);
     ImGui::TextUnformatted(name);
     
 
-    // Three dots button on the right side of header
-    float btnW = ImGui::GetFrameHeight();
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x - btnW + ImGui::GetCursorPosX()
-        - ImGui::GetStyle().ItemSpacing.x);
+    // Button with 3 dots
+    float btnW = ImGui::GetFrameHeight() - 2.0f;
+    float rightEdge = ImGui::GetWindowContentRegionMax().x;
+    ImGui::SameLine(rightEdge - btnW);
 
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.15f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.25f));
     if (ImGui::Button("...##opts", ImVec2(btnW, btnW)))
         ImGui::OpenPopup("##ComponentCtx");
+    ImGui::PopStyleColor(3);
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
         ImGui::OpenPopup("##ComponentCtx");
@@ -196,14 +132,14 @@ static void EndComponent()
 {
     ImGui::TreePop();
     ImGui::PopID();
+    ImGui::Spacing();
 }
 
 static void BeginPropertyTable()
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4, 3));
-    ImGui::BeginTable("##props", 2,
-        ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV);
-    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(6, 4));
+    ImGui::BeginTable("##props", 2, ImGuiTableFlags_SizingStretchProp);
+    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 110.0f);
     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 }
 
@@ -239,27 +175,62 @@ void InspectorPanel::Draw()
 {
     ImGui::Begin("Inspector");
 
-    if (m_ctxRef->selectedEntity == -1)
+    if (m_ctxRef->selectedEntity == -1 || !m_ctxRef->activeSceneRef)
     {
         ImGui::TextDisabled("No entity selected");
         ImGui::End();
         return;
     }
 
+    ProjectManager* pm = Services::Fetch<ProjectManager>();
+    const std::filesystem::path projectRoot = (pm && pm->HasProject()) ? pm->Current().root : std::filesystem::path();
+
     EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
 
-    char nameLabel[64];
-    std::snprintf(nameLabel, sizeof(nameLabel), "Entity %d", m_ctxRef->selectedEntity);
-    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
-    ImGui::Text("%s", nameLabel);
-    ImGui::PopFont();
+    std::string entityName = "Entity";
+    if (m_ctxRef->activeSceneRef)
+    {
+        for (auto& e : m_ctxRef->activeSceneRef->GetEntities())
+        {
+            if (e.id == entity)
+            {
+                entityName = e.name;
+                break;
+            }
+        }
+    }
+
+    char nameBuf[128];
+    std::strncpy(nameBuf, entityName.c_str(), sizeof(nameBuf) - 1);
+    nameBuf[sizeof(nameBuf) - 1] = '\0';
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 70.0f);
+    ImGui::InputText("##entityName", nameBuf, sizeof(nameBuf));
+    if (ImGui::IsItemDeactivatedAfterEdit())
+    {
+        for (auto& e : m_ctxRef->activeSceneRef->GetEntities())
+        {
+            if (e.id == entity)
+            {
+                e.name = nameBuf;
+                if (m_ctxRef->scenePanelRef)
+                    m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+                break;
+            }
+        }
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("ID: %u", (unsigned int)entity);
+    ImGui::PopStyleVar();
+
     ImGui::Separator();
     ImGui::Spacing();
 
     ImGuiContext& g = *ImGui::GetCurrentContext();
     const bool editedBefore = g.ActiveIdHasBeenEditedThisFrame;
 
-    // draw each component section if the entity has that component
+    // Draw each component section if the entity has that component
     if (Transform2D* t = m_ecsRef->GetComponent<Transform2D>(entity))
     {
         ImTextureID iconHandle = m_iconTransform ? (ImTextureID)(intptr_t)m_iconTransform->GetHandle() : 0;
@@ -278,52 +249,46 @@ void InspectorPanel::Draw()
     {
         ImTextureID iconHandle = m_iconSprite ? (ImTextureID)(intptr_t)m_iconSprite->GetHandle() : 0;
 
-        // Sync texture
-        std::string before = s->texture ? m_contentLoaderRef->GetTexturePath(s->texture) : "";
+        std::string before = s->texture
+            ? ToProjectRelative(m_contentLoaderRef->GetTexturePath(s->texture), projectRoot) : "";
         s->texturePath = before;
 
-        // Picker request
-        auto picker = [this, entity](const char* id, const char* ext,
+        auto picker = [this, entity, projectRoot](const char*, const char*,
             std::function<void(const std::string&)>)
             {
-                m_pendingPicker = {
-                    id, ext,
-                    [this, entity](const std::string& picked)
-                    {
-                        Sprite2D* sp = m_ecsRef->GetComponent<Sprite2D>(entity);
-                        if (!sp) return;
+                std::string assetsDir = projectRoot.empty() ? "" : (projectRoot / "assets").string();
+                std::string picked = OpenNativeFileDialog("Select Texture", "Image Files (*.png;*.jpg;*.jpeg;*.bmp;*.tga)", "*.png;*.jpg;*.jpeg;*.bmp;*.tga", assetsDir);
+                if (picked.empty()) return;
 
-                        Texture* loaded = m_contentLoaderRef->LoadTexture(picked);
-                        if (loaded)
-                        {
-                            sp->texture = loaded;
-                            sp->texturePath = picked;
-                        }
-                    }
-                };
+                Sprite2D* sp = m_ecsRef->GetComponent<Sprite2D>(entity);
+                if (!sp) return;
+                if (Texture* loaded = m_contentLoaderRef->LoadTexture(picked))
+                {
+                    sp->texture = loaded;
+                    sp->texturePath = ToProjectRelative(picked, projectRoot);
+                    if (m_ctxRef->scenePanelRef) m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+                }
             };
 
         drawComponent("Sprite2D", *s, iconHandle,
             [&] { m_ecsRef->RemoveComponent<Sprite2D>(entity); },
             picker);
 
-        // Fetch component again
         s = m_ecsRef->GetComponent<Sprite2D>(entity);
         if (s)
         {
-            // Typed path
             if (s->texturePath != before)
             {
-                Texture* loaded = m_contentLoaderRef->LoadTexture(s->texturePath);
+                Texture* loaded = m_contentLoaderRef->LoadTexture(
+                    ResolveProjectPath(s->texturePath, projectRoot).string());
                 if (loaded) s->texture = loaded;
                 else        s->texturePath = before;
             }
-
             s->hframes = std::max(s->hframes, 1);
             s->vframes = std::max(s->vframes, 1);
         }
     }
- 
+
     if (RigidBody2D* rb = m_ecsRef->GetComponent<RigidBody2D>(entity))
     {
         ImTextureID iconHandle = m_iconRigidbody ? (ImTextureID)(intptr_t)m_iconRigidbody->GetHandle() : 0;
@@ -359,62 +324,66 @@ void InspectorPanel::Draw()
         tm = m_ecsRef->GetComponent<Tilemap2D>(entity);
 
         // Rebuild it if needed
-        if (tm && tm->NeedsRebuild() && !ImGui::IsAnyItemActive()) 
+        if (tm && tm->NeedsRebuild() && !ImGui::IsAnyItemActive())
         {
-            Tilemap2D* old = m_ecsRef->GetComponent<Tilemap2D>(entity);
+            // Clear the flag first
+            tm->ClearRebuildFlag();
 
-            // Clear first so a failed build isn't retried every frame
-            old->ClearRebuildFlag();
+            // Copy everything out
+            std::string mapPath = tm->GetSourceMapPath();
+            std::vector<TilesetSource2D> tilesets = tm->GetTilesetSources();
+            int tileW = tm->GetTileWidth();
+            int tileH = tm->GetTileHeight();
+            int collisionLayer = tm->collisionLayer;
+            std::string collisionGids = tm->collisionGids;
+            std::string pendingTex = tm->pendingTexturePath;
+            int pendingGid = tm->pendingFirstgid;
 
-            // Copy everything out, the old component is destroyed below
-            std::string mapPath = old->GetSourceMapPath();
-            std::vector<TilesetSource2D> tilesets = old->GetTilesetSources();
-            int tileW = old->GetTileWidth();
-            int tileH = old->GetTileHeight();
-            int collisionLayer = old->collisionLayer;
-            std::string collisionGids = old->collisionGids;
-            std::string pendingTex = old->pendingTexturePath;
-            int pendingGid = old->pendingFirstgid;
-
-            if (tilesets.empty() || mapPath.empty()) return;
-
-            Tilemap2D fresh(tileW, tileH);
-
-            for (const auto& src : tilesets)
+            if (!tilesets.empty() && !mapPath.empty())
             {
-                const Texture* tex = m_contentLoaderRef->LoadTexture(src.texturePath);
-                if (!tex)
+                Tilemap2D fresh(tileW, tileH);
+
+                bool tilesetsOk = true;
+                for (const auto& src : tilesets)
                 {
-                    Debug::LogError("[Tilemap] Failed to load tileset: %s", src.texturePath.c_str());
-                    return;
+                    const Texture* tex = m_contentLoaderRef->LoadTexture(src.texturePath);
+                    if (!tex)
+                    {
+                        Debug::LogError("[Tilemap] Failed to load tileset: %s", src.texturePath.c_str());
+                        tilesetsOk = false;
+                        break;
+                    }
+                    fresh.AddTileset(tex, src.texturePath, src.firstgid);
                 }
-                fresh.AddTileset(tex, src.texturePath, src.firstgid);
-            }
 
-            fresh.LoadTilemap(mapPath);
-            fresh.SetSourceMapPath(mapPath);
-
-            if (!collisionGids.empty())
-            {
-                std::vector<int> tileIds;
-                std::istringstream ss(collisionGids);
-                std::string token;
-                while (std::getline(ss, token, ','))
+                if (tilesetsOk)
                 {
-                    try { tileIds.push_back(std::stoi(token)); }
-                    catch (...) {}
+                    fresh.LoadTilemap(mapPath);
+                    fresh.SetSourceMapPath(mapPath);
+
+                    if (!collisionGids.empty())
+                    {
+                        std::vector<int> tileIds;
+                        std::istringstream ss(collisionGids);
+                        std::string token;
+                        while (std::getline(ss, token, ','))
+                        {
+                            try { tileIds.push_back(std::stoi(token)); }
+                            catch (...) {}
+                        }
+                        if (!tileIds.empty())
+                            fresh.GenerateCollisionData(collisionLayer, tileIds);
+                    }
+
+                    fresh.collisionLayer = collisionLayer;
+                    fresh.collisionGids = collisionGids;
+                    fresh.pendingTexturePath = pendingTex;
+                    fresh.pendingFirstgid = pendingGid;
+
+                    m_ecsRef->RemoveComponent<Tilemap2D>(entity);
+                    m_ecsRef->AddComponent<Tilemap2D>(entity, std::move(fresh));
                 }
-                if (!tileIds.empty())
-                    fresh.GenerateCollisionData(collisionLayer, tileIds);
             }
-
-            fresh.collisionLayer = collisionLayer;
-            fresh.collisionGids = collisionGids;
-            fresh.pendingTexturePath = pendingTex;
-            fresh.pendingFirstgid = pendingGid;
-
-            m_ecsRef->RemoveComponent<Tilemap2D>(entity);
-            m_ecsRef->AddComponent<Tilemap2D>(entity, std::move(fresh));
         }
     }
 
@@ -423,6 +392,49 @@ void InspectorPanel::Draw()
 
     ImGui::Spacing();
     drawAddComponentMenu();
+
+    ImGuiWindow* inspectorWin = ImGui::GetCurrentWindow();
+    if (ImGui::BeginDragDropTargetCustom(inspectorWin->Rect(), ImGui::GetID("##InspectorDrop")))
+    {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetPayload))
+        {
+            std::filesystem::path dropped(static_cast<const char*>(payload->Data));
+            std::string ext = dropped.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+            if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".tga")
+            {
+                if (!m_ecsRef->HasComponent<Sprite2D>(entity))
+                    m_ecsRef->AddComponent<Sprite2D>(entity, Sprite2D());
+
+                if (Texture* tex = m_contentLoaderRef->LoadTexture(dropped.string()))
+                {
+                    Sprite2D* sp = m_ecsRef->GetComponent<Sprite2D>(entity);
+                    sp->texture = tex;
+                    sp->texturePath = ToProjectRelative(dropped, projectRoot);
+                }
+            }
+            else if (ext == ".hpp")
+            {
+                if (!m_ecsRef->HasComponent<BehaviorScript>(entity))
+                    m_ecsRef->AddComponent<BehaviorScript>(entity, BehaviorScript());
+
+                BehaviorScript* bs = m_ecsRef->GetComponent<BehaviorScript>(entity);
+                std::filesystem::path noExt = dropped;
+                noExt.replace_extension();
+                bs->scriptPath = ToProjectRelative(noExt, projectRoot);
+                bs->behaviorName = dropped.stem().string();
+            }
+            else
+            {
+                Debug::LogWarn("[Inspector] No component accepts '%s' files", ext.c_str());
+            }
+
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->MarkSceneAsDirty();
+        }
+        ImGui::EndDragDropTarget();
+    }
 
     if (m_pendingPicker.has_value())
     {
@@ -433,7 +445,15 @@ void InspectorPanel::Draw()
     if (m_pickerOpen && m_pendingPicker.has_value())
     {
         auto& req = *m_pendingPicker;
-        std::string path = Services::Fetch<ProjectManager>()->Current().root.string();
+        ProjectManager* pm = Services::Fetch<ProjectManager>();
+        std::string path = req.initialPath;
+        if (path.empty() && pm && pm->HasProject())
+        {
+            if (req.filterExt == nullptr || req.filterExt[0] == '\0')
+                path = pm->Current().scripts.string();
+            else
+                path = pm->Current().root.string();
+        }
         if (!DrawFilePicker(req.popupId, path, req.filterExt, req.onConfirm))
         {
             m_pendingPicker.reset();
@@ -455,10 +475,12 @@ void InspectorPanel::drawAddComponentMenu()
 {
     EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
 
-    float btnW = 200.0f;
-    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - btnW) * 0.5f);
-    if (ImGui::Button("Add Component", ImVec2(btnW, 0)))
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.45f, 0.94f, 0.22f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.45f, 0.94f, 0.45f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.45f, 0.94f, 0.70f));
+    if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 28.0f)))
         ImGui::OpenPopup("AddComponentPopup");
+    ImGui::PopStyleColor(3);
 
     if (ImGui::BeginPopup("AddComponentPopup"))
     {
@@ -500,33 +522,95 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
     {
         static char s_dirBuf[512] = {};
         static char s_classNameBuf[128] = {};
+        static bool s_dirInitialized = false;
+
+        // Pre fill the directory with the project's scripts folder on first use
+        if (!s_dirInitialized)
+        {
+            ProjectManager* pm = Services::Fetch<ProjectManager>();
+            if (pm && pm->HasProject())
+            {
+                std::string scriptsDir = pm->Current().scripts.string();
+                std::strncpy(s_dirBuf, scriptsDir.c_str(), sizeof(s_dirBuf) - 1);
+                s_dirBuf[sizeof(s_dirBuf) - 1] = '\0';
+            }
+            s_dirInitialized = true;
+        }
+
+        static std::vector<std::filesystem::path> s_scripts;
+        static char s_scriptFilter[64] = {};
+
+        if (ImGui::Button("Select Existing Script...", ImVec2(-1.0f, 0.0f)))
+        {
+            s_scripts.clear();
+            s_scriptFilter[0] = '\0';
+            ProjectManager* pm = Services::Fetch<ProjectManager>();
+            if (pm && pm->HasProject())
+            {
+                std::error_code ec;
+                std::filesystem::recursive_directory_iterator it(pm->Current().scripts, ec), end;
+                for (; !ec && it != end; it.increment(ec))
+                    if (it->is_regular_file(ec) && it->path().extension() == ".hpp")
+                        s_scripts.push_back(it->path());
+                std::sort(s_scripts.begin(), s_scripts.end());
+            }
+            ImGui::OpenPopup("##PickScript");
+        }
+
+        if (ImGui::BeginPopup("##PickScript"))
+        {
+            ImGui::SetNextItemWidth(260.0f);
+            ImGui::InputTextWithHint("##scriptFilter", "Search...", s_scriptFilter, sizeof(s_scriptFilter));
+            ImGui::Separator();
+            ImGui::BeginChild("##scriptList", ImVec2(260.0f, 200.0f));
+            for (const auto& p : s_scripts)
+            {
+                std::string name = p.stem().string();
+                if (s_scriptFilter[0] && name.find(s_scriptFilter) == std::string::npos) continue;
+                if (ImGui::Selectable(name.c_str()))
+                {
+                    ProjectManager* pm = Services::Fetch<ProjectManager>();
+                    std::filesystem::path noExt = p;
+                    noExt.replace_extension();
+                    bs.scriptPath = ToProjectRelative(noExt, pm ? pm->Current().root : std::filesystem::path());
+                    bs.behaviorName = name;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndChild();
+            ImGui::EndPopup();
+        }
 
         BeginPropertyTable();
 
-        // directory row
+        // Directory row
         NextRow();
         ImGui::PushID("scriptdir");
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Directory");
         ImGui::TableSetColumnIndex(1);
-        ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+        float btnH = ImGui::GetFrameHeight();
+        ImGui::SetNextItemWidth(-btnH - ImGui::GetStyle().ItemSpacing.x);
         ImGui::InputText("##dir", s_dirBuf, sizeof(s_dirBuf));
         ImGui::SameLine();
-        if (ImGui::SmallButton("...##dir"))
+        if (ImGui::Button("...##dir", ImVec2(btnH, btnH)))
         {
-            m_pendingPicker = {
-                "##pickerBehaviorDir", "",  // no extension filter
-                [](const std::string& path)
-                {
-                    // strip filename
-                    size_t slash = path.find_last_of("/\\");
-                    std::string dir = (slash != std::string::npos) ? path.substr(0, slash) : path;
-                    std::strncpy(s_dirBuf, dir.c_str(), sizeof(s_dirBuf) - 1);
-                }
-            };
+            ProjectManager* pm = Services::Fetch<ProjectManager>();
+            std::string startPath;
+            if (s_dirBuf[0] != '\0' && std::filesystem::is_directory(s_dirBuf))
+                startPath = s_dirBuf;
+            else if (pm && pm->HasProject())
+                startPath = pm->Current().scripts.string();
+
+            std::string chosen = OpenNativeFolderDialog("Select Script Directory", startPath);
+            if (!chosen.empty())
+            {
+                std::strncpy(s_dirBuf, chosen.c_str(), sizeof(s_dirBuf) - 1);
+                s_dirBuf[sizeof(s_dirBuf) - 1] = '\0';
+            }
         }
         ImGui::PopID();
 
-        // class name row
+        // Class name row
         NextRow();
         ImGui::PushID("scriptname");
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Class Name");
@@ -535,7 +619,7 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
         ImGui::InputText("##name", s_classNameBuf, sizeof(s_classNameBuf));
         ImGui::PopID();
 
-        // full path preview
+        // Full path preview
         if (s_dirBuf[0] != '\0' && s_classNameBuf[0] != '\0')
         {
             char previewBuf[640];
@@ -559,15 +643,15 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
 
             bs.scriptPath = fullPath;
             bs.behaviorName = className;
-            s_dirBuf[0] = '\0';
             s_classNameBuf[0] = '\0';
+            // Keep s_dirBuf so the next script uses the same folder
         }
 
         if (!canCreate) ImGui::EndDisabled();
     }
     else
     {
-        // script bound
+        // Script bound
         BeginPropertyTable();
         NextRow(); FieldReadOnly("Name", bs.behaviorName.c_str());
         NextRow(); FieldReadOnly("Path", (bs.scriptPath + ".hpp").c_str());

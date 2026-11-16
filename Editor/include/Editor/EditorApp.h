@@ -43,6 +43,10 @@ namespace Nova::Editor
         void pollScriptBuild();
         void createDefaultMainScene(const ProjectInfo& project);
 
+        // Session persistence: save/restore open scene tabs
+        void saveEditorSession();
+        void loadEditorSession();
+
         bool m_running            = true;
         bool m_layoutInitialized  = false;
         bool m_openSceneRequested = false;

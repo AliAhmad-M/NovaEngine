@@ -104,6 +104,9 @@
     <ClInclude Include="include\Editor\Panels\ConsolePanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Editor\AssetPath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\icons\icon_audio.png">

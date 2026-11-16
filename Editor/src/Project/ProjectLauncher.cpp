@@ -12,6 +12,17 @@
 #include <string>
 #include <system_error>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#include <shellapi.h>
+#ifdef _MSC_VER
+#pragma comment(lib, "Shell32.lib")
+#endif
+#endif
+
 using namespace Nova::Editor;
 
 ProjectLauncher::ProjectLauncher()
@@ -82,7 +93,19 @@ void ProjectLauncher::Draw(
                 ec);
         };
 
-	// Helper for normalizing a path
+    // Helper for checking whether an entry is a directory
+    const auto isDirectory =
+        [](const std::string& folder)
+        {
+            if (folder.empty())
+                return false;
+
+            std::error_code ec;
+            return std::filesystem::is_directory(
+                std::filesystem::path(folder), ec) && !ec;
+        };
+
+    // Helper for normalizing a path
     const auto normalizePath = [](const std::string& value)
         {
             std::error_code ec;
@@ -108,8 +131,86 @@ void ProjectLauncher::Draw(
             return result;
         };
 
+    // Move a project directory to the Windows Recycle Bin
+    const auto moveToRecycleBin = [](
+        const std::string& folder,
+        std::string& error) -> bool
+        {
+#ifdef _WIN32
+            if (folder.empty())
+            {
+                error = "The project path is empty.";
+                return false;
+            }
+
+            std::error_code ec;
+            std::filesystem::path path =
+                std::filesystem::absolute(folder, ec);
+
+            if (ec)
+            {
+                error = "Could not resolve the project folder path.";
+                return false;
+            }
+
+            path = path.lexically_normal();
+
+            if (!std::filesystem::is_directory(path, ec) || ec)
+            {
+                error = "The project folder no longer exists or cannot be accessed.";
+                return false;
+            }
+
+            // Do not allow a drive root or UNC share root to be recycled
+            if (path == path.root_path())
+            {
+                error = "Refusing to delete a filesystem root.";
+                return false;
+            }
+
+            std::wstring widePath = path.wstring();
+            const std::wstring root = path.root_path().wstring();
+
+            // SHFileOperation expects paths without a trailing separator
+            while (widePath.size() > root.size() &&
+                !widePath.empty() &&
+                (widePath.back() == L'\\' || widePath.back() == L'/'))
+            {
+                widePath.pop_back();
+            }
+
+            widePath.push_back(L'\0');
+            widePath.push_back(L'\0');
+
+            SHFILEOPSTRUCTW operation{};
+            operation.wFunc = FO_DELETE;
+            operation.pFrom = widePath.c_str();
+            operation.fFlags =
+                FOF_ALLOWUNDO |
+                FOF_NOCONFIRMATION |
+                FOF_SILENT |
+                FOF_NOERRORUI;
+
+            const int result = SHFileOperationW(&operation);
+
+            if (result != 0 || operation.fAnyOperationsAborted)
+            {
+                error = "Windows could not move the project to the Recycle Bin.";
+                return false;
+            }
+
+            return true;
+#else
+            (void)folder;
+            error = "Moving projects to the Recycle Bin is only supported on Windows.";
+            return false;
+#endif
+        };
+
     std::string toOpen;
     std::string toForget;
+    std::string toDelete;
+    static std::string pendingDelete;
 
     // Header
     ImGui::Text("NOVA");
@@ -119,7 +220,7 @@ void ProjectLauncher::Draw(
     ImGui::Spacing();
     ImGui::Separator();
 
-    // Two-pane layout
+    // Two pane layout
     ImGui::Dummy(ImVec2(1.0f, 8.0f));
 
     constexpr float outerInset = 12.0f;
@@ -151,7 +252,7 @@ void ProjectLauncher::Draw(
 
     ImGui::Text("Recent Projects");
     ImGui::TextDisabled(
-        "Double-click to open. Right-click to remove.");
+        "Double click to open. Use ... for project options.");
 
     ImGui::Separator();
     ImGui::Spacing();
@@ -168,6 +269,7 @@ void ProjectLauncher::Draw(
     for (const auto& e : pm.Recent())
     {
         const bool valid = isProject(e.path);
+        const bool folderExists = isDirectory(e.path);
 
         ImGui::PushID(e.path.c_str());
 
@@ -181,32 +283,54 @@ void ProjectLauncher::Draw(
 
         const float rowWidth =
             ImGui::GetContentRegionAvail().x;
+        const float menuButtonSize = ImGui::GetFrameHeight();
+        const float menuButtonGap = ImGui::GetStyle().ItemSpacing.x;
+        const float textWidth = std::max(
+            1.0f,
+            rowWidth - menuButtonSize - menuButtonGap);
 
+        // Keep selectable separate from menu button
         const bool clicked = ImGui::Selectable(
             "##project",
             false,
             ImGuiSelectableFlags_AllowDoubleClick,
-            ImVec2(0.0f, rowHeight));
+            ImVec2(textWidth, rowHeight));
 
         const bool doubleClicked =
             clicked && ImGui::IsMouseDoubleClicked(0);
 
-        // Context menu belongs to the row
-        if (ImGui::BeginPopupContextItem())
+        // Save the normal layout position
+        const ImVec2 rowEnd = ImGui::GetCursorScreenPos();
+
+        ImGui::SetCursorScreenPos(ImVec2(
+            rowPos.x + rowWidth - menuButtonSize,
+            rowPos.y + (rowHeight - menuButtonSize) * 0.5f));
+
+        if (ImGui::Button("...", ImVec2(menuButtonSize, menuButtonSize)))
+            ImGui::OpenPopup("##ProjectOptions");
+
+        if (ImGui::BeginPopup("##ProjectOptions"))
         {
             if (ImGui::MenuItem("Remove from list"))
                 toForget = e.path;
 
+#ifdef _WIN32
+            ImGui::BeginDisabled(!folderExists);
+            if (ImGui::MenuItem("Delete project"))
+                toDelete = e.path;
+            ImGui::EndDisabled();
+#else
+            ImGui::BeginDisabled();
+            ImGui::MenuItem("Delete project (Windows only)");
+            ImGui::EndDisabled();
+#endif
             ImGui::EndPopup();
         }
 
-        // Remember cursor position
-        const ImVec2 rowEnd = ImGui::GetCursorScreenPos();
-
-        // Clip the text to the row
+        // Clip project text
         ImGui::PushClipRect(
             rowPos,
-            ImVec2(rowPos.x + rowWidth, rowPos.y + rowHeight),
+            ImVec2(rowPos.x + textWidth, rowPos.y + rowHeight),
             true);
 
         ImGui::SetCursorScreenPos(
@@ -307,23 +431,17 @@ void ProjectLauncher::Draw(
         "Browse##location",
         ImVec2(browseWidth, 0.0f)))
     {
-        ImGui::OpenPopup("##LauncherPick");
-    }
-
-    // Set destination
-    DrawFilePicker(
-        "##LauncherPick",
-        m_pickRoot,
-        "",
-        [this, copyToBuffer](const std::string& path)
+        std::string chosen = OpenNativeFolderDialog("Select Project Location", m_location);
+        if (!chosen.empty())
         {
             copyToBuffer(
                 m_location,
                 sizeof(m_location),
-                path);
+                chosen);
 
             m_error.clear();
-        });
+        }
+    }
 
     ImGui::Spacing();
 
@@ -384,23 +502,17 @@ void ProjectLauncher::Draw(
         "Browse##open",
         ImVec2(browseWidth, 0.0f)))
     {
-        ImGui::OpenPopup("##OpenProjectPick");
-    }
-
-    // Select project folder
-    DrawFilePicker(
-        "##OpenProjectPick",
-        m_pickRoot,
-        "",
-        [this, copyToBuffer](const std::string& path)
+        std::string chosen = OpenNativeFolderDialog("Open Nova Project Folder", m_openPath[0] != '\0' ? m_openPath : m_location);
+        if (!chosen.empty())
         {
             copyToBuffer(
                 m_openPath,
                 sizeof(m_openPath),
-                path);
+                chosen);
 
             m_error.clear();
-        });
+        }
+    }
 
     ImGui::Spacing();
 
@@ -443,11 +555,72 @@ void ProjectLauncher::Draw(
     }
 
     ImGui::EndChild();
+
+    // Ask for confirmation before deleting
+    if (!toDelete.empty())
+    {
+        pendingDelete = toDelete;
+        ImGui::OpenPopup("Delete Project?");
+    }
+
+    if (ImGui::BeginPopupModal(
+        "Delete Project?",
+        nullptr,
+        ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextWrapped(
+            "Move this entire folder and all its contents to the Recycle Bin?");
+        ImGui::Spacing();
+
+        std::error_code displayPathError;
+        const std::filesystem::path displayPath =
+            std::filesystem::absolute(pendingDelete, displayPathError).lexically_normal();
+
+        if (displayPathError)
+        {
+            ImGui::TextWrapped("%s", pendingDelete.c_str());
+        }
+        else
+        {
+            const std::string resolvedPath = displayPath.string();
+            ImGui::TextWrapped("%s", resolvedPath.c_str());
+        }
+
+        ImGui::Spacing();
+
+        if (ImGui::Button("Move to Recycle Bin", ImVec2(180.0f, 0.0f)))
+        {
+            std::string deleteError;
+            if (moveToRecycleBin(pendingDelete, deleteError))
+            {
+                toForget = pendingDelete;
+                m_error.clear();
+            }
+            else
+            {
+                m_error = deleteError;
+            }
+
+            pendingDelete.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f)))
+        {
+            pendingDelete.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     ImGui::PopStyleVar();   // Restore child WindowPadding
     ImGui::End();
     ImGui::PopStyleVar(2);  // Restore outer window styles
 
-    // Apply changes
+    // Apply changes after the recent-project list has finished iterating.
     if (!toForget.empty())
         pm.Forget(toForget);
 

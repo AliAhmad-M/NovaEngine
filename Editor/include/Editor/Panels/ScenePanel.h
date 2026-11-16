@@ -43,6 +43,13 @@ namespace Nova::Editor
         int          GetSceneViewportWidth()  const { return m_vpWidth; }
         int          GetSceneViewportHeight() const { return m_vpHeight; }
 
+        bool HasOpenScenes() const { return !m_sceneTabs.empty(); }
+
+        // Returns the list of open scene file paths (for session persistence)
+        std::vector<std::string> GetOpenScenePaths() const;
+        int GetActiveTabIndex() const { return m_activeTab; }
+        void SetActiveTab(int index);
+
         //bool         IsPlaying()             const { return m_playing; }
         //unsigned int GetGameFBOId()          const { return m_gameFbo; }
         //int          GetGameViewportWidth()  const { return m_gameVpWidth; }
@@ -62,6 +69,7 @@ namespace Nova::Editor
         void drawSceneToolBar();
         void drawGrid();
         void drawSceneViewport();
+        void drawNoScenePlaceholder();
         void onTabChanged(int newIndex);
 
         void closeScene(int index);
@@ -82,6 +90,7 @@ namespace Nova::Editor
 
         int m_activeTab = -1;
         int m_lastActiveTab = -1;
+        int m_tabToSelect = -1;
 
         unsigned int m_fbo = 0;
         unsigned int m_colorTex = 0;

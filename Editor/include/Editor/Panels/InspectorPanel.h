@@ -26,7 +26,14 @@ namespace Nova::Editor
         {
             const char* popupId = nullptr;
             const char* filterExt = "";
+            std::string initialPath = "";
             std::function<void(const std::string&)> onConfirm;
+
+            PickerRequest() = default;
+            PickerRequest(const char* id, const char* ext, std::function<void(const std::string&)> cb)
+                : popupId(id), filterExt(ext), onConfirm(std::move(cb)) {}
+            PickerRequest(const char* id, const char* ext, std::string initial, std::function<void(const std::string&)> cb)
+                : popupId(id), filterExt(ext), initialPath(std::move(initial)), onConfirm(std::move(cb)) {}
         };
         bool m_pickerOpen = false;
         std::optional<PickerRequest> m_pendingPicker;

@@ -1,5 +1,7 @@
 #pragma once
+
 #include <Core/Behavior/Inspectables.h>
+#include <imgui.h>
 
 namespace Nova::Editor
 {
@@ -41,14 +43,21 @@ namespace Nova::Editor
         void Button(const char* label, std::function<void()> onClick) override;
 
     private:
-        static void BeginRow(const char* name);
-        static void EndRow();
+        static void beginRow(const char* name);
+        static void endRow();
 
-        static bool DrawFloatWidget(float& v, float speed, float vmin, float vmax,
+        static void pushFieldStyle();
+        static void popFieldStyle();
+
+        static bool drawToggleSwitch(const char* id, bool& v);
+        static bool drawAxisFloat(const char* axisLabel, const char* dragId, float& val,
+            float speed, float width, const ImVec4& baseCol, const ImVec4& hoverCol);
+
+        static bool drawFloatWidget(float& v, float speed, float vmin, float vmax,
             bool allowInfinity, float infinitySign);
-        static bool DrawIntWidget(int& v, float speed, int vmin, int vmax);
-        static bool DrawVec2Widget(Vector2& v, float speed);
-        static bool DrawBoolWidget(bool& v);
-        static bool DrawStringWidget(std::string& v);
+        static bool drawIntWidget(int& v, float speed, int vmin, int vmax);
+        static bool drawVec2Widget(Vector2& v, float speed);
+        static bool drawBoolWidget(bool& v);
+        static bool drawStringWidget(std::string& v);
     };
 }

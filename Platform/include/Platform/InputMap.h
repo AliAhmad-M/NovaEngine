@@ -20,6 +20,11 @@ namespace Nova
         void Bind(const std::string& action, int glfwKey);
 
         /**
+         * @brief Removes all existing action bindings and their states.
+         */
+        void ClearBindings();
+
+        /**
          * @brief Polls and updates key and mouse states for the frame
          *
          * @param window Pointer to the active GLFW window

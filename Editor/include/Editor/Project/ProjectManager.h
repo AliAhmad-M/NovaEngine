@@ -16,6 +16,7 @@ namespace Nova::Editor
     struct ProjectInfo
     {
         std::string           name;
+        std::string           mainScene = "Main";   // Default scene name (without extension)
         std::filesystem::path root;
         std::filesystem::path assets;   // root/assets
         std::filesystem::path scenes;   // root/scenes

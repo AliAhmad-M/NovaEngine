@@ -10,12 +10,13 @@
 
 namespace Nova::Editor 
 {
-    enum class AssetType { Unknown, Texture, Scene, Font, Audio };
+    enum class AssetType { Unknown, Texture, Scene, Font, Audio, Script };
 
     struct AssetEntry
     {
         std::string path;
         std::string filename;
+        uintmax_t   fileSize = 0;
 
         AssetType type = AssetType::Unknown;
         bool isDirectory = false;
@@ -35,11 +36,19 @@ namespace Nova::Editor
     private:
         void refresh();
         void drawToolbar();
+        void drawBreadcrumbs();
         void drawDirectoryTree(const std::filesystem::path& root);
         void drawContentGrid();
+        void drawStatusBar();
+        void drawModals();
+
+        void importAsset();
+        void createNewFolder(const std::string& name);
+        void createNewScene(const std::string& name);
 
         AssetType   classifyExtension(const std::string& ext) const;
-        const char* assetTypeIcon(AssetType t) const;
+        const char* assetTypeLabel(AssetType t, bool isDir) const;
+        ImVec4      assetTypeColor(AssetType t, bool isDir) const;
         GLuint      getEntryIcon(const AssetEntry& entry) const;
 
         EditorContext* m_ctxRef = nullptr;
@@ -49,6 +58,20 @@ namespace Nova::Editor
         std::vector<AssetEntry>  m_entries;
         std::string              m_lastSelectedPath;
         std::string              m_selectedFile;
+
+        // Modals & Action States
+        bool        m_showDeleteModal = false;
+        std::string m_itemToDelete;
+
+        bool        m_showRenameModal = false;
+        std::string m_itemToRename;
+        char        m_renameBuf[256] = {};
+
+        bool        m_showNewFolderModal = false;
+        char        m_newFolderBuf[256] = "NewFolder";
+
+        bool        m_showNewSceneModal = false;
+        char        m_newSceneBuf[256] = "NewScene";
 
         // Icons
         Texture* m_iconFolder;

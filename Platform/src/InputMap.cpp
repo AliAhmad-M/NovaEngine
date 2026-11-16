@@ -12,6 +12,12 @@ void InputMap::Bind(const std::string& action, int glfwKey)
     m_states[action] = KeyState{};
 }
 
+void InputMap::ClearBindings()
+{
+	m_bindings.clear();
+	m_states.clear();
+}
+
 void InputMap::Update(GLFWwindow* window) 
 {
     m_nativeWindow = window;

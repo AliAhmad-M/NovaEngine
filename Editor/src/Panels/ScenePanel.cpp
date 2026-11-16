@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <filesystem>
 #include <glad/glad.h>
+#if defined(APIENTRY)
+#undef APIENTRY
+#endif
 #include <Windows.h>
 
 using namespace Nova;
@@ -543,6 +546,11 @@ void ScenePanel::drawTabBar()
         ImGuiTabItemFlags itemFlags = ImGuiTabItemFlags_None;
         if (tab.isDirty)
             itemFlags |= ImGuiTabItemFlags_UnsavedDocument;
+        if (m_tabToSelect == i)
+        {
+            itemFlags |= ImGuiTabItemFlags_SetSelected;
+            m_tabToSelect = -1;
+        }
 
         bool open = true;
         if (ImGui::BeginTabItem(label, &open, itemFlags))
@@ -657,64 +665,80 @@ void ScenePanel::drawTabBar()
 
 void ScenePanel::drawSceneToolBar()
 {
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+
+    // Gizmo operation helper button
+    auto gizmoBtn = [](const char* label, bool active, const char* tooltip)
+        {
+            if (active)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.52f, 0.90f, 0.90f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+            }
+            else
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.22f, 0.50f));
+            }
+            bool clicked = ImGui::Button(label, ImVec2(26.0f, 0.0f));
+            if (active)
+                ImGui::PopStyleColor(2);
+            else
+                ImGui::PopStyleColor();
+            if (tooltip && ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", tooltip);
+            return clicked;
+        };
+
+    if (gizmoBtn("T", m_gizmoOp == ImGuizmo::TRANSLATE, "Translate (W)"))
+        m_gizmoOp = ImGuizmo::TRANSLATE;
+    ImGui::SameLine();
+    if (gizmoBtn("R", m_gizmoOp == ImGuizmo::ROTATE, "Rotate (E)"))
+        m_gizmoOp = ImGuizmo::ROTATE;
+    ImGui::SameLine();
+    if (gizmoBtn("S", m_gizmoOp == ImGuizmo::SCALE, "Scale (R)"))
+        m_gizmoOp = ImGuizmo::SCALE;
+    ImGui::SameLine();
+
+    bool isLocal = (m_gizmoMode == ImGuizmo::LOCAL);
+    if (ImGui::Button(isLocal ? "Local" : "World", ImVec2(48.0f, 0.0f)))
+        m_gizmoMode = isLocal ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Toggle Local/World space coordinate system");
+
+    ImGui::SameLine(0, 12);
+    ImGui::TextDisabled("|");
+    ImGui::SameLine(0, 12);
+
     ImGui::Checkbox("Grid", &m_showGrid);
-    ImGui::SameLine();
 
-    if (ImGui::SmallButton("+ New Scene"))
+    ImGui::SameLine(0, 12);
+    ImGui::TextDisabled("|");
+    ImGui::SameLine(0, 12);
+
+    if (ImGui::Button("+ New Scene"))
         NewScene();
-    ImGui::SameLine();
 
+    ImGui::SameLine(0, 12);
 
     if (m_building)
     {
         ImGui::BeginDisabled();
-        ImGui::SmallButton(m_building ? "Building..." : "> Build");
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.5f, 0.1f, 0.6f));
+        ImGui::Button("Building...");
+        ImGui::PopStyleColor();
         ImGui::EndDisabled();
     }
     else
     {
-        if (ImGui::SmallButton("> Build"))
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.55f, 0.28f, 0.85f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.68f, 0.35f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.14f, 0.45f, 0.22f, 1.0f));
+        if (ImGui::Button("> Build & Run"))
             buildAndRunGame();
+        ImGui::PopStyleColor(3);
     }
-    ImGui::SameLine();
 
-    // Gizmo toolbar
-    ImGui::SameLine();
-    ImGui::Separator();
-    ImGui::SameLine();
-
-    // Translate button
-    bool isTrans = (m_gizmoOp == ImGuizmo::TRANSLATE);
-    if (isTrans) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.44f, 0.70f, 1.0f, 1.0f));
-    if (ImGui::SmallButton("T##trans")) m_gizmoOp = ImGuizmo::TRANSLATE;
-    if (isTrans) ImGui::PopStyleColor();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Translate (W)");
-
-    ImGui::SameLine();
-
-    // Rotate button
-    bool isRot = (m_gizmoOp == ImGuizmo::ROTATE);
-    if (isRot) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.44f, 0.70f, 1.0f, 1.0f));
-    if (ImGui::SmallButton("R##rot")) m_gizmoOp = ImGuizmo::ROTATE;
-    if (isRot) ImGui::PopStyleColor();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Rotate (E)");
-
-    ImGui::SameLine();
-
-    // Scale button
-    bool isScale = (m_gizmoOp == ImGuizmo::SCALE);
-    if (isScale) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.44f, 0.70f, 1.0f, 1.0f));
-    if (ImGui::SmallButton("S##scale")) m_gizmoOp = ImGuizmo::SCALE;
-    if (isScale) ImGui::PopStyleColor();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Scale (R)");
-
-    ImGui::SameLine();
-
-    // Local/World toggle
-    bool isLocal = (m_gizmoMode == ImGuizmo::LOCAL);
-    if (ImGui::SmallButton(isLocal ? "Local" : "World"))
-        m_gizmoMode = isLocal ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle Local/World space");
+    ImGui::PopStyleVar();
 
     // Keyboard shortcuts (ignored while typing in a text field)
     if (!ImGui::GetIO().WantTextInput)
@@ -810,9 +834,6 @@ void ScenePanel::drawSceneViewport()
     if (m_showGrid && m_vpWidth > 0 && m_vpHeight > 0)
         drawGrid();
 
-    if (m_showGrid && m_vpWidth > 0 && m_vpHeight > 0)
-        drawGrid();
-
     DrawViewOutlines(imgMin, imgSize);
 }
 
@@ -831,7 +852,9 @@ void ScenePanel::onTabChanged(int index)
 
     SceneTab& tab = m_sceneTabs[index];
 
-    if (!tab.filePath.empty())
+    // Only attempt to load from disk if the file exists on disk
+    std::error_code ec;
+    if (!tab.filePath.empty() && std::filesystem::exists(tab.filePath, ec))
     {
         std::vector<LoadedEntity> loaded;
         if (m_sceneManagerRef->GetLoader()->Load(tab.filePath, &loaded))
@@ -869,13 +892,39 @@ void ScenePanel::Draw()
     ImGui::Begin("Scene");
     drawSceneToolBar();
     ImGui::Separator();
-    drawTabBar();
-    ImGui::Separator();
-    drawSceneViewport();
+
+    if (m_sceneTabs.empty())
+    {
+        drawNoScenePlaceholder();
+    }
+    else
+    {
+        drawTabBar();
+        ImGui::Separator();
+        drawSceneViewport();
+    }
+
     ImGui::End();
 
     drawBuildLog();
     // drawGameWindow();
+}
+
+void ScenePanel::drawNoScenePlaceholder()
+{
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+    float textHeight = ImGui::GetTextLineHeight() * 3.0f;
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (avail.y - textHeight) * 0.4f);
+
+    const char* msg = "No scene is open";
+    float textW = ImGui::CalcTextSize(msg).x;
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail.x - textW) * 0.5f);
+    ImGui::TextDisabled("%s", msg);
+
+    const char* hint = "Use File > Open Scene or Ctrl+O to open a scene";
+    float hintW = ImGui::CalcTextSize(hint).x;
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail.x - hintW) * 0.5f);
+    ImGui::TextDisabled("%s", hint);
 }
 
 void ScenePanel::NewScene()
@@ -914,6 +963,7 @@ void ScenePanel::NewScene()
 
     m_sceneTabs.push_back(
         std::move(tab));
+    m_tabToSelect = (int)m_sceneTabs.size() - 1;
 }
 
 void ScenePanel::closeScene(int index)
@@ -922,6 +972,18 @@ void ScenePanel::closeScene(int index)
     m_sceneTabs.erase(m_sceneTabs.begin() + index);
     if (m_activeTab >= (int)m_sceneTabs.size())
         m_activeTab = (int)m_sceneTabs.size() - 1;
+
+    // If all scenes are closed, clear context to prevent null dereferences
+    if (m_sceneTabs.empty())
+    {
+        m_activeTab = -1;
+        m_ctxRef->activeSceneRef = nullptr;
+        m_ctxRef->activeScenePath.clear();
+        m_ctxRef->selectedEntity = -1;
+
+        // Clear the ECS since no scene is active
+        m_ecsRef->DeleteAllEntities();
+    }
 }
 
 void ScenePanel::OpenSceneTab(const std::string& filePath)
@@ -930,8 +992,7 @@ void ScenePanel::OpenSceneTab(const std::string& filePath)
     {
         if (m_sceneTabs[i].filePath == filePath)
         {
-            m_lastActiveTab = -1;
-            m_activeTab = i - 1;
+            m_tabToSelect = i;
             return;
         }
     }
@@ -946,6 +1007,13 @@ void ScenePanel::OpenSceneTab(const std::string& filePath)
     tab.scene->SetFilePath(filePath);
 
     m_sceneTabs.push_back(std::move(tab));
+    m_tabToSelect = (int)m_sceneTabs.size() - 1;
+}
+
+void ScenePanel::SetActiveTab(int index)
+{
+    if (index >= 0 && index < (int)m_sceneTabs.size())
+        m_tabToSelect = index;
 }
 
 void ScenePanel::MarkSceneAsSaved()
@@ -958,6 +1026,17 @@ void ScenePanel::MarkSceneAsDirty()
 {
     if (m_activeTab >= 0 && m_activeTab < (int)m_sceneTabs.size())
         m_sceneTabs[m_activeTab].isDirty = true;
+}
+
+std::vector<std::string> ScenePanel::GetOpenScenePaths() const
+{
+    std::vector<std::string> paths;
+    for (const auto& tab : m_sceneTabs)
+    {
+        if (!tab.filePath.empty())
+            paths.push_back(tab.filePath);
+    }
+    return paths;
 }
 
 void ScenePanel::DrawGizmo()
@@ -1045,26 +1124,80 @@ void ScenePanel::DrawGizmo()
 
 void ScenePanel::DrawViewOutlines(ImVec2 imgMin, ImVec2 imgSize)
 {
-    Window* window = Services::Fetch<Window>();
-    if (!window) return;
+    // Fixed runtime game resolution
+    constexpr float gameWidth = 1280.0f;
+    constexpr float gameHeight = 720.0f;
 
-    const float   zoom = m_editorCamera.GetZoom();
-    const Vector2 off = m_editorCamera.GetOffset();
+    // Editor camera
+    const float editorZoom = m_editorCamera.GetZoom();
+    const Vector2 editorOffset = m_editorCamera.GetOffset();
 
-    auto toScreen = [&](float wx, float wy)
+    if (editorZoom <= 0.0f || !std::isfinite(editorZoom))
+        return;
+
+    auto toScreen = [&](float worldX, float worldY)
         {
-            return ImVec2(imgMin.x + (wx - off.x) * zoom,
-                imgMin.y + (wy - off.y) * zoom);
+            return ImVec2(
+                imgMin.x + (worldX - editorOffset.x) * editorZoom,
+                imgMin.y + (worldY - editorOffset.y) * editorZoom
+            );
         };
 
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    dl->PushClipRect(imgMin, ImVec2(imgMin.x + imgSize.x, imgMin.y + imgSize.y), true);
 
-    // Default editor camera boundary
-    const float winW = (float)window->GetWidth();
-    const float winH = (float)window->GetHeight();
-    dl->AddRect(toScreen(0.0f, 0.0f), toScreen(winW, winH),
-        IM_COL32(255, 255, 100, 160), 0.0f, 0, 2.0f);
+    dl->PushClipRect(
+        imgMin,
+        ImVec2(imgMin.x + imgSize.x, imgMin.y + imgSize.y),
+        true
+    );
+
+    bool drewMainCamera = false;
+
+    // Find the scene's main camera
+    if (m_ctxRef->activeSceneRef && m_ecsRef)
+    {
+        for (const auto& entity : m_ctxRef->activeSceneRef->GetEntities())
+        {
+            auto* camera = m_ecsRef->GetComponent<decltype(m_editorCamera)>(
+                static_cast<EntityID>(entity.id)
+            );
+
+            if (!camera || !camera->isMain)
+                continue;
+
+            const float zoom = camera->GetZoom();
+
+            if (zoom <= 0.0f || !std::isfinite(zoom))
+                continue;
+
+            const Vector2 offset = camera->GetOffset();
+
+            // Camera's visible world dimensions
+            const float width = gameWidth / zoom;
+            const float height = gameHeight / zoom;
+
+            dl->AddRect(
+                toScreen(offset.x, offset.y),
+                toScreen(offset.x + width, offset.y + height),
+                IM_COL32(100, 220, 255, 210),
+                0.0f, 0, 2.0f
+            );
+
+            drewMainCamera = true;
+            break;
+        }
+    }
+
+    // Default game boundary
+    if (!drewMainCamera)
+    {
+        dl->AddRect(
+            toScreen(0.0f, 0.0f),
+            toScreen(gameWidth, gameHeight),
+            IM_COL32(255, 255, 100, 160),
+            0.0f, 0, 2.0f
+        );
+    }
 
     dl->PopClipRect();
 }

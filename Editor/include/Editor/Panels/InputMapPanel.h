@@ -45,5 +45,10 @@ namespace Nova::Editor
         // Available keys list for dropdown
         struct KeyEntry { const char* name; int code; };
         static const KeyEntry s_keys[];
+
+        bool m_waitingForKey = false;
+
+        int m_newKey = -1;
+        int m_editKey = -1;
     };
 }

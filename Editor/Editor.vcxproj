@@ -164,6 +164,7 @@
     <ClCompile Include="src\Scene\SceneSerializer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Editor\AssetPath.h" />
     <ClInclude Include="include\Editor\EditorApp.h" />
     <ClInclude Include="include\Editor\FilePicker.h" />
     <ClInclude Include="include\Editor\Inspector\EditorFields.h" />

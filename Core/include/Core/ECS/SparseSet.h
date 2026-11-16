@@ -5,7 +5,7 @@
 namespace Nova 
 {
     /**
-     * Interface for type-erased component storage
+     * Interface for type erased component storage
      * Allows polymorphic handling of different component types
      */
     class ISparseSet
@@ -82,7 +82,7 @@ namespace Nova
 
         /**
          * Removes component from entity
-         * Uses swap-and-pop for O(1) removal
+         * Uses swap and pop for O(1) removal
          * @param e Target entity
          */
         void RemoveData(EntityID e)

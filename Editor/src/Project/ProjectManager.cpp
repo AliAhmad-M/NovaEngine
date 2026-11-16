@@ -37,9 +37,16 @@ list(APPEND CMAKE_PREFIX_PATH "${NOVA_SDK_DIR}")
 
 find_package(Nova CONFIG REQUIRED)
 
-# Project source files
+# Project source files (glob both source and header files so all show up in IDE solution)
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.hxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.inl"
 )
 
 # Never compile generated files inside build/
@@ -49,13 +56,25 @@ if(NOT GAME_SOURCES)
     message(FATAL_ERROR "No C++ source files found.")
 endif()
 
+# Group files in Visual Studio Solution Explorer to match physical folders
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${GAME_SOURCES})
+
 # Game executable
 add_executable(Game
     ${GAME_SOURCES}
 )
 
+set_target_properties(Game PROPERTIES
+    PROJECT_LABEL "@NAME@"
+    OUTPUT_NAME "Game"
+    RUNTIME_OUTPUT_DIRECTORY
+        "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
+)
+
 target_include_directories(Game PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts"
 )
 
 target_link_libraries(Game PRIVATE
@@ -67,12 +86,105 @@ target_compile_definitions(Game PRIVATE
     PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-# Output
-set_target_properties(Game PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY
-        "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
+# Script DLL for the editor hot-reloading
+file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.cxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.hxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.inl"
 )
+
+list(FILTER SCRIPT_SOURCES EXCLUDE REGEX ".*/build/.*")
+
+if(SCRIPT_SOURCES)
+    add_library(GameScripts SHARED
+        ${SCRIPT_SOURCES}
+    )
+
+    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SCRIPT_SOURCES})
+
+    set_target_properties(GameScripts PROPERTIES
+        OUTPUT_NAME "GameScripts"
+        RUNTIME_OUTPUT_DIRECTORY
+            "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
+    )
+
+    target_include_directories(GameScripts PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripts"
+    )
+
+    target_link_libraries(GameScripts PRIVATE
+        Nova::Engine
+    )
+
+    target_compile_definitions(GameScripts PRIVATE
+        PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+else()
+    add_custom_target(GameScripts
+        COMMAND ${CMAKE_COMMAND} -E echo "No scripts to build yet."
+    )
+endif()
 )CMAKE";
+
+static const char* kMainTemplate = R"CPP(
+#include <Runtime/Engine.h>
+#include <Core/Services.h>
+
+#include <filesystem>
+
+using namespace Nova;
+
+int main()
+{
+    Engine runtime;
+
+    runtime.Init();
+
+    SceneManager* sceneManager =
+        Services::Fetch<SceneManager>();
+
+    const std::filesystem::path projectDir =
+        PROJECT_DIR;
+
+    const std::filesystem::path scenesDir =
+        projectDir / "scenes";
+
+    // Prefer @MAIN_SCENE@.nvsn.
+    const std::filesystem::path mainScene =
+        scenesDir / "@MAIN_SCENE@.nvsn";
+
+    if (std::filesystem::exists(mainScene))
+    {
+        sceneManager->ChangeScene(
+            mainScene.string());
+    }
+    else if (std::filesystem::exists(scenesDir))
+    {
+        // Otherwise use the first scene found.
+        for (const auto& entry :
+             std::filesystem::directory_iterator(scenesDir))
+        {
+            if (entry.path().extension() == ".nvsn")
+            {
+                sceneManager->ChangeScene(
+                    entry.path().string());
+                break;
+            }
+        }
+    }
+
+    runtime.Update();
+    runtime.Close();
+
+    return 0;
+}
+)CPP";
 
 static bool writeText(const fs::path& p, const std::string& text)
 {
@@ -82,6 +194,15 @@ static bool writeText(const fs::path& p, const std::string& text)
 
     f << text;
     return true;
+}
+
+static std::string trim(const std::string& str)
+{
+    const auto start = str.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos)
+        return "";
+    const auto end = str.find_last_not_of(" \t\r\n");
+    return str.substr(start, end - start + 1);
 }
 
 static bool validName(const std::string& n)
@@ -182,6 +303,10 @@ void ProjectManager::LoadRecent()
             std::getline(ss, e.path, '\t') &&
             std::getline(ss, t, '\t'))
         {
+            e.name = trim(e.name);
+            e.path = trim(e.path);
+            t = trim(t);
+
             e.lastOpened =
                 std::atoll(t.c_str());
 
@@ -244,7 +369,7 @@ void ProjectManager::touchRecent(const ProjectInfo& p)
         m_recent.end());
 
     ProjectEntry e;
-    e.name = p.name;
+    e.name = trim(p.name);
     e.path = path;
 
     e.lastOpened =
@@ -268,7 +393,9 @@ bool ProjectManager::Create(
     std::string& outRoot,
     std::string& err)
 {
-    if (!validName(name))
+    const std::string cleanName = trim(name);
+
+    if (!validName(cleanName))
     {
         err =
             "Project name may contain letters, digits, spaces, "
@@ -291,7 +418,7 @@ bool ProjectManager::Create(
     }
 
     fs::path root =
-        parent / name;
+        parent / cleanName;
 
     if (fs::exists(root, ec) &&
         !fs::is_empty(root, ec))
@@ -332,17 +459,38 @@ bool ProjectManager::Create(
         return false;
     }
 
+    fs::create_directories(root / "src", ec);
+    if (ec)
+    {
+        err =
+            "Could not create src folder: " +
+            ec.message();
+
+        return false;
+    }
+
+    fs::create_directories(root / "build", ec);
+    if (ec)
+    {
+        err =
+            "Could not create build folder: " +
+            ec.message();
+
+        return false;
+    }
+
     // CMake
     std::string cmake = kCMakeTemplate;
 
     replaceAll(
         cmake,
         "@NAME@",
-        name);
+        cleanName);
 
     // Project descriptor
     const std::string descriptor =
-        "name=" + name + "\n"
+        "name=" + cleanName + "\n"
+        "mainScene=Main\n"
         "engine=0.1\n";
 
     bool ok =
@@ -357,7 +505,15 @@ bool ProjectManager::Create(
         writeText(
             root / ".gitignore",
             "build/\n"
-            ".vs/\n");
+            ".vs/\n") &&
+
+        writeText(
+            root / "src" / "main.cpp",
+            []() {
+                std::string s = kMainTemplate;
+                replaceAll(s, "@MAIN_SCENE@", "Main");
+                return s;
+            }());
 
     if (!ok)
     {
@@ -419,10 +575,18 @@ bool ProjectManager::Open(
 
     while (std::getline(f, line))
     {
+        line = trim(line);
         if (line.rfind("name=", 0) == 0)
         {
-            p.name =
-                line.substr(5);
+            const std::string parsedName = trim(line.substr(5));
+            if (!parsedName.empty())
+                p.name = parsedName;
+        }
+        else if (line.rfind("mainScene=", 0) == 0)
+        {
+            const std::string parsed = trim(line.substr(10));
+            if (!parsed.empty())
+                p.mainScene = parsed;
         }
     }
 
@@ -479,65 +643,78 @@ bool ProjectManager::Open(
         return false;
     }
 
-    const char* kMainTemplate = R"CPP(
-        #include <Runtime/Engine.h>
-        #include <Core/Services.h>
-
-        #include <filesystem>
-
-        using namespace Nova;
-
-        int main()
-        {
-            Engine runtime;
-
-            runtime.Init();
-
-            SceneManager* sceneManager =
-                Services::Fetch<SceneManager>();
-
-            const std::filesystem::path projectDir =
-                PROJECT_DIR;
-
-            const std::filesystem::path scenesDir =
-                projectDir / "scenes";
-
-            // Prefer Main.nvsn.
-            const std::filesystem::path mainScene =
-                scenesDir / "Main.nvsn";
-
-            if (std::filesystem::exists(mainScene))
-            {
-                sceneManager->ChangeScene(
-                    mainScene.string());
-            }
-            else if (std::filesystem::exists(scenesDir))
-            {
-                // Otherwise use the first scene found.
-                for (const auto& entry :
-                     std::filesystem::directory_iterator(scenesDir))
-                {
-                    if (entry.path().extension() == ".nvsn")
-                    {
-                        sceneManager->ChangeScene(
-                            entry.path().string());
-                        break;
-                    }
-                }
-            }
-
-            runtime.Update();
-            runtime.Close();
-
-            return 0;
-        }
-    )CPP";
-
-    if (!writeText(
-        root / "src" / "main.cpp", kMainTemplate))
+    // Only create default main.cpp if it does not already exist
+    if (!fs::exists(root / "src" / "main.cpp", ec))
     {
-        err = "Could not create main.cpp";
-        return false;
+        std::string mainCpp = kMainTemplate;
+        replaceAll(mainCpp, "@MAIN_SCENE@", p.mainScene.empty() ? "Main" : p.mainScene);
+        if (!writeText(
+            root / "src" / "main.cpp", mainCpp))
+        {
+            err = "Could not create main.cpp";
+            return false;
+        }
+    }
+
+    // Ensure CMakeLists.txt exists and is up to date
+    const fs::path cmakePath = root / "CMakeLists.txt";
+    if (!fs::exists(cmakePath, ec))
+    {
+        std::string cmake = kCMakeTemplate;
+        replaceAll(cmake, "@NAME@", p.name);
+        writeText(cmakePath, cmake);
+    }
+    else
+    {
+        std::ifstream cf(cmakePath, std::ios::binary);
+        if (cf)
+        {
+            std::string content((std::istreambuf_iterator<char>(cf)),
+                                std::istreambuf_iterator<char>());
+            cf.close();
+
+            bool needsUpdate = false;
+            if (content.find("@NAME@") != std::string::npos)
+            {
+                replaceAll(content, "@NAME@", p.name);
+                needsUpdate = true;
+            }
+
+            // If older CMakeLists.txt doesn't have source_group or *.h globbing, upgrade it
+            if (content.find("*.h") == std::string::npos ||
+                content.find("source_group") == std::string::npos ||
+                content.find("PROJECT_LABEL") == std::string::npos)
+            {
+                content = kCMakeTemplate;
+                replaceAll(content, "@NAME@", p.name);
+                needsUpdate = true;
+            }
+
+            if (needsUpdate)
+            {
+                writeText(cmakePath, content);
+            }
+        }
+    }
+
+    // Clean up stale @NAME@ build artifacts in CMake cache if any exist
+    const fs::path cachePath = p.build / "CMakeCache.txt";
+    if (fs::exists(cachePath, ec))
+    {
+        std::ifstream cacheFile(cachePath, std::ios::binary);
+        if (cacheFile)
+        {
+            std::string cacheContent((std::istreambuf_iterator<char>(cacheFile)),
+                                      std::istreambuf_iterator<char>());
+            cacheFile.close();
+
+            if (cacheContent.find("@NAME@") != std::string::npos)
+            {
+                fs::remove(cachePath, ec);
+                fs::remove(p.build / "@NAME@.slnx", ec);
+                fs::remove(p.build / "@NAME@.sln", ec);
+            }
+        }
     }
 
     m_current = std::move(p);
