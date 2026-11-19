@@ -1,8 +1,6 @@
 # Nova Engine
 
-Nova Engine is a work-in-progress game engine written in C++ that aims to support both 2D and 3D game development, with functional 2D capabilities and 3D development planned as part of its ongoing evolution. 
-
-The engine includes a custom Entity Component System (ECS), an OpenGL-based graphics subsystem, physics integration, and a graphical editor built with Dear ImGui.
+Nova Engine is a work-in-progress game engine written in C++ that aims to support both 2D and 3D game development, with functional 2D capabilities and 3D development planned as part of its ongoing evolution.
 
 ## Features
 These are the features Nova supports as of now:
