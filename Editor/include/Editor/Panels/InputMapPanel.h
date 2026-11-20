@@ -1,6 +1,7 @@
 #pragma once
 #pragma once
 #include <Editor/Context.h>
+#include <Editor/Project/ProjectSettings.h>
 #include <Platform/InputMap.h>
 #include <imgui.h>
 #include <string>
@@ -13,6 +14,7 @@ namespace Nova::Editor
     public:
         explicit InputMapPanel(EditorContext* ctx);
         void Draw(bool& open);
+        void Reload();
         void SetWindowFlags(ImGuiWindowFlags flags) { m_windowFlags = flags; }
 
     private:
@@ -20,12 +22,14 @@ namespace Nova::Editor
         void drawBindingList();
         void drawAddBindingPopup();
         void drawEditBindingPopup();
+        void pushToInputMap();
         void applyBindings();
 
         const char* glfwKeyName(int key) const;
         int         nameToGlfwKey(const char* name) const;
 
         EditorContext* m_ctx = nullptr;
+        ProjectSettings* m_settings = nullptr;
         ImGuiWindowFlags m_windowFlags = 0;
         InputMap* m_inputMap = nullptr;
 
@@ -37,10 +41,10 @@ namespace Nova::Editor
         };
 
         std::vector<BindingEntry> m_bindings;
-        int                       m_editingIndex = -1;
-        bool                      m_listeningKey = false;
-        char                      m_newAction[64] = {};
-        int                       m_selectedIndex = -1;
+        int     m_editingIndex = -1;
+        bool    m_listeningKey = false;
+        char    m_newAction[64] = {};
+        int     m_selectedIndex = -1;
 
         // Available keys list for dropdown
         struct KeyEntry { const char* name; int code; };

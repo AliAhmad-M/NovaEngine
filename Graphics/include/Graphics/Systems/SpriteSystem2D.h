@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Core/ECS/ECS.h>
-#include <Core/Components/Transform2D.h>
+#include <Core/Components/WorldTransform2D.h>
 #include <Platform/Window.h>
 #include <Graphics/Components/Sprite2D.h>
 #include <Graphics/Components/Camera2D.h>
@@ -30,7 +30,7 @@ namespace Nova
         bool zSortingNeeded = false;
 
         void sortRenderingOrder();
-        float getGlobalYSortOrigin(Transform2D* transform, Sprite2D* sprite);
+        float getGlobalYSortOrigin(WorldTransform2D* transform, Sprite2D* sprite);
     };
 }
 

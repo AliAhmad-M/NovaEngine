@@ -160,6 +160,7 @@
     <ClCompile Include="src\Panels\ScenePanel.cpp" />
     <ClCompile Include="src\Project\ProjectLauncher.cpp" />
     <ClCompile Include="src\Project\ProjectManager.cpp" />
+    <ClCompile Include="src\Project\ProjectSettings.cpp" />
     <ClCompile Include="src\Project\ScriptHost.cpp" />
     <ClCompile Include="src\Scene\SceneSerializer.cpp" />
   </ItemGroup>
@@ -177,6 +178,7 @@
     <ClInclude Include="include\Editor\Panels\ScenePanel.h" />
     <ClInclude Include="include\Editor\Project\ProjectLauncher.h" />
     <ClInclude Include="include\Editor\Project\ProjectManager.h" />
+    <ClInclude Include="include\Editor\Project\ProjectSettings.h" />
     <ClInclude Include="include\Editor\Project\ScriptHost.h" />
     <ClInclude Include="include\Editor\Scene\Scene.h" />
     <ClInclude Include="include\Editor\Scene\SceneSerializer.h" />

@@ -17,6 +17,9 @@
 #include <imgui_internal.h>
 
 #include <GLFW/glfw3.h>
+#include <Windows.h>
+#include <shellapi.h>
+#include <cfloat>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -25,39 +28,56 @@
 using namespace Nova;
 using namespace Nova::Editor;
 
+static bool isPathWithin(const std::filesystem::path& root, const std::filesystem::path& candidate)
+{
+    std::error_code ec;
+    const auto normalizedRoot = std::filesystem::weakly_canonical(root, ec);
+    if (ec) return false;
+
+    ec.clear();
+    const auto normalizedCandidate = std::filesystem::weakly_canonical(candidate, ec);
+    if (ec) return false;
+
+    const auto relative = normalizedCandidate.lexically_relative(normalizedRoot);
+    if (relative.empty()) return normalizedCandidate == normalizedRoot;
+
+    const auto first = relative.begin();
+    return first != relative.end() && *first != "..";
+}
+
 static void applyTheme()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
     // Rounding
-    style.WindowRounding    = 0.0f;
-    style.ChildRounding     = 3.0f;
-    style.FrameRounding     = 3.0f;
-    style.PopupRounding     = 4.0f;
-    style.GrabRounding      = 3.0f;
+    style.WindowRounding = 0.0f;
+    style.ChildRounding = 3.0f;
+    style.FrameRounding = 3.0f;
+    style.PopupRounding = 4.0f;
+    style.GrabRounding = 3.0f;
     style.ScrollbarRounding = 6.0f;
-    style.TabRounding       = 3.0f;
+    style.TabRounding = 3.0f;
 
     // Sizing
-    style.WindowPadding     = ImVec2(10.0f, 10.0f);
-    style.FramePadding      = ImVec2(6.0f, 4.0f);
-    style.ItemSpacing       = ImVec2(8.0f, 5.0f);
-    style.IndentSpacing     = 18.0f;
-    style.ScrollbarSize     = 12.0f;
-    style.GrabMinSize       = 9.0f;
+    style.WindowPadding = ImVec2(10.0f, 10.0f);
+    style.FramePadding = ImVec2(6.0f, 4.0f);
+    style.ItemSpacing = ImVec2(8.0f, 5.0f);
+    style.IndentSpacing = 18.0f;
+    style.ScrollbarSize = 12.0f;
+    style.GrabMinSize = 9.0f;
 
     // Borders
-    style.WindowBorderSize  = 1.0f;
-    style.PopupBorderSize   = 1.0f;
-    style.TabBorderSize     = 0.0f;
+    style.WindowBorderSize = 1.0f;
+    style.PopupBorderSize = 1.0f;
+    style.TabBorderSize = 0.0f;
 
     style.WindowMenuButtonPosition = ImGuiDir_None;
-    style.WindowTitleAlign         = ImVec2(0.0f, 0.5f);
+    style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
 
     // Anti aliasing
-    style.AntiAliasedLines       = true;
+    style.AntiAliasedLines = true;
     style.AntiAliasedLinesUseTex = true;
-    style.AntiAliasedFill        = true;
+    style.AntiAliasedFill = true;
 
     // Palette
     auto rgb = [](int r, int g, int b, float a = 1.0f)
@@ -66,84 +86,84 @@ static void applyTheme()
         };
 
     // Accent
-    const ImVec4 accent       = rgb(0, 114, 239);
-    const ImVec4 accentHover  = rgb(31, 137, 255);
+    const ImVec4 accent = rgb(0, 114, 239);
+    const ImVec4 accentHover = rgb(31, 137, 255);
     const ImVec4 accentActive = rgb(0, 95, 205);
 
     ImVec4* c = style.Colors;
 
     // Surfaces
-    c[ImGuiCol_WindowBg]           = rgb(22, 23, 26);
-    c[ImGuiCol_ChildBg]            = rgb(17, 18, 20);
-    c[ImGuiCol_PopupBg]            = rgb(26, 27, 31, 0.98f);
+    c[ImGuiCol_WindowBg] = rgb(22, 23, 26);
+    c[ImGuiCol_ChildBg] = rgb(17, 18, 20);
+    c[ImGuiCol_PopupBg] = rgb(26, 27, 31, 0.98f);
 
-    c[ImGuiCol_Border]             = rgb(38, 40, 46);
-    c[ImGuiCol_BorderShadow]       = rgb(0, 0, 0, 0.0f);
+    c[ImGuiCol_Border] = rgb(38, 40, 46);
+    c[ImGuiCol_BorderShadow] = rgb(0, 0, 0, 0.0f);
 
     // Input
-    c[ImGuiCol_FrameBg]            = rgb(14, 15, 17);
-    c[ImGuiCol_FrameBgHovered]     = rgb(25, 27, 31);
-    c[ImGuiCol_FrameBgActive]      = rgb(32, 34, 40);
+    c[ImGuiCol_FrameBg] = rgb(14, 15, 17);
+    c[ImGuiCol_FrameBgHovered] = rgb(25, 27, 31);
+    c[ImGuiCol_FrameBgActive] = rgb(32, 34, 40);
 
     // Title
-    c[ImGuiCol_TitleBg]            = rgb(18, 19, 21);
-    c[ImGuiCol_TitleBgActive]      = rgb(22, 23, 26);
-    c[ImGuiCol_TitleBgCollapsed]   = rgb(18, 19, 21);
-    c[ImGuiCol_MenuBarBg]          = rgb(18, 19, 21);
+    c[ImGuiCol_TitleBg] = rgb(18, 19, 21);
+    c[ImGuiCol_TitleBgActive] = rgb(22, 23, 26);
+    c[ImGuiCol_TitleBgCollapsed] = rgb(18, 19, 21);
+    c[ImGuiCol_MenuBarBg] = rgb(18, 19, 21);
 
     // Scrollbar
-    c[ImGuiCol_ScrollbarBg]        = rgb(0, 0, 0, 0.0f);
-    c[ImGuiCol_ScrollbarGrab]      = rgb(50, 52, 60);
+    c[ImGuiCol_ScrollbarBg] = rgb(0, 0, 0, 0.0f);
+    c[ImGuiCol_ScrollbarGrab] = rgb(50, 52, 60);
     c[ImGuiCol_ScrollbarGrabHovered] = rgb(70, 74, 85);
-    c[ImGuiCol_ScrollbarGrabActive]  = rgb(90, 95, 110);
+    c[ImGuiCol_ScrollbarGrabActive] = rgb(90, 95, 110);
 
     // Accent controls
-    c[ImGuiCol_CheckMark]          = accent;
-    c[ImGuiCol_SliderGrab]         = accent;
-    c[ImGuiCol_SliderGrabActive]   = accentHover;
+    c[ImGuiCol_CheckMark] = accent;
+    c[ImGuiCol_SliderGrab] = accent;
+    c[ImGuiCol_SliderGrabActive] = accentHover;
 
     // Buttons
-    c[ImGuiCol_Button]             = rgb(36, 38, 44);
-    c[ImGuiCol_ButtonHovered]      = rgb(48, 51, 60);
-    c[ImGuiCol_ButtonActive]       = accentActive;
+    c[ImGuiCol_Button] = rgb(36, 38, 44);
+    c[ImGuiCol_ButtonHovered] = rgb(48, 51, 60);
+    c[ImGuiCol_ButtonActive] = accentActive;
 
     // Headers
-    c[ImGuiCol_Header]             = rgb(0, 114, 239, 0.22f);
-    c[ImGuiCol_HeaderHovered]      = rgb(255, 255, 255, 0.06f);
-    c[ImGuiCol_HeaderActive]       = rgb(0, 114, 239, 0.40f);
+    c[ImGuiCol_Header] = rgb(0, 114, 239, 0.22f);
+    c[ImGuiCol_HeaderHovered] = rgb(255, 255, 255, 0.06f);
+    c[ImGuiCol_HeaderActive] = rgb(0, 114, 239, 0.40f);
 
     // Separators
-    c[ImGuiCol_Separator]          = rgb(36, 38, 44);
-    c[ImGuiCol_SeparatorHovered]   = accent;
-    c[ImGuiCol_SeparatorActive]    = accentHover;
+    c[ImGuiCol_Separator] = rgb(36, 38, 44);
+    c[ImGuiCol_SeparatorHovered] = accent;
+    c[ImGuiCol_SeparatorActive] = accentHover;
 
-    c[ImGuiCol_ResizeGrip]         = rgb(0, 114, 239, 0.15f);
-    c[ImGuiCol_ResizeGripHovered]  = rgb(0, 114, 239, 0.55f);
-    c[ImGuiCol_ResizeGripActive]   = rgb(0, 114, 239, 0.85f);
+    c[ImGuiCol_ResizeGrip] = rgb(0, 114, 239, 0.15f);
+    c[ImGuiCol_ResizeGripHovered] = rgb(0, 114, 239, 0.55f);
+    c[ImGuiCol_ResizeGripActive] = rgb(0, 114, 239, 0.85f);
 
     // Tabs
-    c[ImGuiCol_Tab]                = rgb(18, 19, 22);
-    c[ImGuiCol_TabHovered]         = rgb(36, 38, 45);
-    c[ImGuiCol_TabActive]          = rgb(28, 30, 36);
-    c[ImGuiCol_TabUnfocused]       = rgb(16, 17, 20);
+    c[ImGuiCol_Tab] = rgb(18, 19, 22);
+    c[ImGuiCol_TabHovered] = rgb(36, 38, 45);
+    c[ImGuiCol_TabActive] = rgb(28, 30, 36);
+    c[ImGuiCol_TabUnfocused] = rgb(16, 17, 20);
     c[ImGuiCol_TabUnfocusedActive] = rgb(24, 25, 30);
 
     // Docking
-    c[ImGuiCol_DockingPreview]     = rgb(0, 114, 239, 0.35f);
-    c[ImGuiCol_DockingEmptyBg]     = rgb(14, 15, 17);
+    c[ImGuiCol_DockingPreview] = rgb(0, 114, 239, 0.35f);
+    c[ImGuiCol_DockingEmptyBg] = rgb(14, 15, 17);
 
     // Text
-    c[ImGuiCol_Text]               = rgb(220, 224, 230);
-    c[ImGuiCol_TextDisabled]       = rgb(108, 112, 122);
-    c[ImGuiCol_TextSelectedBg]     = rgb(0, 114, 239, 0.35f);
-    c[ImGuiCol_NavHighlight]       = accent;
+    c[ImGuiCol_Text] = rgb(220, 224, 230);
+    c[ImGuiCol_TextDisabled] = rgb(108, 112, 122);
+    c[ImGuiCol_TextSelectedBg] = rgb(0, 114, 239, 0.35f);
+    c[ImGuiCol_NavHighlight] = accent;
 
     // Table
-    c[ImGuiCol_TableHeaderBg]      = rgb(24, 25, 29);
-    c[ImGuiCol_TableBorderStrong]  = rgb(38, 40, 46);
-    c[ImGuiCol_TableBorderLight]   = rgb(28, 30, 35);
-    c[ImGuiCol_TableRowBg]         = rgb(0, 0, 0, 0.0f);
-    c[ImGuiCol_TableRowBgAlt]      = rgb(255, 255, 255, 0.02f);
+    c[ImGuiCol_TableHeaderBg] = rgb(24, 25, 29);
+    c[ImGuiCol_TableBorderStrong] = rgb(38, 40, 46);
+    c[ImGuiCol_TableBorderLight] = rgb(28, 30, 35);
+    c[ImGuiCol_TableRowBg] = rgb(0, 0, 0, 0.0f);
+    c[ImGuiCol_TableRowBgAlt] = rgb(255, 255, 255, 0.02f);
 }
 
 EditorApp::EditorApp() = default;
@@ -165,6 +185,7 @@ bool EditorApp::Init()
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigDragClickToInputText = true;
+    m_savedLayoutAvailable = io.IniFilename && std::filesystem::exists(io.IniFilename);
 
     ImFontConfig fontConfig;
     fontConfig.OversampleH = 2;
@@ -186,12 +207,13 @@ bool EditorApp::Init()
     // Initialize project manager and launcher
     m_projects.LoadRecent();
     Services::Register<ProjectManager>(&m_projects);
+    Services::Register<ProjectSettings>(&m_settings);
     m_launcher = std::make_unique<ProjectLauncher>();
 
     m_scripts.onBeforeUnload = [this]()
-    {
-        // TO DO: iterate every entity with a BehaviorScript and drop the instance
-    };
+        {
+            // TO DO: iterate every entity with a BehaviorScript and drop the instance
+        };
 
     // Load panels
     m_hierarchyPanel = std::make_unique<HierarchyPanel>(&m_ctx);
@@ -219,15 +241,23 @@ void EditorApp::Run()
         glfwPollEvents();
 
         beginFrame();
+        m_scenePanel->PollBuild();
 
-        if (!m_projects.HasProject())
+        if (!m_projects.HasProject() || m_projectOpening)
         {
+            // Captured once: openProject() can flip m_projectOpening inside Draw()
+            const bool opening = m_projectOpening;
+
+            if (opening) ImGui::BeginDisabled();
             m_launcher->Draw(m_projects, [this](const std::string& p) { openProject(p); });
+            if (opening) ImGui::EndDisabled();
+
+            if (opening)
+                drawLoadingCard();
+
             endFrame();
             continue;
         }
-
-        pollScriptBuild();
 
         drawMenuBar();   // Draw menu bar
         buildLayout();   // Then dockspace
@@ -334,6 +364,43 @@ void EditorApp::endFrame()
     glfwSwapBuffers(m_nativeWindow);
 }
 
+void EditorApp::drawLoadingCard()
+{
+    ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 0.0f), ImVec2(420.0f, FLT_MAX));
+
+    const ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_AlwaysAutoResize;
+
+    if (ImGui::Begin("##ProjectLoading", nullptr, flags))
+    {
+        const std::string name = m_projects.HasProject() ? m_projects.Current().name : "project";
+        ImGui::Text("Opening %s", name.c_str());
+        ImGui::Spacing();
+
+        // Negative fraction = indeterminate animated bar
+        ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(-FLT_MIN, 4.0f), "");
+        ImGui::Spacing();
+
+        ImGui::TextDisabled("Building project...");
+
+        const std::string line = m_scenePanel->GetLastBuildLogLine();
+        if (!line.empty())
+        {
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 400.0f);
+            ImGui::TextDisabled("%s", line.c_str());
+            ImGui::PopTextWrapPos();
+        }
+    }
+    ImGui::End();
+}
+
 void EditorApp::buildLayout()
 {
     // Fullscreen host window
@@ -361,10 +428,15 @@ void EditorApp::buildLayout()
     ImGuiID dockID = ImGui::GetID("MainDockSpace");
     ImGui::DockSpace(dockID, ImVec2(0, 0), ImGuiDockNodeFlags_None);
 
-    // Build default layout only once
+    // Build a default layout for first run or an explicit reset. A saved ini wins.
+    const bool buildDefaultLayout = m_resetLayoutRequested ||
+        (!m_layoutInitialized && !m_savedLayoutAvailable);
     if (!m_layoutInitialized)
-    {
         m_layoutInitialized = true;
+
+    if (buildDefaultLayout)
+    {
+        m_resetLayoutRequested = false;
 
         ImGui::DockBuilderRemoveNode(dockID);
         ImGui::DockBuilderAddNode(dockID, ImGuiDockNodeFlags_DockSpace);
@@ -384,15 +456,19 @@ void EditorApp::buildLayout()
         // Split left (Hierarchy, Build Output) from remaining top area
         ImGui::DockBuilderSplitNode(dockCenter, ImGuiDir_Left, kHierarchyWidthRatio, &dockLeft, &dockCenter);
 
-        // Assign panels
+        // Assign panels. Bottom tab order: Asset Browser, Build Output, Console
         ImGui::DockBuilderDockWindow("Hierarchy", dockLeft);
         ImGui::DockBuilderDockWindow("Scene", dockCenter);
         ImGui::DockBuilderDockWindow("Inspector", dockRight);
         ImGui::DockBuilderDockWindow("Asset Browser", dockBottom);
-        ImGui::DockBuilderDockWindow("Console", dockBottom);
         ImGui::DockBuilderDockWindow("Build Output", dockBottom);
+        ImGui::DockBuilderDockWindow("Console", dockBottom);
+
+        if (ImGuiDockNode* bottomNode = ImGui::DockBuilderGetNode(dockBottom))
+            bottomNode->SelectedTabId = ImHashStr("Asset Browser");
 
         ImGui::DockBuilderFinish(dockID);
+        ImGui::GetIO().WantSaveIniSettings = true;
     }
 
     ImGui::End();
@@ -409,7 +485,7 @@ void EditorApp::drawMenuBar()
         {
             // TODO: new project
         }
-        
+
         if (ImGui::MenuItem("Open Project"))
         {
             // Close current project to return to launcher
@@ -447,7 +523,7 @@ void EditorApp::drawMenuBar()
                 {
                     if (m_sceneSerializer->Save(*m_ctx.activeSceneRef, path))
                     {
-                        m_ctx.activeScenePath = path;
+                        m_scenePanel->SetActiveSceneFilePath(path);
                         m_scenePanel->MarkSceneAsSaved();
                         Debug::LogInfo("Scene saved as: %s", path.c_str());
                     }
@@ -482,12 +558,12 @@ void EditorApp::drawMenuBar()
     {
         if (ImGui::MenuItem("Input"))
             m_showInputMap = true;
-        
+
         if (ImGui::MenuItem("Physics"))
         {
             // TODO: physics settings
         }
-        
+
         if (ImGui::MenuItem("Resolution"))
         {
             // TODO: resolution settings
@@ -507,6 +583,11 @@ void EditorApp::drawMenuBar()
             m_showConsole = !m_showConsole;
         if (ImGui::MenuItem("Asset Browser", nullptr, m_showAssetBrowser))
             m_showAssetBrowser = !m_showAssetBrowser;
+        if (ImGui::MenuItem("Reset Layout"))
+        {
+            m_resetLayoutRequested = true;
+            m_layoutInitialized = false;
+        }
 
         ImGui::EndMenu();
     }
@@ -558,7 +639,9 @@ void EditorApp::saveActiveScene()
     }
 
     // Determine save path
-    std::string savePath = m_ctx.activeScenePath;
+    std::string savePath = m_ctx.activeSceneRef->GetFilePath();
+    if (savePath.empty())
+        savePath = m_ctx.activeScenePath;
     if (savePath.empty())
     {
         Debug::LogError("No valid save path");
@@ -587,12 +670,40 @@ void EditorApp::markSceneDirty()
 
 void EditorApp::openProject(const std::string& dir)
 {
+    if (m_projectOpening || (m_scenePanel && m_scenePanel->IsBuilding()))
+        return;
+
     std::string err;
     m_scripts.Unload();
 
     if (!m_projects.Open(dir, err)) { m_launcher->SetError(err); return; }
 
-    const ProjectInfo& p = m_projects.Current();
+    m_projectOpening = true;
+    if (!m_scenePanel->BuildOnly([this](bool succeeded)
+        {
+            finishProjectOpen(succeeded);
+        }))
+    {
+        m_projectOpening = false;
+        m_projects.Close();
+        m_launcher->SetError("Could not start the project build.");
+    }
+}
+
+void EditorApp::finishProjectOpen(bool buildSucceeded)
+{
+    if (!m_projects.HasProject())
+    {
+        m_projectOpening = false;
+        return;
+    }
+
+    const ProjectInfo p = m_projects.Current();
+    openProjectSolution(p);
+
+    m_settings.Load(p.root);
+    m_inputMapPanel->Reload();
+
     createDefaultMainScene(p);
 
     m_scenesPath = p.scenes.string();
@@ -634,43 +745,73 @@ void EditorApp::openProject(const std::string& dir)
         }
     }
 
-    m_scripts.Load(p);
+    if (buildSucceeded)
+    {
+        if (!m_scripts.Load(p))
+            Debug::LogWarn("Project built, but GameScripts.dll could not be loaded");
+    }
+    else
+    {
+        Debug::LogWarn("Project opened with build errors; see Build Output");
+        m_scenePanel->FocusBuildOutputOnce();
+    }
+
+    m_projectOpening = false;
+}
+
+void EditorApp::openProjectSolution(const ProjectInfo& project)
+{
+    const std::filesystem::path solution = project.build / (project.name + ".slnx");
+    if (!std::filesystem::exists(solution))
+    {
+        Debug::LogWarn("Project solution was not generated: %s", solution.string().c_str());
+        return;
+    }
+
+    const std::wstring solutionPath = std::filesystem::absolute(solution).wstring();
+    const std::wstring workingDirectory = std::filesystem::absolute(project.root).wstring();
+    const INT_PTR result = reinterpret_cast<INT_PTR>(ShellExecuteW(
+        nullptr, L"open", solutionPath.c_str(), nullptr,
+        workingDirectory.c_str(), SW_SHOWNORMAL));
+    if (result <= 32)
+        Debug::LogWarn("Could not open project solution with the system handler: %s",
+            solution.string().c_str());
 }
 
 void EditorApp::closeProject()
 {
+    if (m_projectOpening || (m_scenePanel && m_scenePanel->IsBuilding()))
+    {
+        Debug::LogWarn("Wait for the current build to finish before closing the project");
+        return;
+    }
+
     if (m_projects.HasProject())
         saveEditorSession();
 
+    if (m_scenePanel)
+        m_scenePanel->CloseAllScenes();
+
     m_scripts.Unload();
     m_projects.Close();
+    m_settings.Clear();
     m_ctx.selectedEntity = -1;
 }
 
 void EditorApp::buildScripts()
 {
-    //if (m_scenePanel->IsPlaying()) { Debug::LogWarn("Stop play mode before rebuilding scripts"); return; }
-    if (m_scripts.IsBuilding())    return;
-
     Debug::LogInfo("[Scripts] Building...");
-    m_scripts.BuildAsync(m_projects.Current());
-}
+    m_scenePanel->BuildScriptsNow([this](bool succeeded)
+        {
+            if (!succeeded || !m_projects.HasProject())
+                return;
 
-void EditorApp::pollScriptBuild()
-{
-    //if (m_scenePanel->IsPlaying()) return;
-
-    std::string log;
-    bool ok = false;
-    if (!m_scripts.PollBuild(log, ok)) return;
-
-    if (!ok) { Debug::LogError("[Scripts] Build failed:\n%s", log.c_str()); return; }
-
-    m_scripts.Unload();
-    if (m_scripts.Load(m_projects.Current()))
-        Debug::LogInfo("[Scripts] Reloaded");
-    else
-        Debug::LogError("[Scripts] Built, but failed to load the DLL");
+            m_scripts.Unload();
+            if (m_scripts.Load(m_projects.Current()))
+                Debug::LogInfo("[Scripts] Reloaded");
+            else
+                Debug::LogError("[Scripts] Built, but failed to load the DLL");
+        });
 }
 
 void EditorApp::createDefaultMainScene(
@@ -706,9 +847,22 @@ void EditorApp::saveEditorSession()
     nlohmann::json session;
     session["version"] = 1;
 
-    auto scenePaths = m_scenePanel->GetOpenScenePaths();
+    const auto openScenePaths = m_scenePanel->GetOpenScenePaths();
+    std::vector<std::string> scenePaths;
+    int activeTab = -1;
+    const int currentActiveTab = m_scenePanel->GetActiveTabIndex();
+    for (size_t i = 0; i < openScenePaths.size(); ++i)
+    {
+        if (!isPathWithin(p.root, openScenePaths[i]))
+            continue;
+
+        if (static_cast<int>(i) == currentActiveTab)
+            activeTab = static_cast<int>(scenePaths.size());
+        scenePaths.push_back(openScenePaths[i]);
+    }
+
     session["openScenes"] = scenePaths;
-    session["activeTab"] = m_scenePanel->GetActiveTabIndex();
+    session["activeTab"] = activeTab;
 
     std::ofstream out(sessionPath);
     if (out.is_open())
@@ -741,6 +895,12 @@ void EditorApp::loadEditorSession()
             for (const auto& path : session["openScenes"])
             {
                 std::string scenePath = path.get<std::string>();
+                if (!isPathWithin(p.root, scenePath))
+                {
+                    Debug::LogWarn("Ignoring scene outside the current project: %s", scenePath.c_str());
+                    continue;
+                }
+
                 if (std::filesystem::exists(scenePath))
                 {
                     m_scenePanel->OpenSceneTab(scenePath);

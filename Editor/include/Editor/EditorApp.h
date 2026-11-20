@@ -8,6 +8,7 @@
 #include <Editor/Context.h>
 #include <Editor/Project/ProjectManager.h>
 #include <Editor/Project/ProjectLauncher.h>
+#include <Editor/Project/ProjectSettings.h>
 #include <Editor/Project/ScriptHost.h>
 #include <Editor/Panels/AssetBrowserPanel.h>
 #include <Editor/Panels/HierarchyPanel.h>
@@ -34,13 +35,15 @@ namespace Nova::Editor
         void endFrame();
         void buildLayout();
         void drawMenuBar();
+        void drawLoadingCard();
         void saveActiveScene();  // Helper to save the current scene
         void markSceneDirty();   // Helper to mark active scene as dirty/modified
 
         void openProject(const std::string& dir);
+        void finishProjectOpen(bool buildSucceeded);
+        void openProjectSolution(const ProjectInfo& project);
         void closeProject();
         void buildScripts();
-        void pollScriptBuild();
         void createDefaultMainScene(const ProjectInfo& project);
 
         // Session persistence: save/restore open scene tabs
@@ -49,6 +52,9 @@ namespace Nova::Editor
 
         bool m_running            = true;
         bool m_layoutInitialized  = false;
+        bool m_savedLayoutAvailable = false;
+        bool m_resetLayoutRequested = false;
+        bool m_projectOpening = false;
         bool m_openSceneRequested = false;
         bool m_showInputMap = false;
         bool m_openScenePicker = false;
@@ -65,7 +71,9 @@ namespace Nova::Editor
 
         Engine m_runtime;
         EditorContext m_ctx;
+
         ProjectManager m_projects;
+        ProjectSettings m_settings;
         ScriptHost m_scripts;
         std::unique_ptr<ProjectLauncher> m_launcher;
 
@@ -75,12 +83,12 @@ namespace Nova::Editor
         static constexpr float kInspectorWidthRatio = 0.22f;
         static constexpr float kAssetBrowserHeightRatio = 0.28f;
 
-        std::unique_ptr<InputMapPanel> m_inputMapPanel;
+        std::unique_ptr<InputMapPanel>     m_inputMapPanel;
         std::unique_ptr<AssetBrowserPanel> m_assetBrowserPanel;
         std::unique_ptr<HierarchyPanel>    m_hierarchyPanel;
         std::unique_ptr<InspectorPanel>    m_inspectorPanel;
         std::unique_ptr<ScenePanel>        m_scenePanel;
-        std::unique_ptr<ConsolePanel> m_consolePanel;
+        std::unique_ptr<ConsolePanel>      m_consolePanel;
         std::string m_scenesPath;
     };
 }

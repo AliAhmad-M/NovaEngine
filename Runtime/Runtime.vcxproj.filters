@@ -30,6 +30,9 @@
     <ClInclude Include="include\Runtime\Components\Behavior.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Runtime\Systems\TransformSystem2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Scene\SceneManager.cpp">
@@ -42,6 +45,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Scene\SceneLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Systems\TransformSystem2D.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

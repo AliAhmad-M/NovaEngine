@@ -135,16 +135,53 @@ endif()
 static const char* kMainTemplate = R"CPP(
 #include <Runtime/Engine.h>
 #include <Core/Services.h>
+#include <Platform/InputMap.h>
+
+#include <nlohmann/json.hpp>
 
 #include <filesystem>
+#include <fstream>
 
 using namespace Nova;
+
+// Applies settings.json to engine
+static void LoadProjectSettings(const std::filesystem::path& file)
+{
+    std::ifstream f(file);
+    if (!f) 
+        return;
+
+    auto root = nlohmann::json::parse(f, nullptr, false);
+    if (root.is_discarded() || !root.is_object())
+        return;
+
+    InputMap* input = Services::Fetch<InputMap>();
+    if (!input)
+        return;
+
+    auto it = root.find("input");
+    if (it == root.end() || !it->is_object() || !it->contains("bindings"))
+        return;
+
+    input->ClearBindings();
+    for (const auto& e : (*it)["bindings"])
+    {
+        if (e.is_object() &&
+            e.contains("action") && e["action"].is_string() &&
+            e.contains("key")    && e["key"].is_number_integer())
+        {
+            input->Bind(e["action"].get<std::string>(), e["key"].get<int>());
+        }
+    }
+}
 
 int main()
 {
     Engine runtime;
 
     runtime.Init();
+
+    LoadProjectSettings(std::filesystem::path(PROJECT_DIR) / "settings.json");
 
     SceneManager* sceneManager =
         Services::Fetch<SceneManager>();

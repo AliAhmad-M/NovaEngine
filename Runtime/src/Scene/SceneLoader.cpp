@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cmath>
 #include <array>
+#include <unordered_map>
 
 using namespace Nova;
 
@@ -164,10 +165,17 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
 
     ecs->DeleteAllEntities();
 
-    // Create entities from json file
+    std::unordered_map<EntityID, EntityID> remappedIds;
+    std::vector<EntityID> createdEntities;
+    createdEntities.reserve(root["entities"].size());
+
+    // First pass: create all entities and their regular components.
     for (const auto& entityJson : root["entities"])
     {
         EntityID entity = ecs->CreateEntity();
+        createdEntities.push_back(entity);
+        const EntityID fileId = static_cast<EntityID>(entityJson.value("id", static_cast<int>(entity)));
+        remappedIds[fileId] = entity;
         const auto& comp = entityJson["components"];
 
         if (comp.contains("BehaviorScript"))
@@ -188,13 +196,27 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
         if (comp.contains("Tilemap2D"))
             ecs->AddComponent<Tilemap2D>(entity, DeserializeTilemap2D(comp["Tilemap2D"]));
 
-        if (outEntities)
+    }
+
+    // Second pass: derived transforms and parent links require all remapped IDs.
+    for (size_t i = 0; i < root["entities"].size(); ++i)
+    {
+        const auto& entityJson = root["entities"][i];
+        const EntityID entity = createdEntities[i];
+        if (ecs->HasComponent<Transform2D>(entity))
+            ecs->AddComponent<WorldTransform2D>(entity, WorldTransform2D{});
+
+        const int fileParentId = entityJson.value("parentId", static_cast<int>(NO_PARENT));
+        EntityID remappedParentId = NO_PARENT;
+        if (fileParentId != static_cast<int>(NO_PARENT))
         {
-            EntityID parentId = static_cast<EntityID>(
-                entityJson.value("parentId", static_cast<int>(NO_PARENT))
-                );
-            outEntities->push_back({ entity, entityJson.value("name", "Entity"), parentId });
+            auto parent = remappedIds.find(static_cast<EntityID>(fileParentId));
+            if (parent != remappedIds.end()) remappedParentId = parent->second;
+            ecs->AddComponent<Parent>(entity, Parent{ remappedParentId });
         }
+
+        if (outEntities)
+            outEntities->push_back({ entity, entityJson.value("name", "Entity"), remappedParentId });
     }
 
     Debug::LogInfo("Loaded '%s' (%zu entities)", 

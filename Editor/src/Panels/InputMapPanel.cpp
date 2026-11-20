@@ -253,6 +253,27 @@ void InputMapPanel::Draw(bool& open)
     ImGui::End();
 }
 
+void InputMapPanel::Reload()
+{
+    m_bindings.clear();
+    m_selectedIndex = -1;
+    m_editingIndex = -1;
+    m_waitingForKey = false;
+
+    m_settings = Services::Fetch<ProjectSettings>();
+    if (!m_settings)
+        return;
+
+    for (const auto& b : m_settings->Input())
+    {
+        BindingEntry e;
+        e.action = b.action;
+        e.glfwKey = b.key;
+        m_bindings.push_back(std::move(e));
+    }
+
+    pushToInputMap();
+}
 
 void InputMapPanel::drawToolbar()
 {
@@ -550,13 +571,28 @@ void InputMapPanel::drawEditBindingPopup()
     ImGui::EndPopup();
 }
 
-void InputMapPanel::applyBindings()
+void InputMapPanel::pushToInputMap()
 {
     if (!m_inputMap)
         return;
 
     m_inputMap->ClearBindings();
-
     for (const auto& b : m_bindings)
         m_inputMap->Bind(b.action, b.glfwKey);
+}
+
+void InputMapPanel::applyBindings()
+{
+    pushToInputMap();
+
+    if (!m_settings)
+        return;
+
+    auto& out = m_settings->Input();
+    out.clear();
+    for (const auto& b : m_bindings)
+        out.push_back({ b.action, b.glfwKey });
+
+    if (!m_settings->Save())
+        Debug::LogError("[Input] Failed to write settings.json");
 }

@@ -2,6 +2,7 @@
 #include <Core/ECS/ISystem.h>
 #include <Core/ECS/ECS.h>
 #include <Core/Components/Transform2D.h>
+#include <Core/Components/WorldTransform2D.h>
 #include <unordered_map>
 
 namespace Nova 
@@ -16,7 +17,7 @@ namespace Nova
 
 	private:
 		ECS* m_ecsRef;
-		std::unordered_map<EntityID, Transform2D> m_cachedTransforms;
+		std::unordered_map<EntityID, WorldTransform2D> m_cachedTransforms;
 
 	};
 }

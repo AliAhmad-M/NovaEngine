@@ -235,7 +235,12 @@ void InspectorPanel::Draw()
     {
         ImTextureID iconHandle = m_iconTransform ? (ImTextureID)(intptr_t)m_iconTransform->GetHandle() : 0;
         drawComponent("Transform2D", *t, iconHandle,
-            [&] { m_ecsRef->RemoveComponent<Transform2D>(entity); });
+            [&]
+            {
+                m_ecsRef->RemoveComponent<Transform2D>(entity);
+                if (m_ecsRef->HasComponent<WorldTransform2D>(entity))
+                    m_ecsRef->RemoveComponent<WorldTransform2D>(entity);
+            });
     }
 
     if (Camera2D* c = m_ecsRef->GetComponent<Camera2D>(entity))
@@ -424,6 +429,8 @@ void InspectorPanel::Draw()
                 noExt.replace_extension();
                 bs->scriptPath = ToProjectRelative(noExt, projectRoot);
                 bs->behaviorName = dropped.stem().string();
+                if (m_ctxRef->scenePanelRef)
+                    m_ctxRef->scenePanelRef->RequestScriptBuild();
             }
             else
             {
@@ -488,7 +495,11 @@ void InspectorPanel::drawAddComponentMenu()
         ImGui::Separator();
 
         if (!m_ecsRef->HasComponent<Transform2D>(entity) && ImGui::MenuItem("Transform2D"))
+        {
             m_ecsRef->AddComponent<Transform2D>(entity, Transform2D());
+            if (!m_ecsRef->HasComponent<WorldTransform2D>(entity))
+                m_ecsRef->AddComponent<WorldTransform2D>(entity, WorldTransform2D{});
+        }
 
         if (!m_ecsRef->HasComponent<Camera2D>(entity) && ImGui::MenuItem("Camera2D"))
             m_ecsRef->AddComponent<Camera2D>(entity, Camera2D());
@@ -574,6 +585,8 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
                     noExt.replace_extension();
                     bs.scriptPath = ToProjectRelative(noExt, pm ? pm->Current().root : std::filesystem::path());
                     bs.behaviorName = name;
+                    if (m_ctxRef->scenePanelRef)
+                        m_ctxRef->scenePanelRef->RequestScriptBuild();
                     ImGui::CloseCurrentPopup();
                 }
             }
@@ -643,6 +656,8 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
 
             bs.scriptPath = fullPath;
             bs.behaviorName = className;
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->RequestScriptBuild();
             s_classNameBuf[0] = '\0';
             // Keep s_dirBuf so the next script uses the same folder
         }
@@ -661,6 +676,8 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
         {
             bs.scriptPath.clear();
             bs.behaviorName.clear();
+            if (m_ctxRef->scenePanelRef)
+                m_ctxRef->scenePanelRef->RequestScriptBuild();
         }
     }
 
@@ -676,6 +693,8 @@ void InspectorPanel::drawBehaviorScript(BehaviorScript& bs)
     if (removeRequested)
     {
         m_ecsRef->RemoveComponent<BehaviorScript>(static_cast<EntityID>(m_ctxRef->selectedEntity));
+        if (m_ctxRef->scenePanelRef)
+            m_ctxRef->scenePanelRef->RequestScriptBuild();
     }
 }
 

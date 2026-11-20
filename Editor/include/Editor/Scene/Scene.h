@@ -4,6 +4,8 @@
 #include <vector>
 #include <Core/Utilities/Vector2.h>
 #include <Core/ECS/ECS.h>
+#include <Core/Components/Parent.h>
+#include <Core/Services.h>
 
 namespace Nova::Editor
 {
@@ -56,7 +58,7 @@ namespace Nova::Editor
             // Unparent children of removed entity
             for (auto& e : m_entities)
                 if (e.parentId == id)
-                    e.parentId = NO_PARENT;
+                    SetParent(e.id, NO_PARENT);
 
             for (auto it = m_entities.begin(); it != m_entities.end(); ++it)
             {
@@ -79,7 +81,25 @@ namespace Nova::Editor
         void SetParent(EntityID childId, EntityID parentId)
         {
             SceneEntity* child = FindEntity(childId);
-            if (child) child->parentId = parentId;
+            if (!child) return;
+
+            child->parentId = parentId;
+            ECS* ecs = Services::Fetch<ECS>();
+            if (!ecs || !ecs->EntityExists(childId)) return;
+
+            if (parentId == NO_PARENT)
+            {
+                if (ecs->HasComponent<Parent>(childId))
+                    ecs->RemoveComponent<Parent>(childId);
+            }
+            else if (ecs->HasComponent<Parent>(childId))
+            {
+                ecs->GetComponent<Parent>(childId)->id = parentId;
+            }
+            else
+            {
+                ecs->AddComponent<Parent>(childId, Parent{ parentId });
+            }
         }
 
         // Get direct children of an entity

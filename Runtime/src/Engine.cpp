@@ -8,6 +8,7 @@
 #include <Physics/Systems.h>
 #include <World/Components.h>
 #include <World/Systems.h>
+#include <Runtime/Systems/TransformSystem2D.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/RegisterTypes.h>
@@ -85,7 +86,9 @@ void Engine::Update()
         m_ecs.GetSystem<ScriptSystem>()->Update(m_deltaTime);
 		m_ecs.GetSystem<CameraSystem2D>()->Update(m_deltaTime);
 		m_ecs.GetSystem<RigidBodySystem2D>()->Update(m_deltaTime);
+		m_ecs.GetSystem<TransformSystem2D>()->Update();
 		m_ecs.GetSystem<TilemapSystem2D>()->Update(); 
+		m_ecs.GetSystem<TransformSystem2D>()->Update();
 
         renderApplication();
 
@@ -103,7 +106,9 @@ void Engine::UpdateEditorGame(double dt)
     m_ecs.GetSystem<ScriptSystem>()->Update((float)dt);
     m_ecs.GetSystem<CameraSystem2D>()->Update((float)dt);
     m_ecs.GetSystem<RigidBodySystem2D>()->Update((float)dt);
+    m_ecs.GetSystem<TransformSystem2D>()->Update();
     m_ecs.GetSystem<TilemapSystem2D>()->Update();
+    m_ecs.GetSystem<TransformSystem2D>()->Update();
 }
 
 void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight)
@@ -119,8 +124,10 @@ void Engine::RenderEditorFrame(unsigned int targetFBO, int vpWidth, int vpHeight
         -100.0f, 100.0f);
 
     m_renderer.Begin(projection);
-    m_ecs.GetSystem<SpriteSystem2D>()->Update();
+    m_ecs.GetSystem<TransformSystem2D>()->Update();
     m_ecs.GetSystem<TilemapSystem2D>()->Update();
+    m_ecs.GetSystem<TransformSystem2D>()->Update();
+    m_ecs.GetSystem<SpriteSystem2D>()->Update();
     m_renderer.Flush();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -144,6 +151,8 @@ void Engine::Close()
 void Engine::registerComponents() 
 {
     m_ecs.RegisterComponent<Transform2D>();
+    m_ecs.RegisterComponent<Parent>();
+    m_ecs.RegisterComponent<WorldTransform2D>();
     m_ecs.RegisterComponent<BehaviorScript>();
     m_ecs.RegisterComponent<Sprite2D>();
     m_ecs.RegisterComponent<RigidBody2D>();
@@ -153,13 +162,18 @@ void Engine::registerComponents()
 
 void Engine::initializeSystems() 
 {
+    // Initialize hierarchy transform system (2D)
+    m_ecs.RegisterSystem<TransformSystem2D>();
+    m_ecs.AddComponentToSystem<Transform2D, TransformSystem2D>();
+    m_ecs.AddComponentToSystem<WorldTransform2D, TransformSystem2D>();
+
     // Initialize behavior script system
     m_ecs.RegisterSystem<ScriptSystem>();
     m_ecs.AddComponentToSystem<BehaviorScript, ScriptSystem>();
 
     // Initialize sprite system (2D)
     m_ecs.RegisterSystem<SpriteSystem2D>();
-    m_ecs.AddComponentToSystem<Transform2D, SpriteSystem2D>();
+    m_ecs.AddComponentToSystem<WorldTransform2D, SpriteSystem2D>();
     m_ecs.AddComponentToSystem<Sprite2D, SpriteSystem2D>();
 
 	// Initialize camera system (2D)
@@ -174,5 +188,6 @@ void Engine::initializeSystems()
 	// Initialize tilemap system (2D)
 	m_ecs.RegisterSystem<TilemapSystem2D>();
 	m_ecs.AddComponentToSystem<Transform2D, TilemapSystem2D>();
+	m_ecs.AddComponentToSystem<WorldTransform2D, TilemapSystem2D>();
 	m_ecs.AddComponentToSystem<Tilemap2D, TilemapSystem2D>();
 }

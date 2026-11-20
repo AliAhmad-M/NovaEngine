@@ -3,6 +3,7 @@
 #include <Editor/Project/ProjectManager.h>
 #include <Core/Services.h>
 #include <Core/Components.h>
+#include <Physics/Components/RigidBody2D.h>
 #include <Platform/Window.h>
 #include <cstdio>
 #include <cmath>
@@ -13,6 +14,7 @@
 #undef APIENTRY
 #endif
 #include <Windows.h>
+#include <shellapi.h>
 
 using namespace Nova;
 using namespace Nova::Editor;
@@ -59,83 +61,187 @@ void ScenePanel::buildAndRunGame()
     if (m_building)
         return;
 
-    ProjectManager* pm =
-        Services::Fetch<ProjectManager>();
-
-    if (!pm || !pm->HasProject())
-    {
-        Debug::LogError(
-            "[Build] No project is currently open.");
-        return;
-    }
-
-    const ProjectInfo& project =
-        pm->Current();
-
     // Save scene before building
     if (m_ctxRef->onSaveScene)
         m_ctxRef->onSaveScene();
 
-    const std::filesystem::path root =
-        std::filesystem::absolute(project.root);
-
-    const std::filesystem::path buildDir =
-        std::filesystem::absolute(project.build);
-
-    const std::filesystem::path sdkDir =
-        std::filesystem::absolute(
-            ProjectManager::SdkDir());
-
-    const std::string configuration = "Release";
-
-    const std::filesystem::path exePath =
-        buildDir /
-        "bin" /
-        configuration /
-        "Game.exe";
-
-    std::error_code ec;
-    if (std::filesystem::exists(buildDir, ec)) {
-        std::filesystem::remove_all(buildDir, ec);
-    }
-    std::filesystem::create_directories(buildDir, ec);
-
-    if (ec)
+    m_focusBuildOutputOnce = true;
+    if (!BuildOnly([this](bool succeeded)
+        {
+            if (succeeded)
+                launchBuiltGame();
+        }))
     {
-        Debug::LogError(
-            "[Build] Failed to create build directory: %s",
-            ec.message().c_str());
+        appendBuildLog("[ERROR] A build is already running or no project is open.\n");
+    }
+}
+
+bool ScenePanel::BuildOnly(std::function<void(bool)> onComplete)
+{
+    return startBuild(false, std::move(onComplete));
+}
+
+void ScenePanel::BuildScriptsNow(std::function<void(bool)> onComplete)
+{
+    if (m_building || m_scriptBuildPending)
+    {
+        m_scriptBuildPending = true;
+        m_scriptBuildDue = std::chrono::steady_clock::now();
+        if (onComplete)
+            m_scriptBuildCompletions.push_back(std::move(onComplete));
         return;
     }
 
-    m_building = true;
+    startBuild(true, std::move(onComplete));
+}
+
+void ScenePanel::RequestScriptBuild()
+{
+    m_scriptBuildPending = true;
+    m_scriptBuildDue = std::chrono::steady_clock::now() + std::chrono::milliseconds(400);
+}
+
+void ScenePanel::PollBuild()
+{
+    bool ready = false;
+    bool succeeded = false;
     {
-        std::lock_guard<std::mutex> lock(
-            m_buildLogMutex);
-
-        m_buildLog.clear();
-        m_buildLog +=
-            "Nova Build Started\n";
-
-        m_buildLog +=
-            "Project: " +
-            root.string() +
-            "\n";
-
-        m_buildLog +=
-            "Output: " +
-            exePath.string() +
-            "\n\n";
+        std::lock_guard<std::mutex> lock(m_buildResultMutex);
+        ready = m_buildResultReady;
+        succeeded = m_buildResultSucceeded;
+        m_buildResultReady = false;
     }
 
-    std::thread(
+    if (ready)
+    {
+        if (m_buildThread.joinable())
+            m_buildThread.join();
+        m_building = false;
+
+        auto completion = std::move(m_buildCompletion);
+        if (completion)
+            completion(succeeded);
+    }
+
+    if (!m_building && m_scriptBuildPending &&
+        std::chrono::steady_clock::now() >= m_scriptBuildDue)
+    {
+        m_scriptBuildPending = false;
+        auto callbacks = std::move(m_scriptBuildCompletions);
+        m_scriptBuildCompletions.clear();
+        startBuild(true, [callbacks = std::move(callbacks)](bool buildSucceeded)
+            {
+                for (const auto& callback : callbacks)
+                    if (callback) callback(buildSucceeded);
+            });
+    }
+}
+
+void ScenePanel::appendBuildLog(const std::string& text)
+{
+    std::lock_guard<std::mutex> lock(m_buildLogMutex);
+    m_buildLog += text;
+    m_buildLogScrollToBottom = true;
+}
+
+std::string ScenePanel::GetLastBuildLogLine()
+{
+    std::lock_guard<std::mutex> lock(m_buildLogMutex);
+
+    const size_t end = m_buildLog.find_last_not_of(" \r\n");
+    if (end == std::string::npos)
+        return {};
+
+    size_t start = m_buildLog.find_last_of('\n', end);
+    start = (start == std::string::npos) ? 0 : start + 1;
+    return m_buildLog.substr(start, end - start + 1);
+}
+
+void ScenePanel::DrawBuildOutput()
+{
+    drawBuildLog();
+}
+
+void ScenePanel::launchBuiltGame()
+{
+    ProjectManager* pm = Services::Fetch<ProjectManager>();
+    if (!pm || !pm->HasProject()) return;
+
+    const ProjectInfo project = pm->Current();
+    const std::filesystem::path root = std::filesystem::absolute(project.root);
+    const std::filesystem::path exePath =
+        std::filesystem::absolute(project.build) / "bin" / "Release" / "Game.exe";
+
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    std::string command = "\"" + exePath.string() + "\"";
+
+    if (!CreateProcessA(nullptr, command.data(), nullptr, nullptr, FALSE,
+        CREATE_NEW_CONSOLE, nullptr, root.string().c_str(), &startup, &process))
+    {
+        appendBuildLog("[ERROR] Failed to launch Game.exe. Error code: " +
+            std::to_string(GetLastError()) + "\n");
+        return;
+    }
+
+    CloseHandle(process.hProcess);
+    CloseHandle(process.hThread);
+    appendBuildLog("Launching: " + exePath.string() + "\n");
+}
+
+bool ScenePanel::startBuild(bool scriptsOnly, std::function<void(bool)> onComplete)
+{
+    if (m_building)
+        return false;
+
+    ProjectManager* pm = Services::Fetch<ProjectManager>();
+    if (!pm || !pm->HasProject())
+        return false;
+
+    if (m_buildThread.joinable())
+        m_buildThread.join();
+
+    const ProjectInfo project = pm->Current();
+    const std::filesystem::path root = std::filesystem::absolute(project.root);
+    const std::filesystem::path buildDir = std::filesystem::absolute(project.build);
+    const std::filesystem::path sdkDir = std::filesystem::absolute(ProjectManager::SdkDir());
+    const std::filesystem::path exePath = buildDir / "bin" / "Release" / "Game.exe";
+    const std::string configuration = "Release";
+
+    m_building = true;
+    m_buildCompletion = std::move(onComplete);
+    {
+        std::lock_guard<std::mutex> lock(m_buildLogMutex);
+        m_buildLog = scriptsOnly ? "Nova GameScripts Build Started\n" : "Nova Game Build Started\n";
+        m_buildLog += "Project: " + root.string() + "\n";
+        m_buildLog += "Output: " + buildDir.string() + "\n\n";
+        m_buildLogScrollToBottom = true;
+    }
+    {
+        std::lock_guard<std::mutex> lock(m_buildResultMutex);
+        m_buildResultReady = false;
+        m_buildResultSucceeded = false;
+    }
+
+    m_buildThread = std::thread(
         [this,
+        scriptsOnly,
         root,
         buildDir,
         sdkDir,
         exePath,
         configuration]()
         {
+            auto finishBuild = [this](bool succeeded)
+                {
+                    {
+                        std::lock_guard<std::mutex> lock(m_buildResultMutex);
+                        m_buildResultSucceeded = succeeded;
+                        m_buildResultReady = true;
+                    }
+                };
+
             auto appendLog =
                 [this](const std::string& text)
                 {
@@ -177,7 +283,7 @@ void ScenePanel::buildAndRunGame()
                     appendLog(
                         "[ERROR] Failed to create pipe.\n");
 
-                    m_building = false;
+                    finishBuild(false);
                     return;
                 }
 
@@ -221,7 +327,7 @@ void ScenePanel::buildAndRunGame()
                         "[ERROR] Failed to run CMake configure.\n");
 
                     CloseHandle(hRead);
-                    m_building = false;
+                    finishBuild(false);
                     return;
                 }
 
@@ -260,20 +366,22 @@ void ScenePanel::buildAndRunGame()
                     appendLog(
                         "\n[ERROR] CMake configure failed.\n");
 
-                    m_building = false;
+                    finishBuild(false);
                     return;
                 }
             }
 
-            // Build the actual executable
+            // Build the requested target. CMake keeps this incremental.
 
-            const std::string buildCmd =
+            std::string buildCmd =
                 "cmake"
                 " --build \"" +
                 buildDir.string() +
                 "\""
                 " --config " +
                 configuration;
+            if (scriptsOnly)
+                buildCmd += " --target GameScripts";
 
             appendLog(
                 "\n[Build]\n" +
@@ -298,7 +406,7 @@ void ScenePanel::buildAndRunGame()
                     appendLog(
                         "[ERROR] Failed to create pipe.\n");
 
-                    m_building = false;
+                    finishBuild(false);
                     return;
                 }
 
@@ -342,7 +450,7 @@ void ScenePanel::buildAndRunGame()
                         "[ERROR] Failed to run CMake build.\n");
 
                     CloseHandle(hRead);
-                    m_building = false;
+                    finishBuild(false);
                     return;
                 }
 
@@ -381,15 +489,12 @@ void ScenePanel::buildAndRunGame()
                     appendLog(
                         "\nBuild FAILED.\n");
 
-                    m_building = false;
+                    finishBuild(false);
                     return;
                 }
             }
 
-            // Verify executable on successful build
-
-            if (!std::filesystem::exists(
-                exePath))
+            if (!scriptsOnly && !std::filesystem::exists(exePath))
             {
                 appendLog(
                     "\n[ERROR] Build succeeded but "
@@ -397,19 +502,15 @@ void ScenePanel::buildAndRunGame()
                     exePath.string() +
                     "\n");
 
-                m_building = false;
+                finishBuild(false);
                 return;
             }
 
-            appendLog(
-                "\nBuild Succeeded.\n"
-                "Launching:\n" +
-                exePath.string() +
-                "\n");
-
-
-            // Copy vcpkg DLLs next to Game.exe
+            if (!scriptsOnly)
             {
+                appendLog("\nBuild Succeeded.\n");
+
+                // Copy vcpkg DLLs next to Game.exe
                 std::error_code cec;
                 for (const auto& triplet :
                     std::filesystem::directory_iterator(sdkDir / "vcpkg_installed", cec))
@@ -429,59 +530,23 @@ void ScenePanel::buildAndRunGame()
                     }
                 }
             }
-
-            // Launch the user's actual project
-
-            STARTUPINFOA runSi{};
-            runSi.cb = sizeof(runSi);
-
-            PROCESS_INFORMATION runPi{};
-
-            std::string runCmd =
-                "\"" +
-                exePath.string() +
-                "\"";
-
-            bool launched =
-                CreateProcessA(
-                    nullptr,
-                    runCmd.data(),
-                    nullptr,
-                    nullptr,
-                    FALSE,
-                    CREATE_NEW_CONSOLE,
-                    nullptr,
-                    root.string().c_str(),
-                    &runSi,
-                    &runPi);
-
-            if (!launched)
-            {
-                appendLog(
-                    "[ERROR] Failed to launch Game.exe. "
-                    "Error code: " +
-                    std::to_string(
-                        GetLastError()) +
-                    "\n");
-            }
             else
-            {
-                CloseHandle(
-                    runPi.hProcess);
+                appendLog("\nGameScripts Build Succeeded.\n");
 
-                CloseHandle(
-                    runPi.hThread);
-            }
-
-            m_building = false;
-
-        })
-        .detach();
+            finishBuild(true);
+        });
+    return true;
 }
 
 void ScenePanel::drawBuildLog()
 {
     ImGui::SetNextWindowSize(ImVec2(700, 400), ImGuiCond_FirstUseEver);
+    if (m_focusBuildOutputOnce)
+    {
+        ImGui::SetNextWindowFocus();
+        m_focusBuildOutputOnce = false;
+    }
+
     if (!ImGui::Begin("Build Output"))
     {
         ImGui::End();
@@ -509,15 +574,17 @@ void ScenePanel::drawBuildLog()
 
     ImGui::BeginChild("##buildlog_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
+    bool scrollToBottom = false;
     {
         std::lock_guard<std::mutex> lock(m_buildLogMutex);
         ImGui::TextUnformatted(m_buildLog.c_str());
+        scrollToBottom = m_buildLogScrollToBottom;
+        m_buildLogScrollToBottom = false;
     }
 
-    if (m_buildLogScrollToBottom)
+    if (scrollToBottom)
     {
         ImGui::SetScrollHereY(1.0f);
-        m_buildLogScrollToBottom = false;
     }
 
     ImGui::EndChild();
@@ -583,86 +650,6 @@ void ScenePanel::drawTabBar()
     ImGui::EndTabBar();
 }
 
-//void ScenePanel::createGameFBO(int w, int h)
-//{
-//    m_gameVpWidth = w;
-//    m_gameVpHeight = h;
-//
-//    glGenFramebuffers(1, &m_gameFbo);
-//    glBindFramebuffer(GL_FRAMEBUFFER, m_gameFbo);
-//
-//    glGenTextures(1, &m_gameColorTex);
-//    glBindTexture(GL_TEXTURE_2D, m_gameColorTex);
-//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_gameColorTex, 0);
-//
-//    glGenRenderbuffers(1, &m_gameDepthRbo);
-//    glBindRenderbuffer(GL_RENDERBUFFER, m_gameDepthRbo);
-//    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-//    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_gameDepthRbo);
-//
-//    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-//}
-//
-//void ScenePanel::resizeGameFBO(int w, int h)
-//{
-//    destroyGameFBO();
-//    createGameFBO(w, h);
-//}
-//
-//void ScenePanel::destroyGameFBO()
-//{
-//    if (m_gameDepthRbo) { glDeleteRenderbuffers(1, &m_gameDepthRbo); m_gameDepthRbo = 0; }
-//    if (m_gameColorTex) { glDeleteTextures(1, &m_gameColorTex); m_gameColorTex = 0; }
-//    if (m_gameFbo) { glDeleteFramebuffers(1, &m_gameFbo); m_gameFbo = 0; }
-//    m_gameVpWidth = m_gameVpHeight = 0;
-//}
-//
-//void ScenePanel::drawGameWindow()
-//{
-//    if (!m_showGameWindow) return;
-//
-//    bool open = m_showGameWindow;
-//
-//    ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
-//    if (!ImGui::Begin("Game", &open))
-//    {
-//        ImGui::End();
-//        if (!open && m_playing) stopPlay();
-//        m_showGameWindow = open;
-//        return;
-//    }
-//
-//    ImGui::TextColored(m_playing ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-//        m_playing ? "Playing" : "Stopped");
-//
-//    ImVec2 viewSize = ImGui::GetContentRegionAvail();
-//    int w = (int)viewSize.x;
-//    int h = (int)viewSize.y;
-//
-//    if (w > 0 && h > 0)
-//    {
-//        // Resize
-//        if (w != m_gameVpWidth || h != m_gameVpHeight)
-//            resizeGameFBO(w, h);
-//
-//        if (m_gameColorTex)
-//        {
-//            ImGui::Image((ImTextureID)(intptr_t)m_gameColorTex, viewSize,
-//                ImVec2(0, 1), ImVec2(1, 0));
-//        }
-//    }
-//
-//    ImGui::End();
-//
-//    if (!open && m_playing)
-//        stopPlay();
-//
-//    m_showGameWindow = open;
-//}
-
 void ScenePanel::drawSceneToolBar()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
@@ -710,6 +697,11 @@ void ScenePanel::drawSceneToolBar()
     ImGui::SameLine(0, 12);
 
     ImGui::Checkbox("Grid", &m_showGrid);
+
+    ImGui::SameLine(0, 8);
+    ImGui::Checkbox("Physics", &m_showPhysicsDebug);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Show rigid body colliders as debug boxes/circles");
 
     ImGui::SameLine(0, 12);
     ImGui::TextDisabled("|");
@@ -811,6 +803,9 @@ void ScenePanel::drawSceneViewport()
     const ImVec2 imgMin = ImGui::GetItemRectMin();
     const ImVec2 imgSize = ImGui::GetItemRectSize();
 
+    if (m_showPhysicsDebug)
+        DrawRigidBodyDebug(imgMin, imgSize);
+
     DrawGizmo();
 
     if (ImGui::IsItemHovered())
@@ -883,8 +878,9 @@ ScenePanel::ScenePanel(EditorContext* ctx)
 
 ScenePanel::~ScenePanel()
 {
+    if (m_buildThread.joinable())
+        m_buildThread.join();
     destroyFBO();
-    // destroyGameFBO();
 }
 
 void ScenePanel::Draw()
@@ -907,7 +903,6 @@ void ScenePanel::Draw()
     ImGui::End();
 
     drawBuildLog();
-    // drawGameWindow();
 }
 
 void ScenePanel::drawNoScenePlaceholder()
@@ -984,6 +979,30 @@ void ScenePanel::closeScene(int index)
         // Clear the ECS since no scene is active
         m_ecsRef->DeleteAllEntities();
     }
+}
+
+void ScenePanel::CloseAllScenes()
+{
+    m_sceneTabs.clear();
+    m_activeTab = -1;
+    m_lastActiveTab = -1;
+    m_tabToSelect = -1;
+    m_ctxRef->activeSceneRef = nullptr;
+    m_ctxRef->activeScenePath.clear();
+    m_ctxRef->selectedEntity = -1;
+    m_ecsRef->DeleteAllEntities();
+}
+
+void ScenePanel::SetActiveSceneFilePath(const std::string& filePath)
+{
+    if (m_activeTab < 0 || m_activeTab >= static_cast<int>(m_sceneTabs.size()))
+        return;
+
+    SceneTab& tab = m_sceneTabs[m_activeTab];
+    tab.filePath = filePath;
+    tab.name = std::filesystem::path(filePath).stem().string();
+    tab.scene->SetFilePath(filePath);
+    m_ctxRef->activeScenePath = filePath;
 }
 
 void ScenePanel::OpenSceneTab(const std::string& filePath)
@@ -1120,6 +1139,99 @@ void ScenePanel::DrawGizmo()
         if (m_ctxRef->scenePanelRef)
             m_ctxRef->scenePanelRef->MarkSceneAsDirty();
     }
+}
+
+void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
+{
+    if (!m_ctxRef->activeSceneRef || !m_ecsRef) return;
+
+    const float zoom = m_editorCamera.GetZoom();
+    if (zoom <= 0.0f || !std::isfinite(zoom)) return;
+
+    const Vector2 offset = m_editorCamera.GetOffset();
+
+    auto toScreen = [&](float wx, float wy)
+        {
+            return ImVec2(
+                imgMin.x + (wx - offset.x) * zoom,
+                imgMin.y + (wy - offset.y) * zoom
+            );
+        };
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->PushClipRect(
+        imgMin,
+        ImVec2(imgMin.x + imgSize.x, imgMin.y + imgSize.y),
+        true
+    );
+
+    // Dynamic = green, Static = blue, Sensor = yellow
+    const ImU32 dynamicFill = IM_COL32(80, 220, 120, 55);
+    const ImU32 dynamicLine = IM_COL32(80, 220, 120, 220);
+    const ImU32 staticFill = IM_COL32(120, 200, 255, 45);
+    const ImU32 staticLine = IM_COL32(120, 200, 255, 200);
+    const ImU32 sensorFill = IM_COL32(255, 200, 80, 45);
+    const ImU32 sensorLine = IM_COL32(255, 200, 80, 210);
+
+    for (const auto& entity : m_ctxRef->activeSceneRef->GetEntities())
+    {
+        const EntityID id = static_cast<EntityID>(entity.id);
+
+        const RigidBody2D* rb = m_ecsRef->GetComponent<RigidBody2D>(id);
+        if (!rb) continue;
+
+        const Transform2D* transform = m_ecsRef->GetComponent<Transform2D>(id);
+        if (!transform) continue;
+
+        ImU32 fill, line;
+        if (rb->IsSensor()) { fill = sensorFill;  line = sensorLine; }
+        else if (rb->IsStatic()) { fill = staticFill;  line = staticLine; }
+        else { fill = dynamicFill; line = dynamicLine; }
+
+        const float cosR = std::cos(transform->rotation);
+        const float sinR = std::sin(transform->rotation);
+
+        // World-space center of the collider: body position + rotated (scaled) offset
+        const float ox = rb->centerOffset.x * transform->scale.x;
+        const float oy = rb->centerOffset.y * transform->scale.y;
+        const float cx = transform->position.x + ox * cosR - oy * sinR;
+        const float cy = transform->position.y + ox * sinR + oy * cosR;
+
+        if (rb->GetShape() == Shape2D::CIRCLE)
+        {
+            const float r = rb->GetRadius()
+                * std::max(transform->scale.x, transform->scale.y)
+                * zoom;
+            if (r <= 0.0f) continue;
+
+            const ImVec2 c = toScreen(cx, cy);
+            dl->AddCircleFilled(c, r, fill, 0);
+            dl->AddCircle(c, r, line, 0, 1.5f);
+        }
+        else if (rb->GetShape() == Shape2D::BOX)
+        {
+            const float hw = rb->GetFullWidth() * transform->scale.x * 0.5f;
+            const float hh = rb->GetFullHeight() * transform->scale.y * 0.5f;
+            if (hw <= 0.0f || hh <= 0.0f) continue;
+
+            auto corner = [&](float lx, float ly)
+                {
+                    const float wx = cx + lx * cosR - ly * sinR;
+                    const float wy = cy + lx * sinR + ly * cosR;
+                    return toScreen(wx, wy);
+                };
+
+            const ImVec2 c0 = corner(-hw, -hh);
+            const ImVec2 c1 = corner(hw, -hh);
+            const ImVec2 c2 = corner(hw, hh);
+            const ImVec2 c3 = corner(-hw, hh);
+
+            dl->AddQuadFilled(c0, c1, c2, c3, fill);
+            dl->AddQuad(c0, c1, c2, c3, line, 1.5f);
+        }
+    }
+
+    dl->PopClipRect();
 }
 
 void ScenePanel::DrawViewOutlines(ImVec2 imgMin, ImVec2 imgSize)

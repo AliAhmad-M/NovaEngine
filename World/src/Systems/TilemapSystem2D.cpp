@@ -18,8 +18,9 @@ void TilemapSystem2D::Update(float dt)
 {
 	for (EntityID e : entities)
 	{
-		auto* t  = m_ecsRef->GetComponent<Transform2D>(e);
+		auto* t  = m_ecsRef->GetComponent<WorldTransform2D>(e);
 		auto* tm = m_ecsRef->GetComponent<Tilemap2D>(e);
+		if (!t || !tm) continue;
 
 		// Skip updating children if transform unchanged
 		auto& tCached = m_cachedTransforms[e];
@@ -31,6 +32,7 @@ void TilemapSystem2D::Update(float dt)
 		for (auto& [childEntity, type] : tm->GetChildEntities()) 
 		{
 			auto* tChild = m_ecsRef->GetComponent<Transform2D>(childEntity);
+			if (!tChild) continue;
 			tChild->position = t->position;
 			tChild->rotation = t->rotation;
 			tChild->scale	 = t->scale;
@@ -43,7 +45,12 @@ void TilemapSystem2D::Update(float dt)
 void TilemapSystem2D::OnEntityAdded(EntityID e)
 {
 	auto* t  = m_ecsRef->GetComponent<Transform2D>(e);
+	auto* world = m_ecsRef->GetComponent<WorldTransform2D>(e);
 	auto* tm = m_ecsRef->GetComponent<Tilemap2D>(e);
+	if (!t || !tm) return;
+	const WorldTransform2D initialWorld = world
+		? *world
+		: WorldTransform2D{ t->position, t->rotation, t->scale };
 
 	const std::vector<Tile2D>& tileset = tm->GetTileset();
 	const std::vector<TilemapLayer2D>& layers = tm->GetLayers();
@@ -111,7 +118,8 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 		layerTexture->UnbindFBO();
 
 		EntityID layerEntity = m_ecsRef->CreateEntity();
-		m_ecsRef->AddComponent(layerEntity, Transform2D(t->position, t->rotation, t->scale));
+		m_ecsRef->AddComponent(layerEntity, Transform2D(initialWorld.position, initialWorld.rotation, initialWorld.scale));
+		m_ecsRef->AddComponent(layerEntity, WorldTransform2D{ initialWorld.position, initialWorld.rotation, initialWorld.scale });
 		m_ecsRef->AddComponent(layerEntity, Sprite2D(layerTexture, 1, 1, (int)layerIdx));
 
 		tm->AddChildEntity(layerEntity, TilemapChildType2D::LayerSprite);
@@ -129,13 +137,14 @@ void TilemapSystem2D::OnEntityAdded(EntityID e)
 
 		EntityID colliderEntity = m_ecsRef->CreateEntity();
 		m_ecsRef->AddComponent(colliderEntity, Transform2D(Vector2(x, y), 0.0f, t->scale));
+		m_ecsRef->AddComponent(colliderEntity, WorldTransform2D{ Vector2(x, y), 0.0f, t->scale });
 		m_ecsRef->AddComponent(colliderEntity, RigidBody2D(Vector2(w / 2.0f, h / 2.0f), w, h, true, false));
 
 		tm->AddChildEntity(colliderEntity, TilemapChildType2D::RectCollider);
 	}
 
 	// Cache transform component to check for changes
-	m_cachedTransforms[e] = *t;
+	m_cachedTransforms[e] = initialWorld;
 }
 
 void TilemapSystem2D::OnEntityRemoved(EntityID e)

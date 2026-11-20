@@ -7,8 +7,13 @@
 #include <Editor/Scene/Scene.h>
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <atomic>
 #include <memory>
 #include <mutex>
+#include <thread>
+#include <functional>
+#include <chrono>
 #include <imgui.h>
 #include <ImGuizmo.h>
 
@@ -33,10 +38,21 @@ namespace Nova::Editor
 
         void NewScene();
         void OpenSceneTab(const std::string& filePath);
+        void CloseAllScenes();
+        void SetActiveSceneFilePath(const std::string& filePath);
+        bool BuildOnly(std::function<void(bool)> onComplete = nullptr);
+        void BuildScriptsNow(std::function<void(bool)> onComplete = nullptr);
+        void RequestScriptBuild();
+        void PollBuild();
+        std::string GetLastBuildLogLine();
+        void DrawBuildOutput();
+        void FocusBuildOutputOnce() { m_focusBuildOutputOnce = true; }
+        bool IsBuilding() const { return m_building.load(); }
         void MarkSceneAsSaved();
         void MarkSceneAsDirty();
         void DrawGizmo();
         void DrawViewOutlines(ImVec2 imgMin, ImVec2 imgSize);
+        void DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize);
 
         unsigned int GetSceneFBOId()          const { return m_fbo; }
         unsigned int GetSceneColorTexture()   const { return m_colorTex; }
@@ -49,11 +65,6 @@ namespace Nova::Editor
         std::vector<std::string> GetOpenScenePaths() const;
         int GetActiveTabIndex() const { return m_activeTab; }
         void SetActiveTab(int index);
-
-        //bool         IsPlaying()             const { return m_playing; }
-        //unsigned int GetGameFBOId()          const { return m_gameFbo; }
-        //int          GetGameViewportWidth()  const { return m_gameVpWidth; }
-        //int          GetGameViewportHeight() const { return m_gameVpHeight; }
 
         // Returns the editor-owned camera
         Camera2D& GetEditorCamera() { return m_editorCamera; }
@@ -74,13 +85,16 @@ namespace Nova::Editor
 
         void closeScene(int index);
         void buildAndRunGame();
+        void launchBuiltGame();
+        bool startBuild(bool scriptsOnly, std::function<void(bool)> onComplete);
+        void appendBuildLog(const std::string& text);
         void drawBuildLog();
 
         void createFBO(int w, int h);
         void resizeFBO(int w, int h);
         void destroyFBO();
 
-        // Converts a screen-space ImGui delta into world-space and applies it to the editor camera
+        // Converts a screen space ImGui delta into world space and applies it to the editor camera
         void panEditorCamera(float dx, float dy);
 
         EditorContext* m_ctxRef = nullptr;
@@ -101,32 +115,22 @@ namespace Nova::Editor
         Camera2D m_editorCamera;
 
         bool m_showGrid = true;
+        bool m_showPhysicsDebug = true;
         int  m_gridSize = 32;
 
         std::string         m_buildLog;
         std::mutex          m_buildLogMutex;
         std::atomic<bool>   m_building{ false };
         bool                m_buildLogScrollToBottom = false;
-
-        //// Play mode
-        // 
-        //void startPlay();
-        //void stopPlay();
-        //void drawGameWindow();
-
-        //void createGameFBO(int w, int h);
-        //void resizeGameFBO(int w, int h);
-        //void destroyGameFBO();
-
-        //bool        m_playing = false;
-        //bool        m_showGameWindow = false;
-        //std::string m_playSnapshotPath;
-
-        //unsigned int m_gameFbo = 0;
-        //unsigned int m_gameColorTex = 0;
-        //unsigned int m_gameDepthRbo = 0;
-        //int          m_gameVpWidth = 0;
-        //int          m_gameVpHeight = 0;
+        bool                m_focusBuildOutputOnce = false;
+        bool                m_buildResultReady = false;
+        bool                m_buildResultSucceeded = false;
+        std::mutex          m_buildResultMutex;
+        std::thread         m_buildThread;
+        std::function<void(bool)> m_buildCompletion;
+        bool m_scriptBuildPending = false;
+        std::chrono::steady_clock::time_point m_scriptBuildDue;
+        std::vector<std::function<void(bool)>> m_scriptBuildCompletions;
 
         ECS* m_ecsRef;
         SceneManager* m_sceneManagerRef;

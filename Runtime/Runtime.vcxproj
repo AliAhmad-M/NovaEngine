@@ -144,12 +144,14 @@
     <ClInclude Include="include\Runtime\Scene\SceneLoader.h" />
     <ClInclude Include="include\Runtime\Scene\SceneManager.h" />
     <ClInclude Include="include\Runtime\ContentLoader.h" />
+    <ClInclude Include="include\Runtime\Systems\TransformSystem2D.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine.cpp" />
     <ClCompile Include="src\Scene\SceneLoader.cpp" />
     <ClCompile Include="src\Scene\SceneManager.cpp" />
     <ClCompile Include="src\ContentLoader.cpp" />
+    <ClCompile Include="src\Systems\TransformSystem2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\World\World.vcxproj">

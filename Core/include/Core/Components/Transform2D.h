@@ -8,9 +8,9 @@
 
 namespace Nova 
 {
-/**
- * @brief Transform data in a 2D plane
- */
+    /**
+     * @brief Transform data in a 2D plane
+     */
     struct Transform2D
     {
         Vector2 position;

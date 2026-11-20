@@ -41,7 +41,7 @@ void SpriteSystem2D::Update(float dt)
     for (size_t i = 0; i < m_entities.size(); i++)
     {
         EntityID e = m_entities[i];
-        auto* t = m_ecsRef->GetComponent<Transform2D>(e);
+        auto* t = m_ecsRef->GetComponent<WorldTransform2D>(e);
         auto* s = m_ecsRef->GetComponent<Sprite2D>(e);
 
         if (!s->texture) continue;
