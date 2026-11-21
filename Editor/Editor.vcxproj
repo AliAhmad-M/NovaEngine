@@ -182,6 +182,7 @@
     <ClInclude Include="include\Editor\Project\ScriptHost.h" />
     <ClInclude Include="include\Editor\Scene\Scene.h" />
     <ClInclude Include="include\Editor\Scene\SceneSerializer.h" />
+    <ClInclude Include="include\Editor\Theme.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\icons\icon_audio.png" />

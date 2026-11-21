@@ -113,6 +113,9 @@
     <ClInclude Include="include\Editor\Project\ProjectSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Editor\Theme.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\icons\icon_audio.png">

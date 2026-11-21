@@ -3,7 +3,6 @@
 #define GLFW_INCLUDE_NONE
 #endif
 
-#include <GLFW/glfw3.h>
 #include <Editor/Panels/InputMapPanel.h>
 #include <Core/Services.h>
 #include <imgui.h>

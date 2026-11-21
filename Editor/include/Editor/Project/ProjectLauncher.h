@@ -13,10 +13,19 @@ namespace Nova::Editor
         void SetError(const std::string& e) { m_error = e; }
 
     private:
-        char m_name[64] = "My Game";
+        char m_name[64]      = "My Game";
         char m_location[512] = {};
         char m_openPath[512] = {};
+        char m_search[128]   = {};
+        
+        int  m_sort         = 0;
+        bool m_pinnedOnly   = false;
+        bool m_openNewModal = false;
+
+        std::string m_selected;
+        std::string m_pendingDelete;
         std::string m_error;
         std::string m_pickRoot;
+
     };
 }

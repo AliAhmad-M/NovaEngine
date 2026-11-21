@@ -5,6 +5,9 @@
 
 using namespace Nova;
 
+static inline float degToRad(float deg) { return deg * (B2_PI / 180.0f); }
+static inline float radToDeg(float rad) { return rad * (180.0f / B2_PI); }
+
 static inline b2Vec2 pointToMeters(float xPx, float yPx)
 {
     return { xPx / PHYSICS_PPM, yPx / PHYSICS_PPM };
@@ -18,6 +21,24 @@ static b2Vec2 worldCenterToMeters(const Transform2D* t)
 static Vector2 metersToPoint(const b2Vec2& meters)
 {
     return { meters.x * PHYSICS_PPM, meters.y * PHYSICS_PPM };
+}
+
+// Shape center offset from the transform origin, in meters, in the entity's local (unrotated) space
+static b2Vec2 shapeOffsetMeters(const Transform2D* t, const RigidBody2D* rb)
+{
+    return
+    {
+        (rb->centerOffset.x * t->scale.x) / PHYSICS_PPM,
+        (rb->centerOffset.y * t->scale.y) / PHYSICS_PPM
+    };
+}
+
+// Body origin (= shape center) in world meters for a given transform and rotation
+static b2Vec2 bodyOriginFromTransform(const Transform2D* t, const RigidBody2D* rb)
+{
+    b2Vec2 o = shapeOffsetMeters(t, rb);
+    b2Vec2 p = worldCenterToMeters(t);
+    return { p.x + o.x, p.y + o.y };
 }
 
 static b2Filter makeFilter(const RigidBody2D* rb)
@@ -53,22 +74,25 @@ Vector2 RigidBodySystem2D::GetGravity() const
 void RigidBodySystem2D::SetGravity(const Vector2& meterPerSecSq)
 {
     b2World_SetGravity(m_worldId, pointToMeters(
-        meterPerSecSq.x * PHYSICS_PPM, 
+        meterPerSecSq.x * PHYSICS_PPM,
         meterPerSecSq.y * PHYSICS_PPM)
     );
 }
 
 void RigidBodySystem2D::OnEntityAdded(EntityID e)
 {
-    auto* t  = m_ecs->GetComponent<Transform2D>(e);
+    auto* t = m_ecs->GetComponent<Transform2D>(e);
     auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
+
+    b2Rot rot = b2MakeRot(degToRad(t->rotation));
 
     // Create body definition
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = rb->IsStatic() ? b2_staticBody : b2_dynamicBody;
-    bodyDef.position = worldCenterToMeters(t);
-    bodyDef.rotation = b2MakeRot(t->rotation * (B2_PI / 180.0f));
+    bodyDef.position = bodyOriginFromTransform(t, rb);
+    bodyDef.rotation = rot;
     bodyDef.fixedRotation = rb->LockRotation();
+    bodyDef.gravityScale = rb->ApplyGravity() ? 1.0f : 0.0f;
     bodyDef.userData = reinterpret_cast<void*>(static_cast<uintptr_t>(e));
 
     // Initialize rigidbody ID
@@ -88,20 +112,13 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
     material.friction = rb->GetFriction();
     shapeDef.material = material;
 
-    // Offset from transform in meters
-    b2Vec2 localOffsetMeters =
-    {
-        (rb->centerOffset.x * t->scale.x) / PHYSICS_PPM,
-        (rb->centerOffset.y * t->scale.y) / PHYSICS_PPM
-    };
-
     // Circle
     if (rb->GetShape() == Shape2D::CIRCLE)
     {
         float uniformScale = std::max(t->scale.x, t->scale.y);
 
         b2Circle circle;
-        circle.center = localOffsetMeters;
+        circle.center = { 0.0f, 0.0f };
         circle.radius = (rb->GetRadius() * uniformScale) / PHYSICS_PPM;
 
         rb->fixture = b2CreateCircleShape(rb->body, &shapeDef, &circle);
@@ -113,13 +130,16 @@ void RigidBodySystem2D::OnEntityAdded(EntityID e)
         float scaledHalfW = (rb->GetHalfWidth() * t->scale.x) / PHYSICS_PPM;
         float scaledHalfH = (rb->GetHalfHeight() * t->scale.y) / PHYSICS_PPM;
 
-        b2Polygon polygon = b2MakeOffsetBox(scaledHalfW, scaledHalfH, localOffsetMeters, b2Rot_identity);
+        b2Polygon polygon = b2MakeBox(scaledHalfW, scaledHalfH);
         rb->fixture = b2CreatePolygonShape(rb->body, &shapeDef, &polygon);
     }
 
     // Apply damping properties
     b2Body_SetLinearDamping(rb->body, rb->GetLinearDamping());
     b2Body_SetAngularDamping(rb->body, rb->GetAngularDamping());
+
+    rb->lastSyncedPosition = t->position;
+    rb->lastSyncedRotation = t->rotation;
 }
 
 void RigidBodySystem2D::OnEntityRemoved(EntityID e)
@@ -158,23 +178,55 @@ void RigidBodySystem2D::OnAllEntitiesRemoved()
 
 void RigidBodySystem2D::TeleportEntity(EntityID e)
 {
-    auto* t  = m_ecs->GetComponent<Transform2D>(e);
+    auto* t = m_ecs->GetComponent<Transform2D>(e);
     auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
 
     if (!rb || B2_IS_NULL(rb->body)) return;
 
-    // Teleport body to the transform position
-    b2Body_SetTransform(
-        rb->body,
-        worldCenterToMeters(t),
-        b2MakeRot(t->rotation * (B2_PI / 180.0f))
-    );
+    // Teleport body
+    b2Rot rot = b2MakeRot(degToRad(t->rotation));
+    b2Body_SetTransform(rb->body, bodyOriginFromTransform(t, rb), rot);
     b2Body_SetAwake(rb->body, true);
+
+    rb->lastSyncedPosition = t->position;
+    rb->lastSyncedRotation = t->rotation;
 }
 
 void RigidBodySystem2D::Update(float dt)
 {
     if (dt <= 0.0f || B2_IS_NULL(m_worldId)) return;
+
+    // If a transform was changed manually (scripts, editor), move the body to it.
+    // lastSynced* holds exactly what this system last wrote, so any difference
+    // means something else edited the transform since
+    for (EntityID e : entities)
+    {
+        auto* t = m_ecs->GetComponent<Transform2D>(e);
+        auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
+        if (!t || !rb || B2_IS_NULL(rb->body)) continue;
+
+        if (t->position.x != rb->lastSyncedPosition.x ||
+            t->position.y != rb->lastSyncedPosition.y ||
+            t->rotation != rb->lastSyncedRotation)
+        {
+            TeleportEntity(e);
+        }
+    }
+
+    // Enforce the Apply Gravity flag on every body each step, so no creation,
+    // load or play-mode copy path can leave a body with the wrong gravity scale
+    for (EntityID e : entities)
+    {
+        auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
+        if (!rb || B2_IS_NULL(rb->body)) continue;
+
+        const float want = rb->ApplyGravity() ? 1.0f : 0.0f;
+        if (b2Body_GetGravityScale(rb->body) != want)
+        {
+            b2Body_SetGravityScale(rb->body, want);
+            if (want > 0.0f) b2Body_SetAwake(rb->body, true);
+        }
+    }
 
     b2World_Step(m_worldId, dt, 4);
 
@@ -186,14 +238,21 @@ void RigidBodySystem2D::syncFromBox2D()
 {
     for (EntityID e : entities)
     {
-        auto* t  = m_ecs->GetComponent<Transform2D>(e);
+        auto* t = m_ecs->GetComponent<Transform2D>(e);
         auto* rb = m_ecs->GetComponent<RigidBody2D>(e);
 
         if (!rb || B2_IS_NULL(rb->body)) continue;
 
-        // Get position and rotation from box2D
-        t->position = metersToPoint(b2Body_GetPosition(rb->body));
-        t->rotation = b2Rot_GetAngle(b2Body_GetRotation(rb->body)) * (180.0f / B2_PI);
+        b2Rot  rot = b2Body_GetRotation(rb->body);
+        b2Vec2 pos = b2Body_GetPosition(rb->body);   // shape center
+        b2Vec2 o = shapeOffsetMeters(t, rb);
+
+        // Transform origin = shape center minus the offset
+        t->position = metersToPoint({ pos.x - o.x, pos.y - o.y });
+        t->rotation = radToDeg(b2Rot_GetAngle(rot));
+
+        rb->lastSyncedPosition = t->position;
+        rb->lastSyncedRotation = t->rotation;
     }
 }
 

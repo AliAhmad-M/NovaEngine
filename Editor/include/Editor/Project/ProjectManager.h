@@ -11,6 +11,7 @@ namespace Nova::Editor
         std::string  name;
         std::string  path;          // project root
         std::int64_t lastOpened = 0;
+        bool pinned = false;
     };
 
     struct ProjectInfo
@@ -33,6 +34,7 @@ namespace Nova::Editor
         void SaveRecent() const;
         const std::vector<ProjectEntry>& Recent() const { return m_recent; }
         void Forget(const std::string& path);
+        void SetPinned(const std::string& path, bool pinned);
 
         // Creates the folder
         bool Create(const std::string& parentDir, const std::string& name,
@@ -40,8 +42,10 @@ namespace Nova::Editor
         bool Open(const std::string& rootDir, std::string& err);
         void Close() { m_hasProject = false; }
 
+
         bool HasProject() const { return m_hasProject; }
         const ProjectInfo& Current() const { return m_current; }
+
 
         static std::filesystem::path SdkDir();
         static std::filesystem::path ConfigDir();

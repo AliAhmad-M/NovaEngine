@@ -110,6 +110,7 @@ namespace
 
         rb.SetStatic(j["isStatic"].get<bool>());
         rb.SetSensor(j["isSensor"].get<bool>());
+        rb.SetApplyGravity(j.value("applyGravity", true));
         rb.SetDensity(j["density"].get<float>());
         rb.SetRestitution(j["restitution"].get<float>());
         rb.SetFriction(j["friction"].get<float>());
@@ -169,7 +170,7 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
     std::vector<EntityID> createdEntities;
     createdEntities.reserve(root["entities"].size());
 
-    // First pass: create all entities and their regular components.
+    // Create all entities and their components
     for (const auto& entityJson : root["entities"])
     {
         EntityID entity = ecs->CreateEntity();
@@ -198,7 +199,7 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
 
     }
 
-    // Second pass: derived transforms and parent links require all remapped IDs.
+    // Derived transforms and parent links
     for (size_t i = 0; i < root["entities"].size(); ++i)
     {
         const auto& entityJson = root["entities"][i];
@@ -219,7 +220,7 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
             outEntities->push_back({ entity, entityJson.value("name", "Entity"), remappedParentId });
     }
 
-    Debug::LogInfo("Loaded '%s' (%zu entities)", 
+    Debug::LogInfo("Loaded '%s' (%zu entities)",
         path.c_str(), root["entities"].size());
     return true;
 }

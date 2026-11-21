@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/InspectorPanel.h>
+#include <Editor/Theme.h>
 #include <Core/ECS/ECS.h>
 #include <Core/Behavior/BehaviorRegistry.h>
 #include <Core/Services.h>
@@ -64,13 +65,12 @@ static bool BeginComponent(const char* name, bool* removeRequested = nullptr,
         ImGuiTreeNodeFlags_FramePadding;
 
     // Draw the arrow/frame only
+    ImGui::PushStyleColor(ImGuiCol_Header, Theme::Raised());
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Theme::RaisedHover());
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, Theme::RaisedHover());
     bool open = ImGui::TreeNodeEx("##header", flags);
-
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.15f, 0.16f, 0.19f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.19f, 0.20f, 0.24f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.19f, 0.20f, 0.24f, 1.0f));
     ImGui::PopStyleColor(3);
-
+    
     float lineHeight = ImGui::GetFrameHeight();
     float textHeight = ImGui::GetTextLineHeight();
 
@@ -482,12 +482,8 @@ void InspectorPanel::drawAddComponentMenu()
 {
     EntityID entity = static_cast<EntityID>(m_ctxRef->selectedEntity);
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.45f, 0.94f, 0.22f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.45f, 0.94f, 0.45f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.45f, 0.94f, 0.70f));
-    if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 28.0f)))
+    if (ImGui::Button("Add Component", ImVec2(-1.0f, 0.0f)))
         ImGui::OpenPopup("AddComponentPopup");
-    ImGui::PopStyleColor(3);
 
     if (ImGui::BeginPopup("AddComponentPopup"))
     {

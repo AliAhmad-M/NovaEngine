@@ -1,4 +1,5 @@
 ﻿#include <Editor/EditorApp.h>
+#include <Editor/Theme.h>
 #include <Editor/Panels/HierarchyPanel.h>
 #include <Editor/Panels/InspectorPanel.h>
 #include <Editor/Panels/AssetBrowserPanel.h>
@@ -45,127 +46,6 @@ static bool isPathWithin(const std::filesystem::path& root, const std::filesyste
     return first != relative.end() && *first != "..";
 }
 
-static void applyTheme()
-{
-    ImGuiStyle& style = ImGui::GetStyle();
-
-    // Rounding
-    style.WindowRounding = 0.0f;
-    style.ChildRounding = 3.0f;
-    style.FrameRounding = 3.0f;
-    style.PopupRounding = 4.0f;
-    style.GrabRounding = 3.0f;
-    style.ScrollbarRounding = 6.0f;
-    style.TabRounding = 3.0f;
-
-    // Sizing
-    style.WindowPadding = ImVec2(10.0f, 10.0f);
-    style.FramePadding = ImVec2(6.0f, 4.0f);
-    style.ItemSpacing = ImVec2(8.0f, 5.0f);
-    style.IndentSpacing = 18.0f;
-    style.ScrollbarSize = 12.0f;
-    style.GrabMinSize = 9.0f;
-
-    // Borders
-    style.WindowBorderSize = 1.0f;
-    style.PopupBorderSize = 1.0f;
-    style.TabBorderSize = 0.0f;
-
-    style.WindowMenuButtonPosition = ImGuiDir_None;
-    style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
-
-    // Anti aliasing
-    style.AntiAliasedLines = true;
-    style.AntiAliasedLinesUseTex = true;
-    style.AntiAliasedFill = true;
-
-    // Palette
-    auto rgb = [](int r, int g, int b, float a = 1.0f)
-        {
-            return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a);
-        };
-
-    // Accent
-    const ImVec4 accent = rgb(0, 114, 239);
-    const ImVec4 accentHover = rgb(31, 137, 255);
-    const ImVec4 accentActive = rgb(0, 95, 205);
-
-    ImVec4* c = style.Colors;
-
-    // Surfaces
-    c[ImGuiCol_WindowBg] = rgb(22, 23, 26);
-    c[ImGuiCol_ChildBg] = rgb(17, 18, 20);
-    c[ImGuiCol_PopupBg] = rgb(26, 27, 31, 0.98f);
-
-    c[ImGuiCol_Border] = rgb(38, 40, 46);
-    c[ImGuiCol_BorderShadow] = rgb(0, 0, 0, 0.0f);
-
-    // Input
-    c[ImGuiCol_FrameBg] = rgb(14, 15, 17);
-    c[ImGuiCol_FrameBgHovered] = rgb(25, 27, 31);
-    c[ImGuiCol_FrameBgActive] = rgb(32, 34, 40);
-
-    // Title
-    c[ImGuiCol_TitleBg] = rgb(18, 19, 21);
-    c[ImGuiCol_TitleBgActive] = rgb(22, 23, 26);
-    c[ImGuiCol_TitleBgCollapsed] = rgb(18, 19, 21);
-    c[ImGuiCol_MenuBarBg] = rgb(18, 19, 21);
-
-    // Scrollbar
-    c[ImGuiCol_ScrollbarBg] = rgb(0, 0, 0, 0.0f);
-    c[ImGuiCol_ScrollbarGrab] = rgb(50, 52, 60);
-    c[ImGuiCol_ScrollbarGrabHovered] = rgb(70, 74, 85);
-    c[ImGuiCol_ScrollbarGrabActive] = rgb(90, 95, 110);
-
-    // Accent controls
-    c[ImGuiCol_CheckMark] = accent;
-    c[ImGuiCol_SliderGrab] = accent;
-    c[ImGuiCol_SliderGrabActive] = accentHover;
-
-    // Buttons
-    c[ImGuiCol_Button] = rgb(36, 38, 44);
-    c[ImGuiCol_ButtonHovered] = rgb(48, 51, 60);
-    c[ImGuiCol_ButtonActive] = accentActive;
-
-    // Headers
-    c[ImGuiCol_Header] = rgb(0, 114, 239, 0.22f);
-    c[ImGuiCol_HeaderHovered] = rgb(255, 255, 255, 0.06f);
-    c[ImGuiCol_HeaderActive] = rgb(0, 114, 239, 0.40f);
-
-    // Separators
-    c[ImGuiCol_Separator] = rgb(36, 38, 44);
-    c[ImGuiCol_SeparatorHovered] = accent;
-    c[ImGuiCol_SeparatorActive] = accentHover;
-
-    c[ImGuiCol_ResizeGrip] = rgb(0, 114, 239, 0.15f);
-    c[ImGuiCol_ResizeGripHovered] = rgb(0, 114, 239, 0.55f);
-    c[ImGuiCol_ResizeGripActive] = rgb(0, 114, 239, 0.85f);
-
-    // Tabs
-    c[ImGuiCol_Tab] = rgb(18, 19, 22);
-    c[ImGuiCol_TabHovered] = rgb(36, 38, 45);
-    c[ImGuiCol_TabActive] = rgb(28, 30, 36);
-    c[ImGuiCol_TabUnfocused] = rgb(16, 17, 20);
-    c[ImGuiCol_TabUnfocusedActive] = rgb(24, 25, 30);
-
-    // Docking
-    c[ImGuiCol_DockingPreview] = rgb(0, 114, 239, 0.35f);
-    c[ImGuiCol_DockingEmptyBg] = rgb(14, 15, 17);
-
-    // Text
-    c[ImGuiCol_Text] = rgb(220, 224, 230);
-    c[ImGuiCol_TextDisabled] = rgb(108, 112, 122);
-    c[ImGuiCol_TextSelectedBg] = rgb(0, 114, 239, 0.35f);
-    c[ImGuiCol_NavHighlight] = accent;
-
-    // Table
-    c[ImGuiCol_TableHeaderBg] = rgb(24, 25, 29);
-    c[ImGuiCol_TableBorderStrong] = rgb(38, 40, 46);
-    c[ImGuiCol_TableBorderLight] = rgb(28, 30, 35);
-    c[ImGuiCol_TableRowBg] = rgb(0, 0, 0, 0.0f);
-    c[ImGuiCol_TableRowBgAlt] = rgb(255, 255, 255, 0.02f);
-}
-
 EditorApp::EditorApp() = default;
 EditorApp::~EditorApp() = default;
 
@@ -199,7 +79,7 @@ bool EditorApp::Init()
         io.Fonts->AddFontDefault();
     }
 
-    applyTheme();
+    Theme::Apply();
 
     ImGui_ImplGlfw_InitForOpenGL(m_nativeWindow, true);
     ImGui_ImplOpenGL3_Init("#version 330");

@@ -99,6 +99,7 @@ namespace
 
         j["isStatic"] = rb.IsStatic();
         j["isSensor"] = rb.IsSensor();
+        j["applyGravity"] = rb.ApplyGravity();
         j["density"] = rb.GetDensity();
         j["restitution"] = rb.GetRestitution();
         j["friction"] = rb.GetFriction();

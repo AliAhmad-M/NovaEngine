@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 
 namespace fs = std::filesystem;
@@ -320,6 +321,10 @@ fs::path ProjectManager::SdkDir()
     return fs::path(std::wstring(buf, n)).parent_path() / "sdk";
 }
 
+// recent_projects.txt format (tab separated, one project per line):
+//   name <TAB> path <TAB> lastOpened [<TAB> pinned]
+// The pinned column is optional, so files written before pinning existed
+// still load (as unpinned).
 void ProjectManager::LoadRecent()
 {
     m_recent.clear();
@@ -347,6 +352,10 @@ void ProjectManager::LoadRecent()
             e.lastOpened =
                 std::atoll(t.c_str());
 
+            std::string pinnedField;
+            if (std::getline(ss, pinnedField, '\t'))
+                e.pinned = trim(pinnedField) == "1";
+
             m_recent.push_back(std::move(e));
         }
     }
@@ -371,7 +380,8 @@ void ProjectManager::SaveRecent() const
     {
         f << e.name << '\t'
             << e.path << '\t'
-            << e.lastOpened << '\n';
+            << e.lastOpened << '\t'
+            << (e.pinned ? 1 : 0) << '\n';
     }
 }
 
@@ -390,10 +400,34 @@ void ProjectManager::Forget(const std::string& path)
     SaveRecent();
 }
 
+void ProjectManager::SetPinned(const std::string& path, bool pinned)
+{
+    const auto target = fs::path(path).lexically_normal();
+
+    for (auto& e : m_recent)
+    {
+        if (fs::path(e.path).lexically_normal() == target)
+            e.pinned = pinned;
+    }
+
+    SaveRecent();
+}
+
 void ProjectManager::touchRecent(const ProjectInfo& p)
 {
-    std::string path =
+    const std::string path =
         p.root.lexically_normal().string();
+
+    // Carry the pin over from the entry being replaced
+    bool wasPinned = false;
+    for (const auto& e : m_recent)
+    {
+        if (e.path == path)
+        {
+            wasPinned = e.pinned;
+            break;
+        }
+    }
 
     m_recent.erase(
         std::remove_if(
@@ -408,6 +442,7 @@ void ProjectManager::touchRecent(const ProjectInfo& p)
     ProjectEntry e;
     e.name = trim(p.name);
     e.path = path;
+    e.pinned = wasPinned;
 
     e.lastOpened =
         static_cast<std::int64_t>(
@@ -418,8 +453,21 @@ void ProjectManager::touchRecent(const ProjectInfo& p)
         m_recent.begin(),
         std::move(e));
 
-    if (m_recent.size() > 20)
-        m_recent.resize(20);
+    // Cap the list at 20, but never evict a pinned project
+    constexpr size_t kMaxRecent = 20;
+
+    while (m_recent.size() > kMaxRecent)
+    {
+        auto victim = std::find_if(
+            m_recent.rbegin(),
+            m_recent.rend(),
+            [](const ProjectEntry& r) { return !r.pinned; });
+
+        if (victim == m_recent.rend())
+            break; // everything left is pinned
+
+        m_recent.erase(std::next(victim).base());
+    }
 
     SaveRecent();
 }
@@ -707,7 +755,7 @@ bool ProjectManager::Open(
         if (cf)
         {
             std::string content((std::istreambuf_iterator<char>(cf)),
-                                std::istreambuf_iterator<char>());
+                std::istreambuf_iterator<char>());
             cf.close();
 
             bool needsUpdate = false;
@@ -742,7 +790,7 @@ bool ProjectManager::Open(
         if (cacheFile)
         {
             std::string cacheContent((std::istreambuf_iterator<char>(cacheFile)),
-                                      std::istreambuf_iterator<char>());
+                std::istreambuf_iterator<char>());
             cacheFile.close();
 
             if (cacheContent.find("@NAME@") != std::string::npos)

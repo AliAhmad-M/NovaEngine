@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/AssetBrowserPanel.h>
+#include <Editor/Theme.h>
 #include <Editor/Panels/ScenePanel.h>
 #include <Editor/FilePicker.h>
 #include <Editor/AssetPath.h>
@@ -236,12 +237,12 @@ void AssetBrowserPanel::Draw()
 
 void AssetBrowserPanel::drawToolbar()
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 4.0f));
 
-    // Back / Up button
+    // Up
     bool canGoUp = (m_currentPath != m_rootPath && m_currentPath.has_parent_path());
     if (!canGoUp) ImGui::BeginDisabled();
-    if (ImGui::Button(" < "))
+    if (ImGui::Button("Up"))
     {
         m_currentPath = m_currentPath.parent_path();
         refresh();
@@ -252,42 +253,25 @@ void AssetBrowserPanel::drawToolbar()
     ImGui::SameLine();
     if (ImGui::Button("Refresh")) refresh();
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("|");
-    ImGui::SameLine();
-
-    // Import Asset
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.45f, 0.94f, 0.25f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.45f, 0.94f, 0.50f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.45f, 0.94f, 0.80f));
-    if (ImGui::Button("+ Import"))
-    {
+    // Creating things
+    ImGui::SameLine(0.0f, 20.0f);
+    if (ImGui::Button("Import"))
         importAsset();
-    }
-    ImGui::PopStyleColor(3);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Import an external file into this folder using OS dialog");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Copy an external file into this folder");
 
     ImGui::SameLine();
-    if (ImGui::Button("+ Folder"))
-    {
+    if (ImGui::Button("New Folder"))
         m_showNewFolderModal = true;
-    }
 
     ImGui::SameLine();
-    if (ImGui::Button("+ Scene"))
-    {
+    if (ImGui::Button("New Scene"))
         m_showNewSceneModal = true;
-    }
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("|");
-    ImGui::SameLine();
-
-    // Search filter
+    // Viewing
+    ImGui::SameLine(0.0f, 20.0f);
     ImGui::SetNextItemWidth(160.0f);
     ImGui::InputTextWithHint("##filter", "Filter assets...", m_filter, sizeof(m_filter));
 
-    // Icon size slider
     ImGui::SameLine();
     ImGui::SetNextItemWidth(90.0f);
     ImGui::SliderFloat("##iconSize", &m_iconSize, 40.0f, 96.0f, "%.0f px");
@@ -300,8 +284,8 @@ void AssetBrowserPanel::drawBreadcrumbs()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.25f, 0.35f, 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0.8f, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::RaisedHover());
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::Border());
 
     std::error_code ec;
     auto rel = std::filesystem::relative(m_currentPath, m_rootPath, ec);
@@ -457,20 +441,15 @@ void AssetBrowserPanel::drawContentGrid()
         ImGui::PushID(entry.path.c_str());
         ImGui::BeginGroup();
         float startX = ImGui::GetCursorPosX();
-
+        
         bool isSelected = (m_selectedFile == entry.path);
-        ImVec4 tagColor = assetTypeColor(entry.type, entry.isDirectory);
-
-        // Card button styling
-        ImVec4 bgColor = isSelected
-            ? ImVec4(0.0f, 0.45f, 0.94f, 0.35f)
-            : ImVec4(0.12f, 0.13f, 0.16f, 0.60f);
+        ImVec4 bgColor = isSelected ? Theme::RaisedHover() : Theme::Raised();
 
         ImGui::PushStyleColor(ImGuiCol_Button, bgColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.45f, 0.94f, 0.25f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.45f, 0.94f, 0.60f));
-
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::RaisedHover());
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::Border());
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+        
         bool iconClicked = ImGui::ImageButton(
             "##icon",
             (ImTextureID)(intptr_t)iconTex,
@@ -486,13 +465,11 @@ void AssetBrowserPanel::drawContentGrid()
         ImVec2 cardMin = ImGui::GetItemRectMin();
         ImVec2 cardMax = ImGui::GetItemRectMax();
 
-        // Colored stripe
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        dl->AddRectFilled(
-            ImVec2(cardMin.x + 2.0f, cardMax.y - 3.0f),
-            ImVec2(cardMax.x - 2.0f, cardMax.y),
-            ImColor(tagColor),
-            1.5f);
+        // Selection is shown by an accent outline
+        if (isSelected)
+            ImGui::GetWindowDrawList()->AddRect(
+                cardMin, cardMax, Theme::U32(Theme::Accent()),
+                ImGui::GetStyle().FrameRounding, 0, 1.5f);
 
         if (!entry.isDirectory && ImGui::BeginDragDropSource())
         {
@@ -568,7 +545,7 @@ void AssetBrowserPanel::drawContentGrid()
             }
 
             ImGui::Separator();
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.35f, 0.35f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, Theme::Danger());
             if (ImGui::MenuItem("Delete", "Del"))
             {
                 m_itemToDelete = entry.path;
@@ -691,9 +668,9 @@ void AssetBrowserPanel::drawModals()
         ImGui::Separator();
         ImGui::Spacing();
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.20f, 0.20f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.90f, 0.25f, 0.25f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.15f, 0.15f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::Danger());
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::DangerHover());
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::DangerActive());
         if (ImGui::Button("Delete", ImVec2(100, 0)))
         {
             std::error_code ec;

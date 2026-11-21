@@ -1,4 +1,5 @@
 #include <Editor/Panels/ScenePanel.h>
+#include <Editor/Theme.h>
 #include <Editor/Scene/SceneSerializer.h>
 #include <Editor/Project/ProjectManager.h>
 #include <Core/Services.h>
@@ -555,7 +556,7 @@ void ScenePanel::drawBuildLog()
 
     if (m_building)
     {
-        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Building...");
+        ImGui::TextUnformatted("Building...");
         ImGui::SameLine();
     }
     else
@@ -606,9 +607,7 @@ void ScenePanel::drawTabBar()
         SceneTab& tab = m_sceneTabs[i];
 
         char label[256];
-        std::snprintf(label, sizeof(label), "%s%s###tab%d",
-            tab.isDirty ? "* " : "",
-            tab.name.c_str(), i);
+        std::snprintf(label, sizeof(label), "%s###tab%d", tab.name.c_str(), i);
 
         ImGuiTabItemFlags itemFlags = ImGuiTabItemFlags_None;
         if (tab.isDirty)
@@ -652,87 +651,81 @@ void ScenePanel::drawTabBar()
 
 void ScenePanel::drawSceneToolBar()
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 4.0f));
 
-    // Gizmo operation helper button
-    auto gizmoBtn = [](const char* label, bool active, const char* tooltip)
+    // Accent fill
+    auto toolBtn = [](const char* label, bool active, const char* tooltip)
         {
             if (active)
             {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.52f, 0.90f, 0.90f));
+                ImGui::PushStyleColor(ImGuiCol_Button, Theme::Accent());
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::AccentHover());
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::AccentActive());
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
             }
-            else
-            {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.22f, 0.50f));
-            }
-            bool clicked = ImGui::Button(label, ImVec2(26.0f, 0.0f));
+
+            const bool clicked = ImGui::Button(label, ImVec2(28.0f, 0.0f));
+
             if (active)
-                ImGui::PopStyleColor(2);
-            else
-                ImGui::PopStyleColor();
+                ImGui::PopStyleColor(4);
+
             if (tooltip && ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", tooltip);
+
             return clicked;
         };
 
-    if (gizmoBtn("T", m_gizmoOp == ImGuizmo::TRANSLATE, "Translate (W)"))
+    if (toolBtn("T", m_gizmoOp == ImGuizmo::TRANSLATE, "Translate (W)"))
         m_gizmoOp = ImGuizmo::TRANSLATE;
     ImGui::SameLine();
-    if (gizmoBtn("R", m_gizmoOp == ImGuizmo::ROTATE, "Rotate (E)"))
+    if (toolBtn("R", m_gizmoOp == ImGuizmo::ROTATE, "Rotate (E)"))
         m_gizmoOp = ImGuizmo::ROTATE;
     ImGui::SameLine();
-    if (gizmoBtn("S", m_gizmoOp == ImGuizmo::SCALE, "Scale (R)"))
+    if (toolBtn("S", m_gizmoOp == ImGuizmo::SCALE, "Scale (R)"))
         m_gizmoOp = ImGuizmo::SCALE;
+
     ImGui::SameLine();
 
     bool isLocal = (m_gizmoMode == ImGuizmo::LOCAL);
-    if (ImGui::Button(isLocal ? "Local" : "World", ImVec2(48.0f, 0.0f)))
+    if (ImGui::Button(isLocal ? "Local" : "World", ImVec2(56.0f, 0.0f)))
         m_gizmoMode = isLocal ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Toggle Local/World space coordinate system");
 
-    ImGui::SameLine(0, 12);
-    ImGui::TextDisabled("|");
-    ImGui::SameLine(0, 12);
-
+    ImGui::SameLine(0.0f, 20.0f);
     ImGui::Checkbox("Grid", &m_showGrid);
 
-    ImGui::SameLine(0, 8);
+    ImGui::SameLine(0.0f, 10.0f);
     ImGui::Checkbox("Physics", &m_showPhysicsDebug);
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Show rigid body colliders as debug boxes/circles");
 
-    ImGui::SameLine(0, 12);
-    ImGui::TextDisabled("|");
-    ImGui::SameLine(0, 12);
-
-    if (ImGui::Button("+ New Scene"))
+    ImGui::SameLine(0.0f, 20.0f);
+    if (ImGui::Button("New Scene"))
         NewScene();
 
-    ImGui::SameLine(0, 12);
+    ImGui::SameLine(0.0f, 20.0f);
 
     if (m_building)
     {
         ImGui::BeginDisabled();
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.5f, 0.1f, 0.6f));
         ImGui::Button("Building...");
-        ImGui::PopStyleColor();
         ImGui::EndDisabled();
     }
     else
     {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.55f, 0.28f, 0.85f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.68f, 0.35f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.14f, 0.45f, 0.22f, 1.0f));
-        if (ImGui::Button("> Build & Run"))
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::Accent());
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::AccentHover());
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::AccentActive());
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        if (ImGui::Button("Build & Run"))
             buildAndRunGame();
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(4);
     }
 
     ImGui::PopStyleVar();
 
-    // Keyboard shortcuts (ignored while typing in a text field)
+    // Keyboard shortcuts
     if (!ImGui::GetIO().WantTextInput)
     {
         if (ImGui::IsKeyPressed(ImGuiKey_W)) m_gizmoOp = ImGuizmo::TRANSLATE;
@@ -1096,7 +1089,7 @@ void ScenePanel::DrawGizmo()
         -(right + left) / (right - left), -(top + bottom) / (top - bottom), 0, 1
     };
 
-    // View matrix - identity for 2D
+    // View matrix
     float view[16] = {
         1,0,0,0,
         0,1,0,0,
@@ -1173,6 +1166,8 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
     const ImU32 sensorFill = IM_COL32(255, 200, 80, 45);
     const ImU32 sensorLine = IM_COL32(255, 200, 80, 210);
 
+    constexpr float DEG_TO_RAD = 3.14159265358979323846f / 180.0f;
+
     for (const auto& entity : m_ctxRef->activeSceneRef->GetEntities())
     {
         const EntityID id = static_cast<EntityID>(entity.id);
@@ -1188,14 +1183,14 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
         else if (rb->IsStatic()) { fill = staticFill;  line = staticLine; }
         else { fill = dynamicFill; line = dynamicLine; }
 
-        const float cosR = std::cos(transform->rotation);
-        const float sinR = std::sin(transform->rotation);
+        // Shape center
+        const float cx = transform->position.x + rb->centerOffset.x * transform->scale.x;
+        const float cy = transform->position.y + rb->centerOffset.y * transform->scale.y;
 
-        // World-space center of the collider: body position + rotated (scaled) offset
-        const float ox = rb->centerOffset.x * transform->scale.x;
-        const float oy = rb->centerOffset.y * transform->scale.y;
-        const float cx = transform->position.x + ox * cosR - oy * sinR;
-        const float cy = transform->position.y + ox * sinR + oy * cosR;
+        // Rotation is in degrees
+        const float rotRad = transform->rotation * DEG_TO_RAD;
+        const float cosR = std::cos(rotRad);
+        const float sinR = std::sin(rotRad);
 
         if (rb->GetShape() == Shape2D::CIRCLE)
         {
@@ -1207,18 +1202,21 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
             const ImVec2 c = toScreen(cx, cy);
             dl->AddCircleFilled(c, r, fill, 0);
             dl->AddCircle(c, r, line, 0, 1.5f);
+
+            // Radius marker so rotation is visible on a circle
+            const ImVec2 edge(c.x + cosR * r, c.y + sinR * r);
+            dl->AddLine(c, edge, line, 1.5f);
         }
-        else if (rb->GetShape() == Shape2D::BOX)
+        else
         {
-            const float hw = rb->GetFullWidth() * transform->scale.x * 0.5f;
-            const float hh = rb->GetFullHeight() * transform->scale.y * 0.5f;
+            const float hw = rb->GetHalfWidth() * transform->scale.x;
+            const float hh = rb->GetHalfHeight() * transform->scale.y;
             if (hw <= 0.0f || hh <= 0.0f) continue;
 
             auto corner = [&](float lx, float ly)
                 {
-                    const float wx = cx + lx * cosR - ly * sinR;
-                    const float wy = cy + lx * sinR + ly * cosR;
-                    return toScreen(wx, wy);
+                    return toScreen(cx + lx * cosR - ly * sinR,
+                        cy + lx * sinR + ly * cosR);
                 };
 
             const ImVec2 c0 = corner(-hw, -hh);

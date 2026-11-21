@@ -6,7 +6,7 @@
 #include <bitset>
 #include <algorithm>
 
-namespace Nova 
+namespace Nova
 {
     static constexpr float PHYSICS_PPM = 64.0f;
 
@@ -19,6 +19,9 @@ namespace Nova
         Vector2 centerOffset;
         Vector2 normal = Vector2::ZERO;
         bool isColliding = false;
+
+        Vector2 lastSyncedPosition;
+        float   lastSyncedRotation = 0.0f;
 
         /**
          * @brief Creates a circular physics body
@@ -131,11 +134,9 @@ namespace Nova
 
             if (B2_IS_NON_NULL(fixture))
             {
+                // The body origin is the shape center, so the shape has no local offset
                 b2Circle circle;
-                circle.center = {
-                    (centerOffset.x * currentScale) / PHYSICS_PPM,
-                    (centerOffset.y * currentScale) / PHYSICS_PPM
-                };
+                circle.center = { 0.0f, 0.0f };
                 circle.radius = (m_circle.radius * currentScale) / PHYSICS_PPM;
                 b2Shape_SetCircle(fixture, &circle);
                 synchronizeMassData();
@@ -180,13 +181,10 @@ namespace Nova
 
             if (B2_IS_NON_NULL(fixture))
             {
-                float   scaledHalfW = (m_box.halfW * currentScale.x) / PHYSICS_PPM;
-                float   scaledHalfH = (m_box.halfH * currentScale.y) / PHYSICS_PPM;
-                b2Vec2  offset = {
-                    (centerOffset.x * currentScale.x) / PHYSICS_PPM,
-                    (centerOffset.y * currentScale.y) / PHYSICS_PPM
-                };
-                b2Polygon polygon = b2MakeOffsetBox(scaledHalfW, scaledHalfH, offset, b2Rot_identity);
+                // The body origin is the shape center, so the shape has no local offset
+                float scaledHalfW = (m_box.halfW * currentScale.x) / PHYSICS_PPM;
+                float scaledHalfH = (m_box.halfH * currentScale.y) / PHYSICS_PPM;
+                b2Polygon polygon = b2MakeBox(scaledHalfW, scaledHalfH);
                 b2Shape_SetPolygon(fixture, &polygon);
                 synchronizeMassData();
             }
@@ -272,6 +270,26 @@ namespace Nova
         void SetSensor(bool isSensor)
         {
             m_isSensor = isSensor;
+        }
+
+        /**
+         * @brief Returns whether the world gravity pulls on this body
+         */
+        bool ApplyGravity() const { return m_applyGravity; }
+
+        /**
+         * @brief Toggles whether the world gravity pulls on this body
+         * @param apply True lets gravity act on the body, false makes it ignore gravity
+         * @note Only affects gravity. Collisions, forces and velocity still move the body
+         */
+        void SetApplyGravity(bool apply)
+        {
+            m_applyGravity = apply;
+            if (B2_IS_NON_NULL(body))
+            {
+                b2Body_SetGravityScale(body, m_applyGravity ? 1.0f : 0.0f);
+                if (m_applyGravity) b2Body_SetAwake(body, true);
+            }
         }
 
         /**
@@ -485,6 +503,10 @@ namespace Nova
                 [this] { return IsSensor(); },
                 [this](bool v) { SetSensor(v); });
 
+            visitor.Bool("Apply Gravity",
+                [this] { return ApplyGravity(); },
+                [this](bool v) { SetApplyGravity(v); });
+
             visitor.Float("Density",
                 [this] { return GetDensity(); },
                 [this](float v) { SetDensity(v); });
@@ -545,6 +567,7 @@ namespace Nova
         bool m_isStatic;
         bool m_isSensor;
         bool m_lockRotation;
+        bool m_applyGravity = true;
 
         std::bitset<8> m_layer;
         std::bitset<8> m_mask;

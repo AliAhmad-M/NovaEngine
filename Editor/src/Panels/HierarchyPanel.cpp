@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Editor/Panels/HierarchyPanel.h>
+#include <Editor/Theme.h>
 #include <Editor/Panels/ScenePanel.h>
 #include <Editor/Scene/Scene.h>
 #include <Core/Services.h>
@@ -82,7 +83,7 @@ void HierarchyPanel::drawCreateButton()
 {
     if (!m_ctxRef->activeSceneRef) return;
 
-    if (ImGui::Button("+ Add Entity", ImVec2(-1.0f, 26.0f)))
+    if (ImGui::Button("Add Entity", ImVec2(-1.0f, 26.0f)))
         createEntity(NO_PARENT);
 }
 
@@ -184,7 +185,7 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
             EntityID newParent = (zone == DropZone::Into) ? node.id : node.parentId;
             bool valid = draggedId != node.id && !wouldCreateCycle(draggedId, newParent);
 
-            ImU32 col = valid ? IM_COL32(66, 150, 255, 255) : IM_COL32(255, 80, 80, 255);
+            ImU32 col = valid ? Theme::U32(Theme::Accent()) : Theme::U32(Theme::Danger());
             ImDrawList* fg = ImGui::GetForegroundDrawList();
             if (zone == DropZone::Into)
                 fg->AddRect(rMin, rMax, col, 4.0f, 0, 2.0f);
