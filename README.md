@@ -1,51 +1,33 @@
 # Nova Engine
 
-Nova Engine is a work-in-progress game engine written in C++ that aims to support both 2D and 3D game development, with functional 2D capabilities and 3D development planned as part of its ongoing evolution.
+A C++ game engine with a working 2D toolset and an editor. 3D support is planned.
 
-## Features
-These are the features Nova supports as of now:
-- **ECS:** Entity Component System implemented using paginated sparse sets and system bitset signatures.
-- **2D Rendering:** Rendering support and animation for 2D game objects and sprites.
-- **2D Physics:** Box2D integration for physics simulation and collision handling.
-- **Tilemaps:** Tilemaps created with [Tiled](https://www.mapeditor.org/) can be imported into Nova.
-- **Camera:** 2D camera support with bounds.
-- **Scene Management:** Create, save, load, and manage game scenes.
-- **Entity and Component Editing:** Create entities, attach or remove components, and edit component properties through the inspector.
-- **Asset Management:** Import and manage game assets.
-- **C++ Game Logic:** Implement game logic in C++ using custom behavior scripts that get compiled into the game executable.
-- **Input Handling:** Configure input mappings for game controls.
-- **Project Management:** Create projects, open existing projects, and access recent projects.
-- **Build and Run:** Build and launch game projects through the editor.
-
-Some editor workflows and engine systems remain incomplete or require manual configuration.
+> Work in progress.
 
 ## Architecture
 
-Nova is organized into several major subsystems:
-
 | Module | Responsibility |
 |---|---|
-| `Core` | ECS, mathematics utilities, helpers, and scripting logic |
-| `Editor` | Graphical editor application and project creation workflow |
-| `Graphics` | Rendering and graphics functionality |
+| `Core` | ECS, math utilities, helpers, scripting |
+| `Editor` | Editor application and project creation |
+| `Graphics` | Rendering |
 | `Physics` | Physics integration and simulation |
-| `Platform` | Windowing and input handling |
+| `Platform` | Windowing and input |
 | `Runtime` | Main loops and runtime execution |
-| `World` | Game world-related functionality, such as tilemaps |
+| `World` | World systems, such as tilemaps |
 
-The engine uses a custom ECS implementation based on paginated sparse sets and system bitset signatures to manage entities, components, and systems.
-
-## Technology Stack
+## Technology
 
 | Technology | Purpose |
 |---|---|
 | C++ | Engine and game logic |
-| OpenGL | Graphics rendering |
-| Dear ImGui | Editor interface |
+| OpenGL | Rendering |
+| Dear ImGui | Editor UI |
 | Box2D | 2D physics |
 | Jolt | 3D physics |
-| CMake | Game project build system |
+| CMake | Game project builds |
 
-## Current Status
+## Roadmap
 
-Nova Engine is under active development. The broader goal is to develop a more complete 2D and 3D game engine. **3D functionality remains a work in progress** and should not be considered available in a stable form.
+- 3D rendering and physics
+- Finish the editor workflows that still need manual setup
