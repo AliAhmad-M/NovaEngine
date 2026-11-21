@@ -1,6 +1,6 @@
 # Nova Engine
 
-A C++ game engine with a working 2D toolset and an editor. 3D support is planned.
+An ECS-based C++ game engine with a working 2D toolset and a graphical editor. 3D support is planned.
 
 > Work in progress.
 
