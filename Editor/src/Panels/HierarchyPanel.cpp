@@ -23,9 +23,19 @@ HierarchyPanel::HierarchyPanel(EditorContext* ctx) : m_ctxRef(ctx)
 
 void HierarchyPanel::drawSearchBar()
 {
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(9.0f, 5.0f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.13f, 0.13f, 0.15f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.19f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.18f, 0.19f, 0.22f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.45f, 0.45f, 0.48f, 1.00f));
+
     ImGui::SetNextItemWidth(-1.0f);
-    ImGui::InputTextWithHint("##search", "Search entities...",
+    ImGui::InputTextWithHint("##search", "Search...",
         m_searchBuffer, sizeof(m_searchBuffer));
+
+    ImGui::PopStyleColor(4);
+    ImGui::PopStyleVar(2);
 }
 
 void HierarchyPanel::Draw()
@@ -37,7 +47,9 @@ void HierarchyPanel::Draw()
         drawCreateButton();
         ImGui::Spacing();
         drawSearchBar();
+        ImGui::Spacing();
         ImGui::Separator();
+        ImGui::Spacing();
         drawEntityList();
     }
     else
@@ -64,8 +76,7 @@ void HierarchyPanel::Draw()
 
 void HierarchyPanel::createEntity(EntityID parentId)
 {
-    if (!m_ctxRef->activeSceneRef)
-        return;
+    if (!m_ctxRef->activeSceneRef) return;
 
     EntityID newEntity = m_ecsRef->CreateEntity();
 
@@ -83,15 +94,24 @@ void HierarchyPanel::drawCreateButton()
 {
     if (!m_ctxRef->activeSceneRef) return;
 
-    if (ImGui::Button("Add Entity", ImVec2(-1.0f, 26.0f)))
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.21f, 0.24f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.28f, 0.32f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.32f, 0.33f, 0.38f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.88f, 0.88f, 0.90f, 1.00f));
+
+    if (ImGui::Button("+  Add Entity", ImVec2(-1.0f, 28.0f)))
         createEntity(NO_PARENT);
+
+    ImGui::PopStyleColor(4);
+    ImGui::PopStyleVar(2);
 }
 
 void HierarchyPanel::drawEntityList()
 {
     auto& entities = m_ctxRef->activeSceneRef->GetEntities();
 
-    // Draw only root entities
     for (auto& node : entities)
     {
         if (node.parentId != NO_PARENT) continue;
@@ -101,7 +121,7 @@ void HierarchyPanel::drawEntityList()
 
 void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>& entities)
 {
-    // Apply search filter
+    // Search filter
     if (m_searchBuffer[0] != '\0')
     {
         std::string name = node.name;
@@ -113,7 +133,8 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
 
     constexpr float rowH = 24.0f;
     constexpr float iconSize = 24.0f;
-    constexpr float iconGap = 6.0f;
+    constexpr float iconGap = 8.0f;
+    constexpr float rounding = 4.0f;
 
     bool selected = (m_ctxRef->selectedEntity == static_cast<int>(node.id));
     auto children = m_ctxRef->activeSceneRef->GetChildren(node.id);
@@ -121,27 +142,52 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
 
     ImGui::PushID(static_cast<int>(node.id));
 
+    ImVec2  rowMin = ImGui::GetCursorScreenPos();
+    float   availWidth = ImGui::GetContentRegionAvail().x;
+    ImVec2  rowMax = ImVec2(rowMin.x + availWidth, rowMin.y + rowH);
+
+    bool hovered = ImGui::IsWindowHovered()
+        && ImGui::IsRectVisible(rowMin, rowMax)
+        && ImGui::IsMouseHoveringRect(rowMin, rowMax);
+
+    // Row background
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    if (selected)
+    {
+        ImU32 accent = Theme::U32(Theme::Accent());
+        ImU32 selBg = (accent & 0x00FFFFFFu) | 0x35000000u;   // ~20% alpha
+        dl->AddRectFilled(rowMin, rowMax, selBg, rounding);
+        dl->AddRectFilled(rowMin, ImVec2(rowMin.x + 3.0f, rowMax.y),
+            accent, 2.0f, ImDrawFlags_RoundCornersLeft);
+    }
+    else if (hovered)
+    {
+        dl->AddRectFilled(rowMin, rowMax, IM_COL32(255, 255, 255, 20), rounding);
+    }
+
+    // Tree node
+    ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(0, 0, 0, 0));
+
     ImGuiTreeNodeFlags treeFlags =
         ImGuiTreeNodeFlags_OpenOnArrow |
         ImGuiTreeNodeFlags_SpanAvailWidth |
         ImGuiTreeNodeFlags_FramePadding |
         ImGuiTreeNodeFlags_AllowOverlap;
 
-    if (selected)     treeFlags |= ImGuiTreeNodeFlags_Selected;
     if (!hasChildren) treeFlags |= ImGuiTreeNodeFlags_Leaf;
 
-    // Pad vertically so the node is exactly rowH tall
     float padY = (rowH - ImGui::GetFontSize()) * 0.5f;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
         ImVec2(ImGui::GetStyle().FramePadding.x, padY));
+
     bool open = ImGui::TreeNodeEx("##node", treeFlags);
+
     ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
 
-    // Grab the row rect immediately
-    ImVec2 rMin = ImGui::GetItemRectMin();
-    ImVec2 rMax = ImGui::GetItemRectMax();
-
-    // Selection
+    // Selection / interaction
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
         m_ctxRef->selectedEntity = static_cast<int>(node.id);
 
@@ -175,11 +221,11 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
         {
             EntityID draggedId = *(const EntityID*)payload->Data;
 
-            float t = (ImGui::GetMousePos().y - rMin.y) / (rMax.y - rMin.y);
+            float t = (ImGui::GetMousePos().y - rowMin.y) / (rowMax.y - rowMin.y);
             DropZone zone = DropZone::Into;
             if (t < 0.25f)
                 zone = DropZone::Before;
-            else if (t > 0.75f && !(open && hasChildren)) 
+            else if (t > 0.75f && !(open && hasChildren))
                 zone = DropZone::After;
 
             EntityID newParent = (zone == DropZone::Into) ? node.id : node.parentId;
@@ -188,11 +234,11 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
             ImU32 col = valid ? Theme::U32(Theme::Accent()) : Theme::U32(Theme::Danger());
             ImDrawList* fg = ImGui::GetForegroundDrawList();
             if (zone == DropZone::Into)
-                fg->AddRect(rMin, rMax, col, 4.0f, 0, 2.0f);
+                fg->AddRect(rowMin, rowMax, col, rounding, 0, 2.0f);
             else
             {
-                float y = (zone == DropZone::Before) ? rMin.y : rMax.y;
-                fg->AddLine(ImVec2(rMin.x, y), ImVec2(rMax.x, y), col, 2.0f);
+                float y = (zone == DropZone::Before) ? rowMin.y : rowMax.y;
+                fg->AddLine(ImVec2(rowMin.x, y), ImVec2(rowMax.x, y), col, 2.0f);
             }
 
             if (valid && payload->IsDelivery())
@@ -242,15 +288,14 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
         ImGui::EndPopup();
     }
 
-    // Icon + label, centered on the row
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    float cy = (rMin.y + rMax.y) * 0.5f;
-    float x = rMin.x + ImGui::GetTreeNodeToLabelSpacing();
+    // Icon + label
+    float cy = (rowMin.y + rowMax.y) * 0.5f;
+    float x = rowMin.x + ImGui::GetTreeNodeToLabelSpacing();
 
     if (m_iconEntity && m_iconEntity->GetHandle())
     {
         ImU32 tint = selected ? IM_COL32(255, 255, 255, 255)
-            : IM_COL32(153, 153, 153, 255);
+            : IM_COL32(170, 170, 175, 255);
         dl->AddImage(
             (ImTextureID)(intptr_t)m_iconEntity->GetHandle(),
             ImVec2(x, cy - iconSize * 0.5f),
@@ -261,10 +306,11 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
 
     if (m_renamingEntity == static_cast<int>(node.id))
     {
-        ImVec2 next = ImGui::GetCursorScreenPos();   // where the next row starts
+        ImVec2 next = ImGui::GetCursorScreenPos();
         ImGui::SetCursorScreenPos(ImVec2(x, cy - ImGui::GetFrameHeight() * 0.5f));
 
-        ImGui::SetNextItemWidth(150.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+        ImGui::SetNextItemWidth(180.0f);
         ImGui::SetKeyboardFocusHere();
         if (ImGui::InputText("##rename", m_renameBuffer, sizeof(m_renameBuffer),
             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
@@ -276,6 +322,8 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
             if (m_ctxRef->onSaveScene)
                 m_ctxRef->onSaveScene();
         }
+        ImGui::PopStyleVar();
+
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
             m_renamingEntity = -1;
 
@@ -283,8 +331,10 @@ void HierarchyPanel::drawEntityNode(SceneEntity& node, std::vector<SceneEntity>&
     }
     else
     {
+        ImU32 textCol = selected ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(210, 210, 215, 255);
         dl->AddText(ImVec2(x, cy - ImGui::GetFontSize() * 0.5f),
-            ImGui::GetColorU32(ImGuiCol_Text), node.name.c_str());
+            textCol, node.name.c_str());
     }
 
     // Children
@@ -363,7 +413,7 @@ void HierarchyPanel::deleteEntityRecursive(EntityID id)
 int HierarchyPanel::findIndex(EntityID id)
 {
     auto& entities = m_ctxRef->activeSceneRef->GetEntities();
-    for (int i = 0; i < (int)entities.size(); ++i)
+    for (int i = 0; i < (int)entities.size(); i++)
         if (entities[i].id == id) return i;
     return -1;
 }
@@ -425,7 +475,6 @@ bool HierarchyPanel::applyMove(const PendingAction& m)
     EntityID newParent = entities[targetIdx].parentId;
     if (wouldCreateCycle(m.id, newParent)) return false;
 
-    // Fix the order
     if (entities[findIndex(m.id)].parentId != newParent)
         scene->SetParent(m.id, newParent);
 
@@ -433,7 +482,7 @@ bool HierarchyPanel::applyMove(const PendingAction& m)
     SceneEntity moved = std::move(entities[from]);
     entities.erase(entities.begin() + from);
 
-    int to = findIndex(m.target);   // re-find
+    int to = findIndex(m.target);
     entities.insert(entities.begin() + (m.zone == DropZone::After ? to + 1 : to),
         std::move(moved));
     return true;

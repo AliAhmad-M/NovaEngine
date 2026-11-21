@@ -10,6 +10,14 @@ namespace Nova
 {
     static constexpr float PHYSICS_PPM = 64.0f;
 
+    /**
+     * @brief How a body is simulated
+     *  Static    - never moves, other bodies collide with it
+     *  Dynamic   - fully simulated (forces, gravity, collisions)
+     *  Kinematic - moved by code
+     */
+    enum class RigidBodyType2D { Static = 0, Dynamic = 1, Kinematic = 2 };
+
     struct RigidBody2D
     {
     public:
@@ -20,6 +28,10 @@ namespace Nova
         Vector2 normal = Vector2::ZERO;
         bool isColliding = false;
 
+        Vector2 moveVelocity = Vector2::ZERO;
+        Vector2 slideVelocity = Vector2::ZERO;
+        bool moveRequested = false;
+
         Vector2 lastSyncedPosition;
         float   lastSyncedRotation = 0.0f;
 
@@ -27,7 +39,7 @@ namespace Nova
          * @brief Creates a circular physics body
          * @param centerOffset Shifting offset from the entity's position, in pixels
          * @param r The full radius of the circle, in pixels
-         * @param isStatic If true, the body stays pinned in place and cannot move
+         * @param type Static, Dynamic or Kinematic simulation mode
          * @param isSensor If true, objects pass right through it but still trigger collision events
          * @param density Mass per unit volume in kilograms per meter squared (volume = area in 2D)
          * @param restitution How bouncy the body is, from 0 to 1
@@ -39,7 +51,7 @@ namespace Nova
         RigidBody2D(
             const Vector2& centerOffset,
             float r,
-            bool  isStatic = false,
+            RigidBodyType2D type = RigidBodyType2D::Dynamic,
             bool  isSensor = false,
             float density = 1.0f,
             float restitution = 0.2f,
@@ -50,7 +62,7 @@ namespace Nova
         )
             : centerOffset(centerOffset)
             , m_shape(Shape2D::CIRCLE)
-            , m_isStatic(isStatic)
+            , m_bodyType(type)
             , m_isSensor(isSensor)
             , m_density(std::max(0.0f, density))
             , m_restitution(std::clamp(restitution, 0.0f, 1.0f))
@@ -69,7 +81,7 @@ namespace Nova
          * @param centerOffset Shifting offset from the entity's position, in pixels
          * @param w The total width of the box, in pixels
          * @param h The total height of the box, in pixels
-         * @param isStatic If true, the body stays pinned in place and cannot move
+         * @param type Static, Dynamic or Kinematic simulation mode
          * @param isSensor If true, objects pass right through it but still trigger collision events
          * @param density Mass per unit volume in kilograms per meter squared (volume = area in 2D)
          * @param restitution How bouncy the body is, from 0 to 1
@@ -82,7 +94,7 @@ namespace Nova
             const Vector2& centerOffset,
             float w,
             float h,
-            bool  isStatic = false,
+            RigidBodyType2D type = RigidBodyType2D::Dynamic,
             bool  isSensor = false,
             float density = 1.0f,
             float restitution = 0.2f,
@@ -93,7 +105,7 @@ namespace Nova
         )
             : centerOffset(centerOffset)
             , m_shape(Shape2D::BOX)
-            , m_isStatic(isStatic)
+            , m_bodyType(type)
             , m_isSensor(isSensor)
             , m_density(std::max(0.0f, density))
             , m_restitution(std::clamp(restitution, 0.0f, 1.0f))
@@ -191,6 +203,34 @@ namespace Nova
         }
 
         /**
+         * @brief Gets the body's simulation type
+         */
+        RigidBodyType2D GetBodyType() const { return m_bodyType; }
+
+        /**
+         * @brief Changes the body's simulation type (also updates a live Box2D body)
+         * @param type Static, Dynamic or Kinematic
+         */
+        void SetBodyType(RigidBodyType2D type)
+        {
+            m_bodyType = type;
+            if (B2_IS_NON_NULL(body))
+            {
+                b2Body_SetType(body, toBox2DType(m_bodyType));
+                synchronizeMassData();
+            }
+        }
+
+        /** @brief Convenience query, true when the body type is Static */
+        bool IsStatic()    const { return m_bodyType == RigidBodyType2D::Static; }
+
+        /** @brief Convenience query, true when the body type is Dynamic */
+        bool IsDynamic()   const { return m_bodyType == RigidBodyType2D::Dynamic; }
+
+        /** @brief Convenience query, true when the body type is Kinematic */
+        bool IsKinematic() const { return m_bodyType == RigidBodyType2D::Kinematic; }
+
+        /**
          * @brief Gets the complete collision layer bitset
          */
         uint8_t GetCollisionLayerRaw() const { return static_cast<uint8_t>(m_layer.to_ulong()); }
@@ -237,25 +277,6 @@ namespace Nova
          * @param index Targeted specific bit index channel checking (0 to 7)
          */
         bool GetCollisionMask(uint8_t index) const { return index < 8 && m_mask.test(index); }
-
-        /**
-         * @brief Returns whether this is a static (immovable) body or not
-         */
-        bool IsStatic() const { return m_isStatic; }
-
-        /**
-         * @brief Sets the body as static (immovable) or dynamic (movable)
-         * @param isStatic True makes it stationary, false enables movement
-         */
-        void SetStatic(bool isStatic)
-        {
-            m_isStatic = isStatic;
-            if (B2_IS_NON_NULL(body))
-            {
-                b2Body_SetType(body, m_isStatic ? b2_staticBody : b2_dynamicBody);
-                synchronizeMassData();
-            }
-        }
 
         /**
          * @brief Returns whether this body bypasses collision resolution or not
@@ -385,11 +406,33 @@ namespace Nova
             if (B2_IS_NON_NULL(body)) b2Body_SetAngularDamping(body, m_angularDamping);
         }
 
+        /**
+         * @brief Requests a kinematic move for the next physics step (Kinematic bodies only)
+         *
+         * The physics system sweeps the body through the world, slides it along
+         * walls and floors, and updates the transform. Call once per frame
+         * @param velocity Desired velocity in pixels per second
+         */
+        void MoveAndSlide(const Vector2& velocity)
+        {
+            moveVelocity = velocity;
+            moveRequested = true;
+        }
+
+        /**
+         * @brief Velocity of the last MoveAndSlide after collision clipping
+         *        (zero into floors and walls, unchanged along them)
+         */
+        Vector2 GetSlideVelocity() const { return slideVelocity; }
+
+        // The contact normal points away from the surface the body touches.
+        // The y axis points down, so a floor has a normal of (0, -1)
+
         /** @brief Returns if body is in contact with floor */
-        bool IsOnFloor()     const { return normal.y > 0.5f; }
+        bool IsOnFloor()     const { return normal.y < -0.5f; }
 
         /** @brief Returns if body is in contact with ceiling */
-        bool IsOnCeiling()   const { return normal.y < -0.5f; }
+        bool IsOnCeiling()   const { return normal.y > 0.5f; }
 
         /** @brief Returns if body is in contact with wall on the left */
         bool IsOnLeftWall()  const { return normal.x > 0.5f; }
@@ -495,9 +538,13 @@ namespace Nova
                     0.5f);
             }
 
-            visitor.Bool("Static",
-                [this] { return IsStatic(); },
-                [this](bool v) { SetStatic(v); });
+            // 0 = Static, 1 = Dynamic, 2 = Kinematic
+            int typeIndex = static_cast<int>(m_bodyType);
+            visitor.Int("Body Type", &typeIndex);
+            visitor.ReadOnly("", "0 Static, 1 Dynamic, 2 Kinematic");
+            typeIndex = std::clamp(typeIndex, 0, 2);
+            if (typeIndex != static_cast<int>(m_bodyType))
+                SetBodyType(static_cast<RigidBodyType2D>(typeIndex));
 
             visitor.Bool("Sensor",
                 [this] { return IsSensor(); },
@@ -535,6 +582,16 @@ namespace Nova
         }
 
     private:
+        static b2BodyType toBox2DType(RigidBodyType2D type)
+        {
+            switch (type)
+            {
+            case RigidBodyType2D::Static:    return b2_staticBody;
+            case RigidBodyType2D::Kinematic: return b2_kinematicBody;
+            default:                         return b2_dynamicBody;
+            }
+        }
+
         void synchronizeMassData()
         {
             if (B2_IS_NON_NULL(body)) b2Body_ApplyMassFromShapes(body);
@@ -558,13 +615,14 @@ namespace Nova
             struct { float halfW; float halfH; } m_box;
         };
 
+        RigidBodyType2D m_bodyType;
+
         float m_density;
         float m_restitution;
         float m_friction;
         float m_linearDamping;
         float m_angularDamping;
 
-        bool m_isStatic;
         bool m_isSensor;
         bool m_lockRotation;
         bool m_applyGravity = true;

@@ -32,6 +32,24 @@ namespace
         return j.get<float>();
     }
 
+    // Reads "bodyType" ("Static" / "Dynamic" / "Kinematic").
+    // Scenes saved before body types existed only have "isStatic", so fall back to that
+    RigidBodyType2D BodyTypeFromJson(const nlohmann::json& j)
+    {
+        if (j.contains("bodyType") && j["bodyType"].is_string())
+        {
+            const std::string& s = j["bodyType"].get_ref<const std::string&>();
+            if (s == "Static")    return RigidBodyType2D::Static;
+            if (s == "Kinematic") return RigidBodyType2D::Kinematic;
+            if (s == "Dynamic")   return RigidBodyType2D::Dynamic;
+
+            Debug::LogWarn("Unknown bodyType '%s', defaulting to Dynamic", s.c_str());
+            return RigidBodyType2D::Dynamic;
+        }
+
+        return j.value("isStatic", false) ? RigidBodyType2D::Static : RigidBodyType2D::Dynamic;
+    }
+
     BehaviorScript DeserializeBehaviorScript(const nlohmann::json& j)
     {
         BehaviorScript bs;
@@ -108,7 +126,7 @@ namespace
             ? RigidBody2D(offset, j["radius"].get<float>())
             : RigidBody2D(offset, j["width"].get<float>(), j["height"].get<float>());
 
-        rb.SetStatic(j["isStatic"].get<bool>());
+        rb.SetBodyType(BodyTypeFromJson(j));
         rb.SetSensor(j["isSensor"].get<bool>());
         rb.SetApplyGravity(j.value("applyGravity", true));
         rb.SetDensity(j["density"].get<float>());
@@ -117,6 +135,10 @@ namespace
         rb.SetLockRotation(j["lockRotation"].get<bool>());
         rb.SetLinearDamping(j["linearDamping"].get<float>());
         rb.SetAngularDamping(j["angularDamping"].get<float>());
+
+        // The serializer writes these, so read them back (defaults match the constructor)
+        rb.SetCollisionLayerRaw(static_cast<uint8_t>(j.value("layer", (unsigned)rb.GetCollisionLayerRaw())));
+        rb.SetCollisionMaskRaw(static_cast<uint8_t>(j.value("mask", (unsigned)rb.GetCollisionMaskRaw())));
 
         return rb;
     }
@@ -130,15 +152,28 @@ namespace
             std::string texPath = ts["texturePath"].get<std::string>();
             int firstgid = ts["firstgid"].get<int>();
             const Texture* tex = s_loader->LoadTexture(texPath);
-            if (tex)
-                tm.AddTileset(tex, texPath, firstgid);
-            else
-                Debug::LogError("Missing tileset texture: %s", texPath.c_str());
+            if (tex) tm.AddTileset(tex, texPath, firstgid);
+            else     Debug::LogError("Missing tileset texture: %s", texPath.c_str());
         }
 
         std::string mapPath = j["mapPath"].get<std::string>();
         if (!mapPath.empty())
             tm.LoadTilemap(mapPath);
+
+        tm.collisionLayer = j.value("collisionLayer", 0);
+        tm.collisionGids = j.value("collisionGids", std::string{});
+
+        if (!tm.collisionGids.empty())
+        {
+            std::vector<int> ids;
+            std::istringstream ss(tm.collisionGids);
+            std::string tok;
+            while (std::getline(ss, tok, ','))
+                try { ids.push_back(std::stoi(tok)); }
+            catch (...) {}
+            if (!ids.empty())
+                tm.GenerateCollisionData(tm.collisionLayer, ids);
+        }
 
         return tm;
     }
@@ -183,7 +218,10 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
             ecs->AddComponent<BehaviorScript>(entity, DeserializeBehaviorScript(comp["BehaviorScript"]));
 
         if (comp.contains("Transform2D"))
+        {
             ecs->AddComponent<Transform2D>(entity, DeserializeTransform2D(comp["Transform2D"]));
+            ecs->AddComponent<WorldTransform2D>(entity, WorldTransform2D{});
+        }
 
         if (comp.contains("Camera2D"))
             ecs->AddComponent<Camera2D>(entity, DeserializeCamera2D(comp["Camera2D"]));
@@ -200,12 +238,10 @@ bool SceneLoader::Load(const std::string& path, std::vector<LoadedEntity>* outEn
     }
 
     // Derived transforms and parent links
-    for (size_t i = 0; i < root["entities"].size(); ++i)
+    for (size_t i = 0; i < root["entities"].size(); i++)
     {
         const auto& entityJson = root["entities"][i];
         const EntityID entity = createdEntities[i];
-        if (ecs->HasComponent<Transform2D>(entity))
-            ecs->AddComponent<WorldTransform2D>(entity, WorldTransform2D{});
 
         const int fileParentId = entityJson.value("parentId", static_cast<int>(NO_PARENT));
         EntityID remappedParentId = NO_PARENT;

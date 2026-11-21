@@ -81,6 +81,16 @@ namespace
         return (shape == Shape2D::CIRCLE) ? "Circle" : "Box";
     }
 
+    const char* BodyTypeToString(RigidBodyType2D type)
+    {
+        switch (type)
+        {
+        case RigidBodyType2D::Static:    return "Static";
+        case RigidBodyType2D::Kinematic: return "Kinematic";
+        default:                         return "Dynamic";
+        }
+    }
+
     nlohmann::json SerializeRigidBody2D(const RigidBody2D& rb)
     {
         nlohmann::json j;
@@ -97,7 +107,7 @@ namespace
             j["height"] = rb.GetFullHeight();
         }
 
-        j["isStatic"] = rb.IsStatic();
+        j["bodyType"] = BodyTypeToString(rb.GetBodyType());
         j["isSensor"] = rb.IsSensor();
         j["applyGravity"] = rb.ApplyGravity();
         j["density"] = rb.GetDensity();
@@ -156,25 +166,22 @@ namespace
     nlohmann::json SerializeTilemap2D(const Tilemap2D& tm)
     {
         nlohmann::json j;
-
-        // Tilemap2D's grid data is baked/derived from a source .json file
-        // and a set of tileset textures. Rather than dumping the (potentially
-        // large) baked grids, we record what's needed to reconstruct it:
-        // the source map path and the tileset load parameters.
         j["mapPath"] = tm.GetSourceMapPath();
         j["tileWidth"] = tm.GetTileWidth();
         j["tileHeight"] = tm.GetTileHeight();
+        j["collisionLayer"] = tm.collisionLayer;
+        j["collisionGids"] = tm.collisionGids;
 
         nlohmann::json tilesets = nlohmann::json::array();
         for (const TilesetSource2D& src : tm.GetTilesetSources())
         {
-            tilesets.push_back(nlohmann::json{
+            tilesets.push_back({
                 {"texturePath", src.texturePath},
                 {"firstgid", src.firstgid}
                 });
         }
-        j["tilesets"] = tilesets;
 
+        j["tilesets"] = tilesets;
         return j;
     }
 }

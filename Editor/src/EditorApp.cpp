@@ -731,7 +731,7 @@ void EditorApp::saveEditorSession()
     std::vector<std::string> scenePaths;
     int activeTab = -1;
     const int currentActiveTab = m_scenePanel->GetActiveTabIndex();
-    for (size_t i = 0; i < openScenePaths.size(); ++i)
+    for (size_t i = 0; i < openScenePaths.size(); i++)
     {
         if (!isPathWithin(p.root, openScenePaths[i]))
             continue;

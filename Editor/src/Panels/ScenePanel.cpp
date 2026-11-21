@@ -4,8 +4,9 @@
 #include <Editor/Project/ProjectManager.h>
 #include <Core/Services.h>
 #include <Core/Components.h>
-#include <Physics/Components/RigidBody2D.h>
 #include <Platform/Window.h>
+#include <Physics/Components/RigidBody2D.h>
+#include <World/Components/Tilemap2D.h>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
@@ -602,7 +603,7 @@ void ScenePanel::drawTabBar()
 
     if (!ImGui::BeginTabBar("##SceneTabs", tabFlags)) return;
 
-    for (int i = 0; i < (int)m_sceneTabs.size(); ++i)
+    for (int i = 0; i < (int)m_sceneTabs.size(); i++)
     {
         SceneTab& tab = m_sceneTabs[i];
 
@@ -1168,15 +1169,13 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
 
     constexpr float DEG_TO_RAD = 3.14159265358979323846f / 180.0f;
 
-    for (const auto& entity : m_ctxRef->activeSceneRef->GetEntities())
+    auto drawBody = [&](EntityID id)
     {
-        const EntityID id = static_cast<EntityID>(entity.id);
-
         const RigidBody2D* rb = m_ecsRef->GetComponent<RigidBody2D>(id);
-        if (!rb) continue;
+        if (!rb) return;
 
         const Transform2D* transform = m_ecsRef->GetComponent<Transform2D>(id);
-        if (!transform) continue;
+        if (!transform) return;
 
         ImU32 fill, line;
         if (rb->IsSensor()) { fill = sensorFill;  line = sensorLine; }
@@ -1197,7 +1196,7 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
             const float r = rb->GetRadius()
                 * std::max(transform->scale.x, transform->scale.y)
                 * zoom;
-            if (r <= 0.0f) continue;
+            if (r <= 0.0f) return;
 
             const ImVec2 c = toScreen(cx, cy);
             dl->AddCircleFilled(c, r, fill, 0);
@@ -1211,7 +1210,7 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
         {
             const float hw = rb->GetHalfWidth() * transform->scale.x;
             const float hh = rb->GetHalfHeight() * transform->scale.y;
-            if (hw <= 0.0f || hh <= 0.0f) continue;
+            if (hw <= 0.0f || hh <= 0.0f) return;
 
             auto corner = [&](float lx, float ly)
                 {
@@ -1227,6 +1226,17 @@ void ScenePanel::DrawRigidBodyDebug(ImVec2 imgMin, ImVec2 imgSize)
             dl->AddQuadFilled(c0, c1, c2, c3, fill);
             dl->AddQuad(c0, c1, c2, c3, line, 1.5f);
         }
+    };
+
+    for (const auto& entity : m_ctxRef->activeSceneRef->GetEntities())
+    {
+        const EntityID id = static_cast<EntityID>(entity.id);
+        drawBody(id);
+
+        if (Tilemap2D* tm = m_ecsRef->GetComponent<Tilemap2D>(id))
+            for (auto& [child, type] : tm->GetChildEntities())
+                if (type == TilemapChildType2D::RectCollider)
+                    drawBody(child);
     }
 
     dl->PopClipRect();

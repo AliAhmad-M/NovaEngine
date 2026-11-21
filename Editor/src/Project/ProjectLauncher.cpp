@@ -423,7 +423,7 @@ void ProjectLauncher::Draw(
         ImGui::SetNextItemWidth(150.0f);
         if (ImGui::BeginCombo("##sort", sortNames[m_sort]))
         {
-            for (int i = 0; i < 3; ++i)
+            for (int i = 0; i < 3; i++)
             {
                 if (ImGui::Selectable(sortNames[i], m_sort == i))
                     m_sort = i;
