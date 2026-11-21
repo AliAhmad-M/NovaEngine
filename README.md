@@ -26,8 +26,3 @@ A C++ game engine with a working 2D toolset and an editor. 3D support is planned
 | Box2D | 2D physics |
 | Jolt | 3D physics |
 | CMake | Game project builds |
-
-## Roadmap
-
-- 3D rendering and physics
-- Finish the editor workflows that still need manual setup
